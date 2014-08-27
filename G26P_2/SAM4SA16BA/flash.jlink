@@ -1,0 +1,7 @@
+SWDSelect
+speed 4000
+r
+h
+exec device = ATSAM4SA16B
+loadbin obj\g26p2sm4.bin,0x400000
+exit

@@ -12,27 +12,27 @@
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-dword msec = 0;
+//dword msec = 0;
 
-static U32u __hsec(0);
+//static U32u __hsec(0);
 
 u32 TM32::ipt = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-time_bdc timeBDC;
+//time_bdc timeBDC;
 
 //static bool sync_Loc_RTC = false; // Синхронизация локальных часов с часами реального времени
 //static bool sync_RTC_Loc = false; // Синхронизация часов реального времени с локальными часами 
 
-static U32u timeUpdate(0);
-static U32u dateUpdate(0);
-static u32 timeBuf = 0;
-static u32 dateBuf = 0;
+//static U32u timeUpdate(0);
+//static U32u dateUpdate(0);
+//static u32 timeBuf = 0;
+//static u32 dateBuf = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static const byte daysInMonth[13] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+//static const byte daysInMonth[13] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -79,33 +79,38 @@ static const byte daysInMonth[13] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31,
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void Timer_Handler (void)
-{
-	msec++;
-	__hsec.d += 6521;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void InitTimer()
-{
-	enum { freq = 1000 };
-
-	CM3::SysTick->LOAD = (MCK+freq/2)/freq;
-	VectorTableInt[15] = Timer_Handler;
-	CM3::SysTick->CTRL = 7;
-	__enable_irq();
-}
+//static __irq void Timer_Handler (void)
+//{
+//	msec++;
+//	__hsec.d += 6521;
+//}
+//
+////++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//static void InitTimer()
+//{
+//	enum { freq = 1000 };
+//
+//	CM3::SysTick->LOAD = (MCK+freq/2)/freq;
+//	VectorTableInt[15] = Timer_Handler;
+//	CM3::SysTick->CTRL = 7;
+//	__enable_irq();
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void RTT_Init()
 {
-	//using namespace HW;
+	using namespace HW;
 
-	//PMC->PCER1 = PID::TC6_M;
-	//TC2->C0.CMR = 4;
-	//TC2->C0.CCR = 5;
+	PMC->PCER0 = PID::TC0_M;
+	TC0->C0.CMR = 4; // SCLK
+	TC0->C0.CCR = 5;
+
+	RTT->MR = 0x40001;
+//	RTT->MR = 0x100000;
+
+
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -284,324 +289,324 @@ lldiv_t lldiv(__int64 n, __int64 d)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void RTC_IntHandler()
-{
-	using namespace HW;
-
-	if ((RTC->SR & 1) != 0)
-	{
-		RTC->TIMR = timeUpdate;
-		RTC->CALR = dateUpdate;
-		
-		RTC->CR &= ~3;
-
-		RTC->SCCR = 1;
-	}
-	else if ((RTC->SR & 4) != 0)
-	{
-		timeBuf = RTC->TIMR;
-		dateBuf = RTC->CALR;
-
-		__hsec = 0;
-
-		RTC->SCCR = 4;
-	}
-}
+//static __irq void RTC_IntHandler()
+//{
+//	using namespace HW;
+//
+//	if ((RTC->SR & 1) != 0)
+//	{
+//		RTC->TIMR = timeUpdate;
+//		RTC->CALR = dateUpdate;
+//		
+//		RTC->CR &= ~3;
+//
+//		RTC->SCCR = 1;
+//	}
+//	else if ((RTC->SR & 4) != 0)
+//	{
+//		timeBuf = RTC->TIMR;
+//		dateBuf = RTC->CALR;
+//
+//		__hsec = 0;
+//
+//		RTC->SCCR = 4;
+//	}
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void GetTime(time_bdc *t)
-{
-
-	if (t == 0) return;
-
-#ifndef WIN32
-
-	U32u d1(0), t1(0);
-	byte hs;
-
-//	CM3::NVIC->ICER[0] = HW::PID::RTC_M;
-
-	__disable_irq();
-
-	d1.d = dateBuf;
-	t1.d = timeBuf;
-	hs = __hsec.b[2];
-
-	__enable_irq();
-
-//	CM3::NVIC->ISER[0] = HW::PID::RTC_M;
-
-	if (hs > 99) { hs = 99; };
-
-	t->hsecond = hs;
-	t->second =		(t1.b[0]&15) + (t1.b[0] >> 4) * 10;
-	t->minute =		(t1.b[1]&15) + (t1.b[1] >> 4) * 10;
-	t->hour =		(t1.b[2]&15) + ((t1.b[2] >> 4) & 3) * 10;
-	t->day =		(d1.b[3]&15) + ((d1.b[3] >> 4) & 3) * 10;
-	t->month =		(d1.b[2]&15) + ((d1.b[2] >> 4) & 1) * 10;
-	t->year =		(d1.b[1]&15) + (d1.b[1]>>4) * 10 + (d1.b[0] & 15) * 100 + ((d1.b[0] >> 4) & 7) * 1000;
-//	t->dayofweek =	(d1.b[2]>>5) - 1;
-
-#else
-
-	SYSTEMTIME lt;
-
-	GetLocalTime(&lt);
-
-	t->hsecond = lt.wMilliseconds/10;
-	t->second = lt.wSecond;
-	t->minute = lt.wMinute;
-	t->hour = lt.wHour;
-	t->day = lt.wDay;
-	t->month = lt.wMonth;
-	t->year = lt.wYear;
-
-#endif
-}
+//void GetTime(time_bdc *t)
+//{
+//
+//	if (t == 0) return;
+//
+//#ifndef WIN32
+//
+//	U32u d1(0), t1(0);
+//	byte hs;
+//
+////	CM3::NVIC->ICER[0] = HW::PID::RTC_M;
+//
+//	__disable_irq();
+//
+//	d1.d = dateBuf;
+//	t1.d = timeBuf;
+//	hs = __hsec.b[2];
+//
+//	__enable_irq();
+//
+////	CM3::NVIC->ISER[0] = HW::PID::RTC_M;
+//
+//	if (hs > 99) { hs = 99; };
+//
+//	t->hsecond = hs;
+//	t->second =		(t1.b[0]&15) + (t1.b[0] >> 4) * 10;
+//	t->minute =		(t1.b[1]&15) + (t1.b[1] >> 4) * 10;
+//	t->hour =		(t1.b[2]&15) + ((t1.b[2] >> 4) & 3) * 10;
+//	t->day =		(d1.b[3]&15) + ((d1.b[3] >> 4) & 3) * 10;
+//	t->month =		(d1.b[2]&15) + ((d1.b[2] >> 4) & 1) * 10;
+//	t->year =		(d1.b[1]&15) + (d1.b[1]>>4) * 10 + (d1.b[0] & 15) * 100 + ((d1.b[0] >> 4) & 7) * 1000;
+////	t->dayofweek =	(d1.b[2]>>5) - 1;
+//
+//#else
+//
+//	SYSTEMTIME lt;
+//
+//	GetLocalTime(&lt);
+//
+//	t->hsecond = lt.wMilliseconds/10;
+//	t->second = lt.wSecond;
+//	t->minute = lt.wMinute;
+//	t->hour = lt.wHour;
+//	t->day = lt.wDay;
+//	t->month = lt.wMonth;
+//	t->year = lt.wYear;
+//
+//#endif
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool CheckTime(const time_bdc &t)
-{
-	if (t.second > 59 || t.minute > 59 || t.hour > 23 || t.day < 1 || (t.month-1) > 11 || (t.year-2000) > 99) { return false; };
-
-	byte d = daysInMonth[t.month] + ((t.month == 2 && (t.year&3) == 0) ? 1 : 0);
-
-	if (t.day > d) { return false; };
-
-	return true;
-}
+//bool CheckTime(const time_bdc &t)
+//{
+//	if (t.second > 59 || t.minute > 59 || t.hour > 23 || t.day < 1 || (t.month-1) > 11 || (t.year-2000) > 99) { return false; };
+//
+//	byte d = daysInMonth[t.month] + ((t.month == 2 && (t.year&3) == 0) ? 1 : 0);
+//
+//	if (t.day > d) { return false; };
+//
+//	return true;
+//}
+//
+////++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//bool SetTime(const time_bdc &t)
+//{
+//#ifndef WIN32
+//
+//	if (!CheckTime(t)) { return false; };
+//
+////	time_utc tutc = mktime_utc(t);
+//
+//	div_t s;
+//
+//	s = div(t.second, 10);
+//	timeUpdate.b[0] = (byte)((s.quot<<4)|(s.rem));
+//
+//	s = div(t.minute, 10);
+//	timeUpdate.b[1] = (byte)((s.quot<<4)|(s.rem));
+//
+//	s = div(t.hour, 10);
+//	timeUpdate.b[2] = (byte)((s.quot<<4)|(s.rem));
+//
+//	s = div(t.day, 10);
+//	dateUpdate.b[3] = (byte)((s.quot<<4)|(s.rem));
+//
+//	s = div(t.month, 10);
+//	dateUpdate.b[2] = (byte)((s.quot<<4)|(s.rem)|0x20);
+//
+//	s = div(t.year - 2000, 10);
+//	dateUpdate.b[1] = (byte)((s.quot<<4)|(s.rem));
+//
+//	dateUpdate.b[0] = 0x20;
+//
+//	HW::RTC->CR = 3;
+//
+//	return true;
+//
+//#else
+//
+//	SYSTEMTIME lt;
+//
+//	lt.wMilliseconds	=	t.hsecond*10;
+//	lt.wSecond			=	t.second	;
+//	lt.wMinute			=	t.minute	;
+//	lt.wHour			=	t.hour		;
+//	lt.wDay				=	t.day		;
+//	lt.wMonth			=	t.month	;
+//	lt.wYear			=	t.year		;
+//
+//	return SetLocalTime(&lt);
+//
+//#endif
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool SetTime(const time_bdc &t)
-{
-#ifndef WIN32
-
-	if (!CheckTime(t)) { return false; };
-
-//	time_utc tutc = mktime_utc(t);
-
-	div_t s;
-
-	s = div(t.second, 10);
-	timeUpdate.b[0] = (byte)((s.quot<<4)|(s.rem));
-
-	s = div(t.minute, 10);
-	timeUpdate.b[1] = (byte)((s.quot<<4)|(s.rem));
-
-	s = div(t.hour, 10);
-	timeUpdate.b[2] = (byte)((s.quot<<4)|(s.rem));
-
-	s = div(t.day, 10);
-	dateUpdate.b[3] = (byte)((s.quot<<4)|(s.rem));
-
-	s = div(t.month, 10);
-	dateUpdate.b[2] = (byte)((s.quot<<4)|(s.rem)|0x20);
-
-	s = div(t.year - 2000, 10);
-	dateUpdate.b[1] = (byte)((s.quot<<4)|(s.rem));
-
-	dateUpdate.b[0] = 0x20;
-
-	HW::RTC->CR = 3;
-
-	return true;
-
-#else
-
-	SYSTEMTIME lt;
-
-	lt.wMilliseconds	=	t.hsecond*10;
-	lt.wSecond			=	t.second	;
-	lt.wMinute			=	t.minute	;
-	lt.wHour			=	t.hour		;
-	lt.wDay				=	t.day		;
-	lt.wMonth			=	t.month	;
-	lt.wYear			=	t.year		;
-
-	return SetLocalTime(&lt);
-
-#endif
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void Init_time()
-{
-	using namespace HW;
-
-	InitTimer();
-	RTT_Init();
-
-	PMC->PCER0 = PID::RTC_M;
-
-	RTC->CR = 0;
-	RTC->MR = 0;
-
-	timeBuf = RTC->TIMR;
-	dateBuf = RTC->CALR;
-
-	VectorTableExt[PID::RTC_I] = RTC_IntHandler;
-
-	CM3::NVIC->ICPR[0] = PID::RTC_M;
-	CM3::NVIC->ISER[0] = PID::RTC_M;
-
-	RTC->IER = 5; //SECEN ACKEN
-
-	__enable_irq();
-}
+//void Init_time()
+//{
+//	using namespace HW;
+//
+//	InitTimer();
+//	RTT_Init();
+//
+//	PMC->PCER0 = PID::RTC_M;
+//
+//	RTC->CR = 0;
+//	RTC->MR = 0;
+//
+//	timeBuf = RTC->TIMR;
+//	dateBuf = RTC->CALR;
+//
+//	VectorTableExt[PID::RTC_I] = RTC_IntHandler;
+//
+//	CM3::NVIC->ICPR[0] = PID::RTC_M;
+//	CM3::NVIC->ISER[0] = PID::RTC_M;
+//
+//	RTC->IER = 5; //SECEN ACKEN
+//
+//	__enable_irq();
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-int CompareTime(const time_bdc &t1, const time_bdc &t2)
-{
-	if (t1.year > t2.year)
-	{
-		return 1;
-	}
-	else if (t1.year < t2.year)
-	{
-		return -1;
-	}
-	else if (t1.month > t2.month)
-	{
-		return 1;
-	}
-	else if (t1.month < t2.month)
-	{
-		return -1;
-	}
-	else if (t1.day > t2.day)
-	{
-		return 1;
-	}
-	else if (t1.day < t2.day)
-	{
-		return -1;
-	}
-	else if (t1.hour > t2.hour)
-	{
-		return 1;
-	}
-	else if (t1.hour < t2.hour)
-	{
-		return -1;
-	}
-	else if (t1.minute > t2.minute)
-	{
-		return 1;
-	}
-	else if (t1.minute < t2.minute)
-	{
-		return -1;
-	}
-	else if (t1.second > t2.second)
-	{
-		return 1;
-	}
-	else if (t1.second < t2.second)
-	{
-		return -1;
-	}
-	else
-	{
-		return 0;
-	};
-}
+//int CompareTime(const time_bdc &t1, const time_bdc &t2)
+//{
+//	if (t1.year > t2.year)
+//	{
+//		return 1;
+//	}
+//	else if (t1.year < t2.year)
+//	{
+//		return -1;
+//	}
+//	else if (t1.month > t2.month)
+//	{
+//		return 1;
+//	}
+//	else if (t1.month < t2.month)
+//	{
+//		return -1;
+//	}
+//	else if (t1.day > t2.day)
+//	{
+//		return 1;
+//	}
+//	else if (t1.day < t2.day)
+//	{
+//		return -1;
+//	}
+//	else if (t1.hour > t2.hour)
+//	{
+//		return 1;
+//	}
+//	else if (t1.hour < t2.hour)
+//	{
+//		return -1;
+//	}
+//	else if (t1.minute > t2.minute)
+//	{
+//		return 1;
+//	}
+//	else if (t1.minute < t2.minute)
+//	{
+//		return -1;
+//	}
+//	else if (t1.second > t2.second)
+//	{
+//		return 1;
+//	}
+//	else if (t1.second < t2.second)
+//	{
+//		return -1;
+//	}
+//	else
+//	{
+//		return 0;
+//	};
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void NextDay(time_bdc *t)
-{
-	unsigned char maxDay = ((t->year & 3) == 0 && t->month == 2) ? 29 : daysInMonth[t->month];
-
-	if ((t->day += 1) > maxDay)
-	{
-		t->day = 1;
-
-		if ((t->month += 1) > 12)
-		{
-			t->month = 1;
-			t->year += 1;
-		};
-	};
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void NextHour(time_bdc *t)
-{
-	t->hour += 1;
-
-	if (t->hour > 23)
-	{
-		t->hour = 0;
-		
-		if ((t->day += 1) > (daysInMonth[t->month] + (((t->year & 3) == 0) ? 1 : 0)))
-		{
-			t->day = 1;
-			if ((t->month += 1) > 12)
-			{
-				t->month = 1;
-				t->year += 1;
-			};
-		};
-	};
-}
+//void NextDay(time_bdc *t)
+//{
+//	unsigned char maxDay = ((t->year & 3) == 0 && t->month == 2) ? 29 : daysInMonth[t->month];
+//
+//	if ((t->day += 1) > maxDay)
+//	{
+//		t->day = 1;
+//
+//		if ((t->month += 1) > 12)
+//		{
+//			t->month = 1;
+//			t->year += 1;
+//		};
+//	};
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void PrevDay(time_bdc *t)
-{
-	unsigned char maxDay;
-
-	if ((t->day -= 1) == 0)
-	{
-		if ((t->month -= 1) == 0)
-		{
-			t->month = 12;
-			t->year -= 1;
-		};
-	
-		maxDay = ((t->year & 3) == 0 && t->month == 2) ? 29 : daysInMonth[t->month];
-		t->day = maxDay;
-	};
-};
+//void NextHour(time_bdc *t)
+//{
+//	t->hour += 1;
+//
+//	if (t->hour > 23)
+//	{
+//		t->hour = 0;
+//		
+//		if ((t->day += 1) > (daysInMonth[t->month] + (((t->year & 3) == 0) ? 1 : 0)))
+//		{
+//			t->day = 1;
+//			if ((t->month += 1) > 12)
+//			{
+//				t->month = 1;
+//				t->year += 1;
+//			};
+//		};
+//	};
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void PrevHour(time_bdc *t)
-{
-	if (t->hour == 0)
-	{
-		t->hour = 23;
-		
-		if (t->day == 1)
-		{
-			if (t->month == 1)
-			{
-				t->month = 12;
-				t->year -= 1;
-			}
-			else
-			{
-				t->month -= 1;
-			};
+//void PrevDay(time_bdc *t)
+//{
+//	unsigned char maxDay;
+//
+//	if ((t->day -= 1) == 0)
+//	{
+//		if ((t->month -= 1) == 0)
+//		{
+//			t->month = 12;
+//			t->year -= 1;
+//		};
+//	
+//		maxDay = ((t->year & 3) == 0 && t->month == 2) ? 29 : daysInMonth[t->month];
+//		t->day = maxDay;
+//	};
+//};
 
-			t->day = daysInMonth[t->month] + ((t->month == 2 && (t->year & 3) == 0) ? 1 : 0);
-		}
-		else
-		{
-			t->day -= 1;
-		};
-	}
-	else
-	{
-		t->hour -= 1;
-	};
-}
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//void PrevHour(time_bdc *t)
+//{
+//	if (t->hour == 0)
+//	{
+//		t->hour = 23;
+//		
+//		if (t->day == 1)
+//		{
+//			if (t->month == 1)
+//			{
+//				t->month = 12;
+//				t->year -= 1;
+//			}
+//			else
+//			{
+//				t->month -= 1;
+//			};
+//
+//			t->day = daysInMonth[t->month] + ((t->month == 2 && (t->year & 3) == 0) ? 1 : 0);
+//		}
+//		else
+//		{
+//			t->day -= 1;
+//		};
+//	}
+//	else
+//	{
+//		t->hour -= 1;
+//	};
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

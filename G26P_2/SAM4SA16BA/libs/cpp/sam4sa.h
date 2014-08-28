@@ -656,8 +656,8 @@ namespace HW
 
 }; // namespace HW
 
-extern T_HW::AT91_IHP VectorTableInt[16];
-extern T_HW::AT91_IHP VectorTableExt[45];
+//extern T_HW::AT91_IHP VectorTableInt[16];
+//extern T_HW::AT91_IHP VectorTableExt[35];
 
 #undef MK_PTR
 #undef MKPID

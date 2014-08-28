@@ -118,6 +118,27 @@ word ComPort::BoudToPresc(dword speed)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void ComPort::TransmitByte(byte v)
+{
+#ifndef WIN32
+
+	_SU->CR = 0xA0;	// Disable transmit and receive
+
+	_pm->SODR = _maskRTS;
+
+	_SU->CR = 0x40;
+
+	_SU->THR = v;
+
+	_SU->CR = 0xA0;	// Disable transmit and receive
+
+#endif
+
+	_status485 = WRITEING;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void ComPort::EnableTransmit(void* src, word count)
 {
 #ifndef WIN32

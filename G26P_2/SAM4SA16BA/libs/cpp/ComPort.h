@@ -128,6 +128,8 @@ class ComPort
 	bool		Read(ComPort::ReadBuffer *readBuffer, dword preTimeout, dword postTimeout);
 	bool		Write(ComPort::WriteBuffer *writeBuffer);
 
+	void		TransmitByte(byte v);
+
 	static __irq void _IntHandlerCom1();
 	static __irq void _IntHandlerCom2();
 	static __irq void _IntHandlerCom3();

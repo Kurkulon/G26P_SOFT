@@ -1,0 +1,161 @@
+
+##################################################################################################
+
+!ifndef version
+version = Release
+!endif
+
+##################################################################################################
+
+ADI_DSP = "C:\Program Files (x86)\Analog Devices\VisualDSP 5.1"
+
+curdir = $+ $(%cdrive):$(%cwd) $-
+hdir = cpp
+libdir = $(curdir)\libs
+bindir = $(ADI_DSP)
+incdir = $(ADI_DSP)\Blackfin\include
+
+!ifeq version Debug
+
+debug_compiler_options = -O0
+debug_linker_options = 
+libsuffix=d
+
+!else ifeq version Win32_Debug
+
+debug_compiler_options = -Od
+debug_linker_options = 
+libsuffix=Win32
+
+!else
+
+debug_compiler_options = -Ov100
+debug_linker_options = 
+libsuffix=r
+
+!endif
+
+##################################################################################################
+
+#libname = $(libdir)\sam3x8e_$(libsuffix).a
+
+##################################################################################################
+
+.ERASE
+.EXTENSIONS:
+.EXTENSIONS: .exe .doj .cpp .h .s .d
+
+##################################################################################################
+
+.cpp:	$(cppdir)
+.doj:	$(objdir)
+.h:	$(hdir)
+.s: $(cppdir)
+.d:	$(objdir)
+
+
+##################################################################################################
+
+.BEFORE
+	@if NOT EXIST $(objdir) @md $(objdir) >nul
+	@call echo Building $(version) version ...
+	@call buildnum.bat
+
+
+##################################################################################################
+
+# -w4 -wcd13 -wcd14 -wcd367 -wcd368 -wcd627 -wcd726
+# -I "d:\progs\Keil\ARM\INC\Atmel\SAM7SE" 
+# -- thumb --arm --asm --interleave 
+# --omf_browse $(objdir)\
+#	--feedback "$(objdir)\brkp.fed"&
+#--diag_suppress=68,368,1299,3017 
+
+compiler_options = $(debug_compiler_options) -c -c++ -g -structs-do-not-overlap -no-multiline &
+	-double-size-32 -decls-strong -warn-protos -si-revision 0.2 -proc ADSP-BF592-A -Wterse
+
+
+
+
+##################################################################################################
+
+asm_options = -proc ADSP-BF592-A -g -si-revision 0.2
+
+
+##################################################################################################
+#-MDUSE_FILEIO
+
+link_options = -e -proc ADSP-BF592-A -si-revision 0.2 -MDNO_UTILITY_ROM -MD__cplusplus
+  
+##################################################################################################
+
+win32_compiler_options = $(debug_compiler_options) -nologo -DWIN32 -D_TESTONPC_ -D_DEBUG_ -c -Z7 -Zp -wd4996 -I"$(libdir)\cpp"
+
+##################################################################################################
+
+win32_link_options = -NOLOGO -SUBSYSTEM:CONSOLE -DEBUG -MACHINE:X86 kernel32.lib user32.lib gdi32.lib WS2_32.lib
+  
+##################################################################################################
+
+!include $(objdir)\mkoutcpp
+!include $(objdir)\mkoutobj
+
+##################################################################################################
+!ifneq version Win32_Debug
+
+$(objdir)\g26p2man.dxe : $(objdir)\basiccrt.doj $(modules_obj)
+	@echo Linking ...
+	@linker	$(link_options) -Map "$(objdir)\$^&.xml" -MDUSER_CRT="$(objdir)\basiccrt.doj" -o "$^@" &
+		$< $(libname)
+	@elfloader -v -f binary -b SPI -proc ADSP-BF592-A -si-revision 0.2 -o "$(objdir)\$^&.ldr" -dmawidth 8 -width 8 $^@ 
+	
+!else
+
+$(objdir)\mtu.exe : makefile $(libname) $(modules_obj)	
+	@echo Linking ...
+	@call link $(win32_link_options) -OUT:$^@ $(modules_obj) $(libname)
+
+!endif
+##################################################################################################
+
+!ifneq version Win32_Debug
+
+##################################################################################################
+
+$(objdir)\basiccrt.doj : $(cppdir)\basiccrt.s
+
+##################################################################################################
+
+!include $(objdir)\mkoutdep
+
+##################################################################################################
+
+.cpp.doj: .AUTODEPEND
+	@echo Compiling $[. ...
+	@ccblkfn $(compiler_options) -MD -Mo="$(objdir)\$^&.d" -o "$(objdir)\$^." $[@
+
+##################################################################################################
+
+.s.doj:
+	@echo Assembling $[. ...
+	@easmblkfn $(asm_options) -l $(objdir)\$^&.lst  -o $(objdir)\$^. $[@	
+
+##################################################################################################
+
+#$(objdir)\events.preprocessed.cpp : $(objdir)\events.o
+#	@echo Generate $^. ...
+#	@$(bindir)\armcc $(compiler_options) -P >$^@ $(cppdir)\events.cpp
+
+##################################################################################################
+
+!else
+
+##################################################################################################
+
+
+.cpp.o:	.AUTODEPEND
+	@cl $(win32_compiler_options) -Fo"$(objdir)\$^." $[@
+
+##################################################################################################
+
+!endif

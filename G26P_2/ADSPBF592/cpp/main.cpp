@@ -58,10 +58,10 @@ int main( void )
 		//	pt = t;
 		//};
 
-		if (tm.Check(100000000))
-		{
-			SendManCmd(data, 100);
-		};
+		//if (tm.Check(100000000))
+		//{
+		//	SendManCmd(data, 100);
+		//};
 
 
 		UpdateHardware();

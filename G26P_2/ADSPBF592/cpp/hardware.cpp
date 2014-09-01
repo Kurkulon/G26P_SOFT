@@ -10,6 +10,7 @@ u32 trmHalfPeriod = 500;
 u32 rcvHalfPeriod = 500;
 
 byte stateManTrans = 0;
+byte stateManRcvr = 0;
 
 u32 trmSyncTime = trmHalfPeriod * 3;
 u32 rcvSyncTime = rcvHalfPeriod * 3;
@@ -166,7 +167,7 @@ static void LowLevelInit()
 	*pPORTF_FER = 0x1800;		//  0001 1000 0000 0000
 //	*pPORTG_FER = 0xE70F;		//  0000 0000 0000 0000
 
-	*pPORTFIO_DIR = 0x00F4;		//  0000 0000 1111 0100
+	*pPORTFIO_DIR = 0x0074;		//  0000 0000 1111 0100
 //	*pPORTGIO_DIR = 0x1800;		//  0001 1000 0000 0000
 
 	*pPORTFIO_INEN = 0x0600;	//  0000 0110 0000 0000
@@ -370,6 +371,75 @@ static void InitManTransmit()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+EX_INTERRUPT_HANDLER(MANRCVR_ISR)
+{
+	u32 t;
+	static byte ib;
+
+	*pPORTFIO_SET = 1<<2;
+
+	switch (stateManRcvr)
+	{
+		case 0:
+
+			*pTIMER_ENABLE = TIMEN1;
+			*pPORTFIO_EDGE &= ~(1<<10);
+			ib = ((*pPORTFIO) >> 10)&1;
+			*pPORTFIO_EDGE |= 1<<10;
+			stateManRcvr++;
+
+			break;
+
+		case 1:
+
+			t = *pTIMER1_COUNTER;
+
+			if (*pTIMER_STATUS & 2)
+			{
+				*pTIMER_DISABLE = TIMDIS1;
+				stateManRcvr = 8;
+				break;
+			};
+
+			t = (t + (rcvHalfPeriod>>1)) / rcvHalfPeriod;
+			ib ^= 1;
+
+
+
+
+			break;
+
+
+
+
+	};
+
+	*pPORTFIO_CLEAR = (1<<2)|(1<<10);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitManRecieve()
+{
+	*pEVT11 = (void*)MANRCVR_ISR;
+	*pIMASK |= EVT_IVG11; 
+	*pSIC_IMASK |= IRQ_PFA_PORTF;
+
+	*pPORTFIO_EDGE = 1<<10;
+	*pPORTFIO_BOTH = 1<<10;
+	*pPORTFIO_MASKA = 1<<10;
+	*pPORTFIO_MASKB = 0;
+
+
+
+
+	//register_handler(ik_ivg9, SPORT_ISR);
+
+
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void UpdateHardware()
 {
 
@@ -385,7 +455,9 @@ void InitHardware()
 
 	InitRTT();
 
-	InitManTransmit();
+//	InitManTransmit();
+
+	InitManRecieve();
 
 //	InitSPORT();
 

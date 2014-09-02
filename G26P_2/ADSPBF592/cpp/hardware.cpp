@@ -7,10 +7,11 @@
 
 
 u32 trmHalfPeriod = 500;
-u32 rcvHalfPeriod = 500;
+u16 rcvHalfPeriod = 2500;
 
 byte stateManTrans = 0;
 byte stateManRcvr = 0;
+byte stateWaitMan = 0;
 
 u32 trmSyncTime = trmHalfPeriod * 3;
 u32 rcvSyncTime = rcvHalfPeriod * 3;
@@ -19,12 +20,19 @@ u16 *trmData = 0;
 u16 trmDataLen = 0;
 u16 trmCommandLen = 0;
 
-u32 rcvData = 0;
+u32 *rcvData = 0;
+u16 rcvMaxLen = 0;
+u16 rcvLen = 0;
+u16 rcvCount = 0;
+bool rcvOK = false;
+bool rcvErr = false;
 
 bool trmStartCmd = false;
 bool trmStartData = false;
 
 u32 icount = 0;
+static byte ib;
+
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -167,7 +175,7 @@ static void LowLevelInit()
 	*pPORTF_FER = 0x1800;		//  0001 1000 0000 0000
 //	*pPORTG_FER = 0xE70F;		//  0000 0000 0000 0000
 
-	*pPORTFIO_DIR = 0x0074;		//  0000 0000 1111 0100
+	*pPORTFIO_DIR = 0x00F4;		//  0000 0000 1111 0100
 //	*pPORTGIO_DIR = 0x1800;		//  0001 1000 0000 0000
 
 	*pPORTFIO_INEN = 0x0600;	//  0000 0110 0000 0000
@@ -373,46 +381,239 @@ static void InitManTransmit()
 
 EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 {
-	u32 t;
+	u16 t;
 	static byte ib;
+	static u32 rw;
+	static u16 l;
+	static byte lastbit, bit;
+	static byte sc;
+	static u32 *p;
+	static u16 count;
+
+	enum {FSP = 0, SSP = 1, FH = 3, SH = 4, END = 49, ERR = 50};
 
 	*pPORTFIO_SET = 1<<2;
 
-	switch (stateManRcvr)
+
+	if (((rcvCount++) & 1) == 0) switch (stateManRcvr)
 	{
 		case 0:
 
-			*pTIMER_ENABLE = TIMEN1;
-			*pPORTFIO_EDGE &= ~(1<<10);
-			ib = ((*pPORTFIO) >> 10)&1;
-			*pPORTFIO_EDGE |= 1<<10;
+			lastbit = (*pPORTFIO >> 10) & 1;
+			sc = 0;
+			l = 17;
+			p = rcvData;
+			count = rcvMaxLen;
+
 			stateManRcvr++;
 
 			break;
 
 		case 1:
 
-			t = *pTIMER1_COUNTER;
+			bit = (*pPORTFIO >> 10) & 1;
+			sc++;
 
-			if (*pTIMER_STATUS & 2)
+			if (bit != lastbit)
 			{
-				*pTIMER_DISABLE = TIMDIS1;
-				stateManRcvr = 8;
-				break;
+				
+				if (sc < 3)
+				{
+					lastbit = bit;
+				}
+				else if (sc == 3)
+				{
+					lastbit = bit;
+					stateManRcvr++;
+				}
+				else 
+				{
+					rw <<= 1;
+					rw |= bit; // бит данных
+					l--;
+					stateManRcvr += 2;
+				};
+
+				sc = 0; 
+			}
+			else if (sc > 4)
+			{
+				stateManRcvr = ERR; 
 			};
 
-			t = (t + (rcvHalfPeriod>>1)) / rcvHalfPeriod;
-			ib ^= 1;
+			break;
 
+		case 2:
 
+			bit = (*pPORTFIO >> 10) & 1;
+			sc++;
 
+			if (bit != lastbit)
+			{
+				if ((sc == 1) || (sc == 4))
+				{
+					rw <<= 1;
+					rw |= bit; // бит данных
+					l--;
+					stateManRcvr++;
+				}
+				else if (sc == 3)
+				{
+					stateManRcvr++;
+				}
+				else 
+				{
+					stateManRcvr = ERR; 
+				};
+
+				sc = 0; 
+			}
+			else if (sc > 4)
+			{
+				stateManRcvr = ERR; 
+			};
 
 			break;
 
 
+		case 3:
+
+			lastbit = (*pPORTFIO >> 10) & 1;
+
+			stateManRcvr++;
+
+			break;
 
 
+		case 4:
+
+			bit = (*pPORTFIO >> 10) & 1;
+
+			if (bit != lastbit)
+			{
+				rw <<= 1;
+				rw |= bit; // бит данных
+				l--;
+
+				stateManRcvr = (l > 0) ? 3 : 5;
+			}
+			else
+			{
+				stateManRcvr = ERR; 
+			};
+
+			break;
+
+		case 5:
+
+			lastbit = (*pPORTFIO >> 10) & 1;
+			l = 17;
+
+			*p++ = rw;
+			count--;
+
+			stateManRcvr = (count == 0) ? END : 6;
+
+			break;
+
+		case 6:
+
+			bit = (*pPORTFIO >> 10) & 1;
+			sc++;
+
+			if (bit != lastbit)
+			{
+				if (sc == 3)
+				{
+					lastbit = bit;
+					sc = 0;
+					stateManRcvr++;
+				}
+				else
+				{
+					stateManRcvr = ERR; 
+				};
+			}
+			else if (sc > 3)
+			{
+				stateManRcvr = ERR; 
+			};
+
+			break;
+
+		case 7:
+
+			bit = (*pPORTFIO >> 10) & 1;
+			sc++;
+
+			if (bit != lastbit)
+			{
+				if (sc == 4)
+				{
+					rw <<= 1;
+					rw |= bit; // бит данных
+					l--;
+					stateManRcvr = 3;
+				}
+				else if (sc == 3)
+				{
+					stateManRcvr = 3;
+				}
+				else 
+				{
+					stateManRcvr = ERR; 
+				};
+			}
+			else if (sc > 4)
+			{
+				stateManRcvr = ERR; 
+			};
+
+			break;
+
+		case END:
+			
+			rcvOK = true;
+			rcvErr = false;
+			rcvLen = rcvMaxLen - count;
+
+			*pTIMER_DISABLE = TIMDIS1;
+			*pPORTFIO_MASKA = 0;
+
+			break;
+
+		case ERR:
+
+			rcvOK = false;
+			rcvErr = true;
+
+			rcvLen = rcvMaxLen - count;
+
+			*pTIMER_DISABLE = TIMDIS1;
+			*pPORTFIO_MASKA = 0;
+
+			break;
 	};
+
+	*pTIMER_STATUS = 2;
+	*pPORTFIO_CLEAR = (1<<2);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+EX_INTERRUPT_HANDLER(WAITMANRCVR_ISR)
+{
+	*pPORTFIO_SET = 1<<2;
+
+
+	*pTIMER_DISABLE = TIMDIS1;
+	*pTIMER_ENABLE = TIMEN1;
+	*pPORTFIO_EDGE &= ~(1<<10);
+	*pPORTFIO_MASKA = 0;
+
+	stateManRcvr = 0;
+
+	*pEVT11 = (void*)MANRCVR_ISR;
 
 	*pPORTFIO_CLEAR = (1<<2)|(1<<10);
 }
@@ -421,9 +622,9 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 
 static void InitManRecieve()
 {
-	*pEVT11 = (void*)MANRCVR_ISR;
+	*pEVT11 = (void*)WAITMANRCVR_ISR;
 	*pIMASK |= EVT_IVG11; 
-	*pSIC_IMASK |= IRQ_PFA_PORTF;
+	*pSIC_IMASK |= IRQ_PFA_PORTF|IRQ_TIMER1;
 
 	*pPORTFIO_EDGE = 1<<10;
 	*pPORTFIO_BOTH = 1<<10;
@@ -431,14 +632,35 @@ static void InitManRecieve()
 	*pPORTFIO_MASKB = 0;
 
 
-
-
-	//register_handler(ik_ivg9, SPORT_ISR);
-
-
+	*pTIMER1_PERIOD = rcvHalfPeriod >> 1;
+	*pTIMER1_WIDTH = 1;
+	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT|OUT_DIS|IRQ_ENA;
+	*pTIMER_DISABLE = TIMDIS1;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void RcvManData(void *data, u16 len)
+{
+	rcvData = (u32*)data;
+	rcvMaxLen = len;
+	
+	*pEVT11 = (void*)WAITMANRCVR_ISR;
+
+	*pPORTFIO_EDGE = 1<<10;
+	*pPORTFIO_BOTH = 1<<10;
+	*pPORTFIO_MASKA = 1<<10;
+	*pPORTFIO_MASKB = 0;
+
+
+	*pTIMER1_PERIOD = rcvHalfPeriod >> 1;
+	*pTIMER1_WIDTH = 1;
+	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT|OUT_DIS|IRQ_ENA;
+	*pTIMER_DISABLE = TIMDIS1;
+
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void UpdateHardware()
 {

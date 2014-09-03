@@ -6,28 +6,31 @@
 //#include <ccblkfn.h>
 
 
-u32 trmHalfPeriod = 500;
-u16 rcvHalfPeriod = 2500;
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+inline void ManDisable() { *pPORTFIO = 0x50; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; }
+inline void ManOne() { /**pPORTFIO = 0x50;*/ *pPORTFIO = 0x30; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0xC0; *pPORTFIO_SET = 0x30; }
+inline void ManZero() { /**pPORTFIO = 0x50;*/ *pPORTFIO = 0xC0; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0x30; *pPORTFIO_SET = 0xC0; }
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+u16 trmHalfPeriod = US2CLK(48.0/2);
 byte stateManTrans = 0;
+static MTB *manTB = 0;
+static bool trmBusy = false;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static u16 rcvCount = 0;
+static bool rcvBusy = false;
 byte stateManRcvr = 0;
-byte stateWaitMan = 0;
+u16 rcvHalfPeriod = US2CLK(52.0/2);
 
-u32 trmSyncTime = trmHalfPeriod * 3;
-u32 rcvSyncTime = rcvHalfPeriod * 3;
+static MRB *manRB = 0;
 
-u16 *trmData = 0;
-u16 trmDataLen = 0;
-u16 trmCommandLen = 0;
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-u32 *rcvData = 0;
-u16 rcvMaxLen = 0;
-u16 rcvLen = 0;
-u16 rcvCount = 0;
-bool rcvOK = false;
-bool rcvErr = false;
-
-bool trmStartCmd = false;
+//bool trmStartCmd = false;
 bool trmStartData = false;
 
 u32 icount = 0;
@@ -178,10 +181,10 @@ static void LowLevelInit()
 	*pPORTFIO_DIR = 0x00F4;		//  0000 0000 1111 0100
 //	*pPORTGIO_DIR = 0x1800;		//  0001 1000 0000 0000
 
-	*pPORTFIO_INEN = 0x0600;	//  0000 0110 0000 0000
+	*pPORTFIO_INEN = 0x0601;	//  0000 0110 0000 0001
 //	*pPORTGIO_INEN = 0x0003;	//  0000 0000 0000 0000
 
-	*pPORTF_PADCTL = 0x0010;	//  0000 0000 0001 0000 Schmitt trigger
+	*pPORTF_PADCTL = 0x0011;	//  0000 0000 0001 0000 Schmitt trigger
 
 	ManDisable();
 
@@ -189,27 +192,15 @@ static void LowLevelInit()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SendManCmd(void *data, u16 len)
-{
-	stateManTrans = 0;
-	trmStartCmd = true;
-	trmData = (u16*)data;
-	trmDataLen = len;
-	*pTIMER1_PERIOD = trmHalfPeriod;
-	*pTIMER_ENABLE = TIMEN1;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void SendManData(void *data, u16 len)
-{
-	stateManTrans = 0;
-	trmStartData = true;
-	trmData = (u16*)data;
-	trmDataLen = len;
-	*pTIMER1_PERIOD = trmHalfPeriod;
-	*pTIMER_ENABLE = TIMEN1;
-}
+//void SendManCmd(void *data, u16 len)
+//{
+//	stateManTrans = 0;
+//	trmStartCmd = true;
+//	trmData = (u16*)data;
+//	trmDataLen = len;
+//	*pTIMER1_PERIOD = trmHalfPeriod;
+//	*pTIMER_ENABLE = TIMEN1;
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -220,7 +211,6 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 	static byte i = 0;
 	static u16 *data = 0;
 	static u16 len = 0;
-	static byte repstate = 0;
 
 	*pPORTFIO_SET = 1<<2;
 
@@ -229,55 +219,14 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 		case 0:	// Idle; 
 
 			ManDisable();
-
-			if (trmStartCmd)
-			{
-				trmStartCmd = false;
-
-				data = trmData;
-				len = trmDataLen;
-				
-				repstate = stateManTrans = 1;
-			} 
-			else if (trmStartData)
-			{
-				trmStartData = false;
-				
-				data = trmData;
-				len = trmDataLen;
-				repstate = stateManTrans = 3;
-			};
+		
+			data = (u16*)manTB->data;
+			len = manTB->len;
+			stateManTrans = 1;
 
 			break;
 
-		case 1: // Start command
-
-			i = 3;
-			tw = ((u32)(*data) << 1) | (CheckParity(*data) & 1);
-
-			data++;
-			len--;
-
-			ManZero();
-
-			stateManTrans++;
-
-			break;
-
-		case 2:	// Wait cmd 1-st sync imp
-
-			i--;
-
-			if (i == 0)
-			{
-				stateManTrans = 5;
-				ManOne();
-				i = 3;
-			};
-
-			break;
-
-		case 3: // Start data
+		case 1: // Start data
 
 			i = 3;
 			tw = ((u32)(*data) << 1) | (CheckParity(*data) & 1);
@@ -291,7 +240,7 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 
 			break;
 
-		case 4:	// Wait data 1-st sync imp
+		case 2:	// Wait data 1-st sync imp
 
 			i--;
 
@@ -304,7 +253,7 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 
 			break;
 
-		case 5: // Wait 2-nd sync imp
+		case 3: // Wait 2-nd sync imp
 
 			i--;
 
@@ -318,7 +267,7 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 
 			break;
 
-		case 6: // 1-st half bit wait
+		case 4: // 1-st half bit wait
 
 			if (tw & 0x10000) ManOne(); else ManZero();
 
@@ -326,7 +275,7 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 
 			if (count == 0)
 			{
-				stateManTrans = (len > 0) ? repstate : 8;
+				stateManTrans = (len > 0) ? 1 : 6;
 			}
 			else
 			{
@@ -335,19 +284,23 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 
 			break;
 
-		case 7: // 2-nd half bit wait
+		case 5: // 2-nd half bit wait
 
 			tw <<= 1;
-			stateManTrans = 6;
+			stateManTrans = 4;
 			if (tw & 0x10000) ManZero(); else ManOne();
 
 			break;
 
-		case 8:
+		case 6:
 
 			ManDisable();
 			stateManTrans = 0;
 			*pTIMER_DISABLE = TIMDIS1;
+			*pSIC_IMASK &= ~IRQ_TIMER1;
+
+			manTB->ready = true;
+			trmBusy = false;
 
 			break;
 
@@ -361,11 +314,38 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void InitManTransmit()
+bool SendManData(MTB *mtb)
 {
+	if (trmBusy || rcvBusy || mtb == 0 || mtb->data == 0 || mtb->len == 0)
+	{
+		return false;
+	};
+
+	mtb->ready = false;
+
+	manTB = mtb;
+
+	stateManTrans = 0;
+
 	*pEVT11 = (void*)TIMER_ISR;
 	*pIMASK |= EVT_IVG11; 
 	*pSIC_IMASK |= IRQ_TIMER1;
+
+	*pTIMER1_PERIOD = trmHalfPeriod;
+	*pTIMER1_WIDTH = 1;
+	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT|OUT_DIS|IRQ_ENA;
+	*pTIMER_ENABLE = TIMEN1;
+
+	return trmBusy = true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitManTransmit()
+{
+	//*pEVT11 = (void*)TIMER_ISR;
+	//*pIMASK |= EVT_IVG11; 
+	//*pSIC_IMASK |= IRQ_TIMER1;
 
 	*pTIMER1_PERIOD = trmHalfPeriod;
 	*pTIMER1_WIDTH = 1;
@@ -384,26 +364,30 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 	u16 t;
 	static byte ib;
 	static u32 rw;
-	static u16 l;
-	static byte lastbit, bit;
-	static byte sc;
+	static u16 l, lp;
+//	static byte lastbit, bit;
+//	static byte sc;
 	static u32 *p;
 	static u16 count;
+	static bool c;
 
 	enum {FSP = 0, SSP = 1, FH = 3, SH = 4, END = 49, ERR = 50};
 
 	*pPORTFIO_SET = 1<<2;
 
-
 	if (((rcvCount++) & 1) == 0) switch (stateManRcvr)
 	{
 		case 0:
 
-			lastbit = (*pPORTFIO >> 10) & 1;
-			sc = 0;
 			l = 17;
-			p = rcvData;
-			count = rcvMaxLen;
+			lp = 7;
+			p = (u32*)manRB->data;
+			count = manRB->maxLen;
+			c = false;
+
+			rw = 0;
+			rw |= *pPORTFIO & 1; // синхро бит 
+			lp--;
 
 			stateManRcvr++;
 
@@ -411,191 +395,84 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 
 		case 1:
 
-			bit = (*pPORTFIO >> 10) & 1;
-			sc++;
+			rw <<= 1;
+			rw |= *pPORTFIO & 1; // синхро бит 
+			lp--;
 
-			if (bit != lastbit)
+			if (rw >= 14 || lp == 0)
 			{
-				
-				if (sc < 3)
-				{
-					lastbit = bit;
-				}
-				else if (sc == 3)
-				{
-					lastbit = bit;
-					stateManRcvr++;
-				}
-				else 
-				{
-					rw <<= 1;
-					rw |= bit; // бит данных
-					l--;
-					stateManRcvr += 2;
-				};
-
-				sc = 0; 
-			}
-			else if (sc > 4)
-			{
-				stateManRcvr = ERR; 
+				stateManRcvr++;
 			};
 
 			break;
 
 		case 2:
 
-			bit = (*pPORTFIO >> 10) & 1;
-			sc++;
+			rw <<= 1;
+			rw |= *pPORTFIO & 1; // бит данных
+			l--;
 
-			if (bit != lastbit)
+			if (l > 0)
 			{
-				if ((sc == 1) || (sc == 4))
-				{
-					rw <<= 1;
-					rw |= bit; // бит данных
-					l--;
-					stateManRcvr++;
-				}
-				else if (sc == 3)
-				{
-					stateManRcvr++;
-				}
-				else 
-				{
-					stateManRcvr = ERR; 
-				};
-
-				sc = 0; 
-			}
-			else if (sc > 4)
-			{
-				stateManRcvr = ERR; 
-			};
-
-			break;
-
-
-		case 3:
-
-			lastbit = (*pPORTFIO >> 10) & 1;
-
-			stateManRcvr++;
-
-			break;
-
-
-		case 4:
-
-			bit = (*pPORTFIO >> 10) & 1;
-
-			if (bit != lastbit)
-			{
-				rw <<= 1;
-				rw |= bit; // бит данных
-				l--;
-
-				stateManRcvr = (l > 0) ? 3 : 5;
+				stateManRcvr++;
 			}
 			else
 			{
-				stateManRcvr = ERR; 
+				*p++ = rw;
+				count--;
+
+				rw = 0;
+
+				lp = 6;
+				stateManRcvr = (count == 0) ? END : 4;
 			};
 
 			break;
 
-		case 5:
+		case 3:
 
-			lastbit = (*pPORTFIO >> 10) & 1;
-			l = 17;
-
-			*p++ = rw;
-			count--;
-
-			stateManRcvr = (count == 0) ? END : 6;
+			stateManRcvr--;
 
 			break;
 
-		case 6:
+		case 4:
 
-			bit = (*pPORTFIO >> 10) & 1;
-			sc++;
+			rw <<= 1;
+			rw |= *pPORTFIO & 1; // синхробит
+			lp--;
 
-			if (bit != lastbit)
+			if (lp == 0)
 			{
-				if (sc == 3)
-				{
-					lastbit = bit;
-					sc = 0;
-					stateManRcvr++;
-				}
-				else
-				{
-					stateManRcvr = ERR; 
-				};
-			}
-			else if (sc > 3)
-			{
-				stateManRcvr = ERR; 
-			};
+				l = 17;
 
-			break;
-
-		case 7:
-
-			bit = (*pPORTFIO >> 10) & 1;
-			sc++;
-
-			if (bit != lastbit)
-			{
-				if (sc == 4)
+				if (rw == 0 || rw >=63)
 				{
-					rw <<= 1;
-					rw |= bit; // бит данных
-					l--;
-					stateManRcvr = 3;
-				}
-				else if (sc == 3)
-				{
-					stateManRcvr = 3;
+					stateManRcvr = END;
 				}
 				else 
 				{
-					stateManRcvr = ERR; 
+					c = c || !((rw == 0x38) || rw == 7);
+					stateManRcvr = 3;
 				};
-			}
-			else if (sc > 4)
-			{
-				stateManRcvr = ERR; 
 			};
 
 			break;
 
 		case END:
 			
-			rcvOK = true;
-			rcvErr = false;
-			rcvLen = rcvMaxLen - count;
-
-			*pTIMER_DISABLE = TIMDIS1;
+			manRB->OK = !c;
+			manRB->ready = true;
+			manRB->len = manRB->maxLen - count;
+			*pTCNTL = 0;
 			*pPORTFIO_MASKA = 0;
+			*pPORTFIO_CLEAR = 1<<10;
+			*pSIC_IMASK &= ~IRQ_PFA_PORTF;
 
-			break;
-
-		case ERR:
-
-			rcvOK = false;
-			rcvErr = true;
-
-			rcvLen = rcvMaxLen - count;
-
-			*pTIMER_DISABLE = TIMDIS1;
-			*pPORTFIO_MASKA = 0;
+			rcvBusy = false;
 
 			break;
 	};
 
-	*pTIMER_STATUS = 2;
 	*pPORTFIO_CLEAR = (1<<2);
 }
 
@@ -605,59 +482,61 @@ EX_INTERRUPT_HANDLER(WAITMANRCVR_ISR)
 {
 	*pPORTFIO_SET = 1<<2;
 
-
-	*pTIMER_DISABLE = TIMDIS1;
-	*pTIMER_ENABLE = TIMEN1;
-	*pPORTFIO_EDGE &= ~(1<<10);
-	*pPORTFIO_MASKA = 0;
-
-	stateManRcvr = 0;
-
-	*pEVT11 = (void*)MANRCVR_ISR;
+	*pTCNTL = TMPWR;
 
 	*pPORTFIO_CLEAR = (1<<2)|(1<<10);
+
+	*pTPERIOD = rcvHalfPeriod >> 1;
+
+	*pPORTFIO_SET = 1<<2;
+
+	*pTCNTL = TAUTORLD|TMREN|TMPWR;
+
+	if ((*pILAT & EVT_IVTMR) == 0) { rcvCount = 0; };
+
+	*pPORTFIO_CLEAR = 1<<2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void InitManRecieve()
 {
-	*pEVT11 = (void*)WAITMANRCVR_ISR;
-	*pIMASK |= EVT_IVG11; 
-	*pSIC_IMASK |= IRQ_PFA_PORTF|IRQ_TIMER1;
+	*pTSCALE = 0;
+	*pTPERIOD = rcvHalfPeriod >> 1;
+	*pEVT6 = (void*)MANRCVR_ISR;
+	*pTCNTL = TMPWR;;
 
-	*pPORTFIO_EDGE = 1<<10;
-	*pPORTFIO_BOTH = 1<<10;
-	*pPORTFIO_MASKA = 1<<10;
-	*pPORTFIO_MASKB = 0;
-
-
-	*pTIMER1_PERIOD = rcvHalfPeriod >> 1;
-	*pTIMER1_WIDTH = 1;
-	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT|OUT_DIS|IRQ_ENA;
-	*pTIMER_DISABLE = TIMDIS1;
+	*pIMASK |= EVT_IVTMR; 
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void RcvManData(void *data, u16 len)
+bool RcvManData(MRB *mrb)
 {
-	rcvData = (u32*)data;
-	rcvMaxLen = len;
+	if (rcvBusy || trmBusy || mrb == 0 || mrb->data == 0 || mrb->maxLen == 0)
+	{
+		return false;
+	};
+
+	mrb->ready = mrb->OK = false;
+	mrb->len = 0;
+
+	manRB = mrb;
 	
+	stateManRcvr = 0;
+	rcvCount = 0;
+
 	*pEVT11 = (void*)WAITMANRCVR_ISR;
+	*pSIC_IMASK |= IRQ_PFA_PORTF;
+	*pIMASK |= EVT_IVG11; 
 
 	*pPORTFIO_EDGE = 1<<10;
 	*pPORTFIO_BOTH = 1<<10;
+	*pPORTFIO_CLEAR = 1<<10;
 	*pPORTFIO_MASKA = 1<<10;
 	*pPORTFIO_MASKB = 0;
 
-
-	*pTIMER1_PERIOD = rcvHalfPeriod >> 1;
-	*pTIMER1_WIDTH = 1;
-	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT|OUT_DIS|IRQ_ENA;
-	*pTIMER_DISABLE = TIMDIS1;
-
+	return rcvBusy = true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -677,7 +556,7 @@ void InitHardware()
 
 	InitRTT();
 
-//	InitManTransmit();
+	InitManTransmit();
 
 	InitManRecieve();
 

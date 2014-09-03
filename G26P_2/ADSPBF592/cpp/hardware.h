@@ -16,17 +16,38 @@ inline u32 GetRTT() { return *pTIMER0_COUNTER; }
 
 extern void ReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv, bool *ready0, bool *ready1);
 
-inline void ManDisable() { *pPORTFIO = 0x50; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; }
-inline void ManOne() { *pPORTFIO = 0x50; *pPORTFIO = 0x30; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0xC0; *pPORTFIO_SET = 0x30; }
-inline void ManZero() { *pPORTFIO = 0x50; *pPORTFIO = 0xC0; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0x30; *pPORTFIO_SET = 0xC0; }
-
-extern void SendManCmd(void *data, u16 len);
-extern void SendManData(void *data, u16 len);
-
-
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+struct MRB
+{
+	bool	ready;
+	bool	OK;
+	u16		len;
+	u16		maxLen;
+	void	*data;
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct MTB
+{
+	bool	ready;
+	u16		len;
+	void	*data;
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+extern bool RcvManData(MRB *mrb);
+extern bool SendManData(MTB *mtb);
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define US2CLK(x) ((u32)(x*100+0.5))
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 struct TM32
 {

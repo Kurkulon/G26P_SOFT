@@ -9,22 +9,34 @@
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline void ManDisable() { *pPORTFIO = 0x50; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; }
-inline void ManOne() { /**pPORTFIO = 0x50;*/ *pPORTFIO = 0x30; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0xC0; *pPORTFIO_SET = 0x30; }
-inline void ManZero() { /**pPORTFIO = 0x50;*/ *pPORTFIO = 0xC0; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0x30; *pPORTFIO_SET = 0xC0; }
+inline void ManOne() { /**pPORTFIO = 0x50;*/ *pPORTFIO = 0xC0; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0xC0; *pPORTFIO_SET = 0x30; }
+inline void ManZero() { /**pPORTFIO = 0x50;*/ *pPORTFIO = 0x30; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0x30; *pPORTFIO_SET = 0xC0; }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-u16 trmHalfPeriod = US2CLK(48.0/2);
+#define BOUD2CLK(x) ((u32)((SCLK/2.0)/x+0.5))
+
+static const u16 manboud[4] = { BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
+
+
+u16 trmHalfPeriod = BOUD2CLK(41666);
 byte stateManTrans = 0;
 static MTB *manTB = 0;
 static bool trmBusy = false;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void SetTrmBoudRate(byte i)
+{
+	trmHalfPeriod = manboud[i&3];
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static u16 rcvCount = 0;
 static bool rcvBusy = false;
 byte stateManRcvr = 0;
-u16 rcvHalfPeriod = US2CLK(52.0/2);
+const u16 rcvQuartPeriod = BOUD2CLK(20833)/2;
 
 static MRB *manRB = 0;
 
@@ -50,7 +62,7 @@ static u16 CheckParity(u16 x)
 	y = y ^ (y >> 2);
 	y = y ^ (y >> 4);
 	
-	return y ^ (y >> 8);
+	return (y ^ (y >> 8))^1;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -486,7 +498,7 @@ EX_INTERRUPT_HANDLER(WAITMANRCVR_ISR)
 
 	*pPORTFIO_CLEAR = (1<<2)|(1<<10);
 
-	*pTPERIOD = rcvHalfPeriod >> 1;
+	*pTPERIOD = rcvQuartPeriod;
 
 	*pPORTFIO_SET = 1<<2;
 
@@ -502,7 +514,7 @@ EX_INTERRUPT_HANDLER(WAITMANRCVR_ISR)
 static void InitManRecieve()
 {
 	*pTSCALE = 0;
-	*pTPERIOD = rcvHalfPeriod >> 1;
+	*pTPERIOD = rcvQuartPeriod;
 	*pEVT6 = (void*)MANRCVR_ISR;
 	*pTCNTL = TMPWR;;
 

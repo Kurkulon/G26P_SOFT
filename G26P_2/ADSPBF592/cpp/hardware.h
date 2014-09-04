@@ -41,10 +41,11 @@ struct MTB
 
 extern bool RcvManData(MRB *mrb);
 extern bool SendManData(MTB *mtb);
+extern void SetTrmBoudRate(byte i);
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define US2CLK(x) ((u32)(x*100+0.5))
+#define US2CLK(x) ((u32)(x*SCLK/1e6+0.5))
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

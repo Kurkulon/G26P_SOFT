@@ -72,7 +72,7 @@ libsuffix=r
 #--diag_suppress=68,368,1299,3017 
 
 compiler_options = $(debug_compiler_options) -c -c++ -g -structs-do-not-overlap -no-multiline &
-	-double-size-32 -decls-strong -warn-protos -si-revision 0.2 -proc ADSP-BF592-A -Wterse
+	-double-size-32 -decls-strong -warn-protos -si-revision 0.2 -proc ADSP-BF592-A -Wterse 
 
 
 
@@ -105,8 +105,7 @@ win32_link_options = -NOLOGO -SUBSYSTEM:CONSOLE -DEBUG -MACHINE:X86 kernel32.lib
 
 $(objdir)\g26p2man.dxe : $(objdir)\basiccrt.doj $(modules_obj)
 	@echo Linking ...
-	@linker	$(link_options) -Map "$(objdir)\$^&.xml" -MDUSER_CRT="$(objdir)\basiccrt.doj" -o "$^@" &
-		$< $(libname)
+	@linker	$(link_options) -Map "$(objdir)\$^&.xml" -MDUSER_CRT="$(objdir)\basiccrt.doj" -o "$^@" $< $(libname)
 	@elfloader -v -f binary -b SPI -proc ADSP-BF592-A -si-revision 0.2 -o "$(objdir)\$^&.ldr" -dmawidth 8 -width 8 $^@ 
 	
 !else

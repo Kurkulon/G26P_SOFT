@@ -1,9 +1,10 @@
 #include "hardware.h"
 #include "ComPort.h"
 
-//static ComPort com1;
-//static ComPort::WriteBuffer wb;
-//
+static ComPort com1;
+static ComPort::WriteBuffer wb;
+static ComPort::ReadBuffer rb;
+
 //static byte data[256*48];
 
 static u32 rdata[10]; 
@@ -16,172 +17,6 @@ static MTB mtb;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool Request(MRB *mrb, MTB *mtb)
-{
-	if (!mrb->OK || mrb->data == 0 || mrb->len == 0) return false;
-
-	bool result = false;
-
-	u32 *p = (u32*)mrb->data;
-
-	u16 func = (u16)(p[0]>>1);
-	u16 t;
-
-	tdata[0] = func;
-	mtb->data = tdata;
-	mtb->len = 1;
-
-	switch (func)
-	{
-		case 0xA900:
-
-			tdata[0] = 0xA900;
-			tdata[1] = 1;
-			tdata[2] = 1;
-			mtb->data = tdata;
-			mtb->len = 3;
-			result = true;
-
-			break;
-
-		case 0xA910:
-
-			tdata[0] = 0xA910;
-			tdata[1] = 1;
-			tdata[2] = 1;
-			tdata[3] = 1;
-			tdata[4] = 1;
-			tdata[5] = 1;
-			tdata[6] = 1;
-			tdata[7] = 1;
-			tdata[8] = 1;
-			tdata[9] = 1;
-			tdata[10] = 1;
-			mtb->data = tdata;
-			mtb->len = 11;
-			result = true;
-
-			break;
-
-		case 0xA920:
-
-			tdata[0] = 0xA920;
-			tdata[1] = 1;
-			tdata[2] = 1;
-			tdata[3] = 1;
-			tdata[4] = 1;
-			tdata[5] = 1;
-			tdata[6] = 1;
-			tdata[7] = 1;
-			tdata[8] = 1;
-			tdata[9] = 1;
-			tdata[10] = 1;
-			mtb->data = tdata;
-			mtb->len = 11;
-			result = true;
-
-			break;
-
-		case 0xA930:
-		case 0xA931:
-		case 0xA932:
-		case 0xA933:
-		case 0xA934:
-		case 0xA935:
-		case 0xA936:
-		case 0xA937:
-		case 0xA938:
-		case 0xA939:
-
-			tdata[0] = func;
-			tdata[1] = 1;
-			tdata[2] = 1;
-			tdata[3] = 1;
-			tdata[4] = 1;
-			tdata[5] = 1;
-			mtb->data = tdata;
-			mtb->len = 6;
-
-			result = true;
-
-			if (mrb->len == 1)
-			{
-				mtb->len += 2048;
-			}
-			else if (mrb->len == 3)
-			{
-				mtb->len += (u16)(p[2]>>1);
-			};
-
-			break;
-
-		case 0xA990:
-
-			t = (u16)(p[1]>>1);
-
-			if (mrb->len >= 3 && (t < 3))
-			{
-				result = true;
-
-				tdata[0] = func;
-				mtb->data = tdata;
-				mtb->len = 1;
-
-				if (t == 2)
-				{
-					t = (u16)(p[2]>>1);
-
-					if (t < 4)
-					{
-						SetTrmBoudRate(t);
-						result = true;
-					}
-					else
-					{
-						result = false;
-					};
-				};
-			};
-
-			break;
-
-		case 0xA9A0:
-
-			if (mrb->len >= 3)
-			{
-				tdata[0] = func;
-				mtb->data = tdata;
-				mtb->len = 1;
-
-				result = true;
-			};
-
-			break;
-
-		case 0xA9F0:
-
-			if (mrb->len >= 1)
-			{
-				tdata[0] = func;
-				mtb->data = tdata;
-				mtb->len = 1;
-
-				result = true;
-			};
-
-			break;
-
-		default:
-
-			result = false;
-
-			break;
-	};
-
-	return result;
-
-
-};
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -197,7 +32,7 @@ int main( void )
 
 	InitHardware();
 
-	//com1.Connect(0, 6250000, 0);
+	com1.Connect(115200, 0);
 
 	//for (u16 i = 0; i < sizeof(data); i++) { data[i] = i; };
 	//wb.data = data;
@@ -217,34 +52,28 @@ int main( void )
 
 		//u32 t = GetRTT();
 
-		//if (tm.Check(1000000))
-		//{
-		//	SendManCmd(data, 10);
-		//};
-
-
 		switch (i)
 		{
 			case 0:
 
-				if (mrb.ready)
+				if (tm.Check(10000000))
 				{
-					if (mrb.OK && Request(&mrb, &mtb))
-					{
-						i = (SendManData(&mtb)) ? 1 : 2;
-					}
-					else
-					{
-						i = 2;
-					};
+					wb.data = tdata;
+					wb.len = 5;
+					tdata[0]++; tdata[1]++; tdata[2] = 0x5555; 
+					com1.Write(&wb);
+					i++;
 				};
 
 				break;
 
 			case 1:
 
-				if (mtb.ready)
+				if (!com1.Update())
 				{
+					rb.data = rdata;
+					rb.maxLen = sizeof(rdata);
+					com1.Read(&rb, (u32)-1, 100000);
 					i++;
 				};
 
@@ -252,10 +81,10 @@ int main( void )
 
 			case 2:
 
-				mrb.data = rdata;
-				mrb.maxLen = ArraySize(rdata);
-				RcvManData(&mrb);
-				i = 0;
+				if (!com1.Update())
+				{
+					i = 0;
+				};
 
 				break;
 		};
@@ -274,3 +103,174 @@ int main( void )
 
 	return 0;
 }
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+//bool Request(MRB *mrb, MTB *mtb)
+//{
+//	if (!mrb->OK || mrb->data == 0 || mrb->len == 0) return false;
+//
+//	bool result = false;
+//
+//	u32 *p = (u32*)mrb->data;
+//
+//	u16 func = (u16)(p[0]>>1);
+//	u16 t;
+//
+//	tdata[0] = func;
+//	mtb->data = tdata;
+//	mtb->len = 1;
+//
+//	switch (func)
+//	{
+//		case 0xA900:
+//
+//			tdata[0] = 0xA900;
+//			tdata[1] = 1;
+//			tdata[2] = 1;
+//			mtb->data = tdata;
+//			mtb->len = 3;
+//			result = true;
+//
+//			break;
+//
+//		case 0xA910:
+//
+//			tdata[0] = 0xA910;
+//			tdata[1] = 1;
+//			tdata[2] = 1;
+//			tdata[3] = 1;
+//			tdata[4] = 1;
+//			tdata[5] = 1;
+//			tdata[6] = 1;
+//			tdata[7] = 1;
+//			tdata[8] = 1;
+//			tdata[9] = 1;
+//			tdata[10] = 1;
+//			mtb->data = tdata;
+//			mtb->len = 11;
+//			result = true;
+//
+//			break;
+//
+//		case 0xA920:
+//
+//			tdata[0] = 0xA920;
+//			tdata[1] = 1;
+//			tdata[2] = 1;
+//			tdata[3] = 1;
+//			tdata[4] = 1;
+//			tdata[5] = 1;
+//			tdata[6] = 1;
+//			tdata[7] = 1;
+//			tdata[8] = 1;
+//			tdata[9] = 1;
+//			tdata[10] = 1;
+//			mtb->data = tdata;
+//			mtb->len = 11;
+//			result = true;
+//
+//			break;
+//
+//		case 0xA930:
+//		case 0xA931:
+//		case 0xA932:
+//		case 0xA933:
+//		case 0xA934:
+//		case 0xA935:
+//		case 0xA936:
+//		case 0xA937:
+//		case 0xA938:
+//		case 0xA939:
+//
+//			tdata[0] = func;
+//			tdata[1] = 1;
+//			tdata[2] = 1;
+//			tdata[3] = 1;
+//			tdata[4] = 1;
+//			tdata[5] = 1;
+//			mtb->data = tdata;
+//			mtb->len = 6;
+//
+//			result = true;
+//
+//			if (mrb->len == 1)
+//			{
+//				mtb->len += 2048;
+//			}
+//			else if (mrb->len == 3)
+//			{
+//				mtb->len += (u16)(p[2]>>1);
+//			};
+//
+//			break;
+//
+//		case 0xA990:
+//
+//			t = (u16)(p[1]>>1);
+//
+//			if (mrb->len >= 3 && (t < 3))
+//			{
+//				result = true;
+//
+//				tdata[0] = func;
+//				mtb->data = tdata;
+//				mtb->len = 1;
+//
+//				if (t == 2)
+//				{
+//					t = (u16)(p[2]>>1);
+//
+//					if (t < 4)
+//					{
+//						SetTrmBoudRate(t);
+//						result = true;
+//					}
+//					else
+//					{
+//						result = false;
+//					};
+//				};
+//			};
+//
+//			break;
+//
+//		case 0xA9A0:
+//
+//			if (mrb->len >= 3)
+//			{
+//				tdata[0] = func;
+//				mtb->data = tdata;
+//				mtb->len = 1;
+//
+//				result = true;
+//			};
+//
+//			break;
+//
+//		case 0xA9F0:
+//
+//			if (mrb->len >= 1)
+//			{
+//				tdata[0] = func;
+//				mtb->data = tdata;
+//				mtb->len = 1;
+//
+//				result = true;
+//			};
+//
+//			break;
+//
+//		default:
+//
+//			result = false;
+//
+//			break;
+//	};
+//
+//	return result;
+//
+//
+//};

@@ -2,18 +2,21 @@
 #include "time.h"
 
 ComPort com1;
+ComPort combf;
 
 ComPort::WriteBuffer wb;
+ComPort::ReadBuffer rb;
 
 byte buf[1024];
 
 u32 fc = 0;
 
-	 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 int main()
 {
+	static byte i = 0;
+
 	RTT_Init();
 
 	for (u32 i = 0; i < sizeof(buf); i++)
@@ -25,6 +28,7 @@ int main()
 	wb.len = sizeof(buf);
 	
 	com1.Connect(0, 6250000, 0);
+	combf.Connect(3, 115200, 0);
 
 //	com1.Write(&wb);
 
@@ -34,12 +38,45 @@ int main()
 
 	while(1)
 	{
-		//if (!com1.Update())
-		//{
-		//	wb.data = buf;
-		//	wb.len = sizeof(buf);
-		//	com1.Write(&wb);
-		//};
+		switch(i)
+		{
+			case 0:
+
+				rb.data = buf;
+				rb.maxLen = sizeof(buf);
+				combf.Read(&rb, -1, MS2RT(2));
+				i++;
+
+				break;
+
+			case 1:
+	
+				if (!combf.Update())
+				{
+					if (rb.recieved && rb.len > 0)
+					{
+						wb.data = rb.data;
+						wb.len = rb.len;
+						combf.Write(&wb);
+						i++;
+					}
+					else
+					{
+						i = 0;
+					};
+				};
+
+				break;
+
+			case 2:
+
+				if (!combf.Update())
+				{
+					i = 0;
+				};
+
+				break;
+		};
 
 		fps++;
 

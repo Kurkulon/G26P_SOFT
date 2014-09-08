@@ -37,7 +37,7 @@ class ComPort
 
 	bool			_connected;
 	byte			_status485;
-	byte			_portNum;
+//	byte			_portNum;
 
 	word			_prevDmaCounter;
 
@@ -51,13 +51,13 @@ class ComPort
 	word			_BaudRateRegister;
 
 	dword			_ModeRegister;
-	dword			_maskRTS;
-//	T_HW::S_PIO		*_pm;
+//	dword			_maskRTS;
+
 	dword			_startTransmitTime;
 	dword			_startReceiveTime;
 	dword			_preReadTimeout;
 	dword			_postReadTimeout;
-//	T_HW::S_USART 	*_SU;
+
 
 #else
 
@@ -111,7 +111,7 @@ class ComPort
 
 #endif
 
-	bool		Connect(byte port, dword speed, byte parity);
+	bool		Connect(dword speed, byte parity);
 	bool		Disconnect();
 	bool		Update();
 

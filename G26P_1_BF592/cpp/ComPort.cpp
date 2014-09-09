@@ -14,19 +14,18 @@
 
 extern dword millisecondsCount;
 
+#define MASKRTS (1<<10)
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool ComPort::Connect(byte port, dword speed, byte parity)
+bool ComPort::Connect(dword speed, byte parity)
 {
 #ifndef WIN32
 
-	if (_connected || port > 2)
+	if (_connected)
 	{
 		return false;
 	};
-
-	_portNum = port;
-	_maskRTS = 1<<10;
 
 	_BaudRateRegister = BoudToPresc(speed);
 
@@ -129,8 +128,7 @@ void ComPort::EnableTransmit(void* src, word count)
 {
 #ifndef WIN32
 
-	*pPORTFIO_SET = _maskRTS;
-
+	*pPORTFIO_SET = MASKRTS;
 	*pDMA8_CONFIG = 0;	// Disable transmit and receive
 	*pUART0_IER = 0;
 
@@ -170,7 +168,7 @@ void ComPort::DisableTransmit()
 	
 	*pDMA8_CONFIG = 0;	// Disable transmit and receive
 	*pUART0_IER = 0;
-	*pPORTFIO_CLEAR = _maskRTS;
+	*pPORTFIO_CLEAR = MASKRTS;
 
 #endif
 }
@@ -181,18 +179,19 @@ void ComPort::EnableReceive(void* dst, word count)
 {
 #ifndef WIN32
 
-	*pPORTFIO_CLEAR = _maskRTS;
-
-	*pDMA8_CONFIG = 0;	// Disable transmit and receive
+	*pPORTFIO_CLEAR = MASKRTS;
+	*pDMA7_CONFIG = 0;	// Disable transmit and receive
 	*pUART0_IER = 0;
 
 	*pDMA7_START_ADDR = dst;
-	*pDMA7_X_COUNT = count;
+	*pDMA7_CURR_X_COUNT = *pDMA7_X_COUNT = count;
 	*pDMA7_X_MODIFY = 1;
-	*pDMA7_CONFIG = FLOW_STOP|WDSIZE_8|SYNC|DMAEN;
+	*pDMA7_CONFIG = WNR|FLOW_STOP|WDSIZE_8|SYNC|DMAEN;
 
 	_startReceiveTime = GetRTT();
 
+	count = *pUART0_RBR;
+	count = *pUART0_LSR;
 	*pUART0_IER = ERBFI;
 
 #else
@@ -217,9 +216,9 @@ void ComPort::DisableReceive()
 {
 #ifndef WIN32
 
-	*pPORTFIO_CLEAR = _maskRTS;
-	*pDMA8_CONFIG = 0;	// Disable transmit and receive
+	*pDMA7_CONFIG = 0;	// Disable transmit and receive
 	*pUART0_IER = 0;
+	*pPORTFIO_CLEAR = MASKRTS;
 
 #endif
 }
@@ -299,7 +298,7 @@ bool ComPort::Update()
 
 		case READING:
 
-			if (_SU->CSR & 0xE4) 
+			if (*pUART0_LSR & (BI|OE|PE|FE)) 
 			{
 				DisableReceive();
 				_status485 = READ_END;
@@ -314,6 +313,7 @@ bool ComPort::Update()
 					_pReadBuffer->len = _pReadBuffer->maxLen - _prevDmaCounter;
 					_pReadBuffer->recieved = _pReadBuffer->len > 0;
 					_status485 = READ_END;
+
 					r = false;
 				};
 			}

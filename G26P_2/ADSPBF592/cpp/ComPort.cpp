@@ -179,12 +179,14 @@ void ComPort::EnableReceive(void* dst, word count)
 	*pUART0_IER = 0;
 
 	*pDMA7_START_ADDR = dst;
-	*pDMA7_X_COUNT = count;
+	*pDMA7_CURR_X_COUNT = *pDMA7_X_COUNT = count;
 	*pDMA7_X_MODIFY = 1;
-	*pDMA7_CONFIG = WNR|FLOW_STOP|WDSIZE_8|DMAEN;
+	*pDMA7_CONFIG = WNR|FLOW_STOP|WDSIZE_8|SYNC|DMAEN;
 
 	_startReceiveTime = GetRTT();
 
+	count = *pUART0_RBR;
+	count = *pUART0_LSR;
 	*pUART0_IER = ERBFI;
 
 #else
@@ -268,6 +270,7 @@ bool ComPort::Update()
 			}
 			else
 			{
+				*pPORTFIO_SET = 1<<2;
 				_prevDmaCounter = *pDMA7_CURR_X_COUNT;
 				_startReceiveTime = stamp;
 				_status485 = READING;
@@ -302,9 +305,12 @@ bool ComPort::Update()
 				if ((stamp - _startReceiveTime) >= _postReadTimeout)
 				{
 					DisableReceive();
+//					*pDMA7_CONFIG &= ~1;
 					_pReadBuffer->len = _pReadBuffer->maxLen - _prevDmaCounter;
 					_pReadBuffer->recieved = _pReadBuffer->len > 0;
 					_status485 = READ_END;
+					*pPORTFIO_CLEAR = 1<<2;
+
 					r = false;
 				};
 			}

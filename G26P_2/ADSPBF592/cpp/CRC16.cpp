@@ -38,3 +38,20 @@ extern const u16 tableCRC[256] =
 	/*F8*/ 0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
 };
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+word GetCRC16(const void *data, u32 len)
+{
+	DataCRC CRC = { 0xFFFF };
+
+	const byte *s = (const byte*)data;
+
+	for ( ; len > 0; len--)
+	{
+		CRC.w = tableCRC[CRC.b[0] ^ *(s++)] ^ CRC.b[1];
+	};
+
+	return CRC.w;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

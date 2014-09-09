@@ -1,5 +1,6 @@
 #include "ComPort.h"
 #include "time.h"
+#include "CRC16.h"
 
 ComPort com1;
 ComPort combf;
@@ -10,6 +11,9 @@ ComPort::ReadBuffer rb;
 byte buf[1024];
 
 u32 fc = 0;
+
+static u32 CRCOK = 0;
+static u32 CRCER = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -28,7 +32,7 @@ int main()
 	wb.len = sizeof(buf);
 	
 	com1.Connect(0, 6250000, 0);
-	combf.Connect(3, 115200, 0);
+	combf.Connect(3, 6250000, 0);
 
 //	com1.Write(&wb);
 
@@ -44,7 +48,7 @@ int main()
 
 				rb.data = buf;
 				rb.maxLen = sizeof(buf);
-				combf.Read(&rb, -1, MS2RT(2));
+				combf.Read(&rb, -1, 1);
 				i++;
 
 				break;
@@ -55,8 +59,17 @@ int main()
 				{
 					if (rb.recieved && rb.len > 0)
 					{
+						if (GetCRC16(rb.data, rb.len) == 0)	CRCOK++;	else	CRCER++;
+
+
 						wb.data = rb.data;
 						wb.len = rb.len;
+
+						DataPointer p(wb.data);
+						p.b += wb.len;
+						*p.w = GetCRC16(wb.data, wb.len);
+						wb.len += 2;
+
 						combf.Write(&wb);
 						i++;
 					}

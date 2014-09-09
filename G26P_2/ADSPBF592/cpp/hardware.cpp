@@ -224,7 +224,7 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 	static u16 *data = 0;
 	static u16 len = 0;
 
-	*pPORTFIO_SET = 1<<2;
+//	*pPORTFIO_SET = 1<<2;
 
 	switch (stateManTrans)
 	{
@@ -321,7 +321,7 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 
 	*pTIMER_STATUS = 2;
 
-	*pPORTFIO_CLEAR = 1<<2;
+//	*pPORTFIO_CLEAR = 1<<2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -385,7 +385,7 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 
 	enum {FSP = 0, SSP = 1, FH = 3, SH = 4, END = 49, ERR = 50};
 
-	*pPORTFIO_SET = 1<<2;
+//	*pPORTFIO_SET = 1<<2;
 
 	if (((rcvCount++) & 1) == 0) switch (stateManRcvr)
 	{
@@ -485,28 +485,28 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 			break;
 	};
 
-	*pPORTFIO_CLEAR = (1<<2);
+//	*pPORTFIO_CLEAR = (1<<2);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 EX_INTERRUPT_HANDLER(WAITMANRCVR_ISR)
 {
-	*pPORTFIO_SET = 1<<2;
+//	*pPORTFIO_SET = 1<<2;
 
 	*pTCNTL = TMPWR;
 
-	*pPORTFIO_CLEAR = (1<<2)|(1<<10);
+	*pPORTFIO_CLEAR = /*(1<<2)|*/(1<<10);
 
 	*pTPERIOD = rcvQuartPeriod;
 
-	*pPORTFIO_SET = 1<<2;
+//	*pPORTFIO_SET = 1<<2;
 
 	*pTCNTL = TAUTORLD|TMREN|TMPWR;
 
 	if ((*pILAT & EVT_IVTMR) == 0) { rcvCount = 0; };
 
-	*pPORTFIO_CLEAR = 1<<2;
+//	*pPORTFIO_CLEAR = 1<<2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

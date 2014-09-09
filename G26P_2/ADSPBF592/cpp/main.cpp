@@ -1,5 +1,6 @@
 #include "hardware.h"
 #include "ComPort.h"
+#include "CRC16.h"
 
 static ComPort com1;
 static ComPort::WriteBuffer wb;
@@ -7,13 +8,16 @@ static ComPort::ReadBuffer rb;
 
 //static byte data[256*48];
 
-static u32 rdata[10]; 
-static u16 tdata[2100];
+static u16 rdata[100]; 
+static u16 tdata[100];
 
 static bool ready1 = false, ready2 = false;
 
 static MRB mrb;
 static MTB mtb;
+
+static u32 CRCOK = 0;
+static u32 CRCER = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -32,7 +36,7 @@ int main( void )
 
 	InitHardware();
 
-	com1.Connect(115200, 0);
+	com1.Connect(6250000, 0);
 
 	//for (u16 i = 0; i < sizeof(data); i++) { data[i] = i; };
 	//wb.data = data;
@@ -56,11 +60,15 @@ int main( void )
 		{
 			case 0:
 
-				if (tm.Check(10000000))
+//				if (tm.Check(10000000))
 				{
-					wb.data = tdata;
-					wb.len = 5;
+					DataPointer p(tdata);
+					wb.data = p.v;
+					wb.len = 100;
 					tdata[0]++; tdata[1]++; tdata[2] = 0x5555; 
+					p.b += wb.len;
+					*p.w = GetCRC16(wb.data, wb.len);
+					wb.len += 2;
 					com1.Write(&wb);
 					i++;
 				};
@@ -73,7 +81,7 @@ int main( void )
 				{
 					rb.data = rdata;
 					rb.maxLen = sizeof(rdata);
-					com1.Read(&rb, (u32)-1, 100000);
+					com1.Read(&rb, 10000000, 720);
 					i++;
 				};
 
@@ -83,6 +91,15 @@ int main( void )
 
 				if (!com1.Update())
 				{
+					if (GetCRC16(rb.data, rb.len) == 0)
+					{
+						CRCOK++;
+					}
+					else
+					{
+						CRCER++;
+					};
+
 					i = 0;
 				};
 

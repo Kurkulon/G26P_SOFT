@@ -1,7 +1,8 @@
 #include "hardware.h"
 #include "ComPort.h"
+#include "CRC16.h"
 
-//static ComPort com1;
+static ComPort com;
 //static ComPort::WriteBuffer wb;
 //
 //static byte data[256*48];
@@ -16,6 +17,69 @@ static i16 ch4[512];
 
 static bool ready1 = false, ready2 = false;
 
+static u32 CRCOK = 0;
+static u32 CRCER = 0;
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateBlackFin()
+{
+	static byte i = 0;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static byte buf[1024];
+
+	switch(i)
+	{
+		case 0:
+
+			rb.data = buf;
+			rb.maxLen = sizeof(buf);
+			com.Read(&rb, (u32)-1, 720);
+			i++;
+
+			break;
+
+		case 1:
+
+			if (!com.Update())
+			{
+				if (rb.recieved && rb.len > 0)
+				{
+					if (GetCRC16(rb.data, rb.len) == 0)	CRCOK++;	else	CRCER++;
+
+					wb.data = buf;
+					wb.len = rb.len;
+
+					//DataPointer p(wb.data);
+					//p.b += wb.len;
+					//*p.w = GetCRC16(wb.data, wb.len);
+					//wb.len += 2;
+
+					com.Write(&wb);
+					i++;
+				}
+				else
+				{
+					i = 0;
+				};
+			};
+
+			break;
+
+		case 2:
+
+			if (!com.Update())
+			{
+				i = 0;
+			};
+
+			break;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main( void )
 {
 	static byte s = 0;
@@ -24,7 +88,7 @@ int main( void )
 
 	InitHardware();
 
-	//com1.Connect(0, 6250000, 0);
+	com.Connect(6250000, 0);
 
 	//for (u16 i = 0; i < sizeof(data); i++) { data[i] = i; };
 	//wb.data = data;
@@ -50,10 +114,11 @@ int main( void )
 		//	pt = t;
 		//};
 
+		UpdateBlackFin();
 
 		*pPORTFIO_TOGGLE = 1<<5;
 
-		UpdateHardware();
+//		UpdateHardware();
 
 		//if (!com1.Update())
 		//{

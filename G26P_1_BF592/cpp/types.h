@@ -1,6 +1,8 @@
 #ifndef TYPES_H__15_05_2009__14_37
 #define TYPES_H__15_05_2009__14_37
 
+#include <ccblkfn.h>
+
 //#ifdef _WIN32
 //#ifndef WIN32
 //#define WIN32
@@ -83,14 +85,17 @@ union DataPointer
 {
 	void	*v;
 	byte	*b;
-	word	*w;
+	word 	*w;
 	dword	*d;
 	float	*f;
 
 	DataPointer(void *p) { v = p; } 
 
 	void operator=(void *p) { v = p; } 
-};
+
+	void WW(word a) { misaligned_store16(v, a); }
+	word RW() { return misaligned_load16(v); }
+} ;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

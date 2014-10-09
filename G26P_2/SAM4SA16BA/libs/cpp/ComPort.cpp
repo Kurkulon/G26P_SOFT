@@ -133,8 +133,6 @@ void ComPort::TransmitByte(byte v)
 	_SU->CR = 0xA0;	// Disable transmit and receive
 
 #endif
-
-	_status485 = WRITEING;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

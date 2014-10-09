@@ -88,6 +88,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\req.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\system_SAM4S.cpp"
 				>
 			</File>
@@ -97,6 +101,10 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
+			<File
+				RelativePath=".\cpp\req.h"
+				>
+			</File>
 		</Filter>
 		<File
 			RelativePath=".\makeobj"

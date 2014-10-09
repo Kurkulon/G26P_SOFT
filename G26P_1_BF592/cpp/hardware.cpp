@@ -8,7 +8,7 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void LowLevelInit();
+//static void LowLevelInit();
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -64,24 +64,44 @@ EX_INTERRUPT_HANDLER(SPORT_ISR)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+EX_INTERRUPT_HANDLER(StartSPORT_ISR)
+{
+//	*pPORTFIO_SET = 1<<2;
+
+	*pSPORT0_RCR1 = RCKFE|LARFS|LRFS|RFSR|IRFS|IRCLK|RSPEN;
+	*pSPORT1_RCR1 = RCKFE|LARFS|LRFS|RFSR|IRFS|IRCLK|RSPEN;
+
+	*pPORTFIO_MASKA = 0;
+	*pPORTFIO_CLEAR = /*(1<<2)|*/(1<<12);
+
+
+//	*pPORTFIO_CLEAR = 1<<2;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void InitSPORT()
 {
 	*pDMA1_CONFIG = 0;
 	*pDMA3_CONFIG = 0;
 	*pSPORT0_RCR1 = 0;
 	*pSPORT1_RCR1 = 0;
-	//*pSPORT0_RCR2 = 15; //|RXSE;
-	//*pSPORT0_RCLKDIV = 0;
-	//*pSPORT0_RFSDIV = 34;
-	//*pSPORT0_RCR1 = RCKFE|LARFS|LRFS|RFSR|IRFS|IRCLK|RSPEN;
 
 	*pEVT9 = (void*)SPORT_ISR;
 	*pIMASK |= EVT_IVG9; 
 	*pSIC_IMASK |= 1<<9;
 
-	//register_handler(ik_ivg9, SPORT_ISR);
 
+	*pEVT11 = (void*)StartSPORT_ISR;
+	*pSIC_IMASK |= IRQ_PFA_PORTF;
+	*pIMASK |= EVT_IVG11; 
 
+	*pPORTFIO_INEN = 1<<12;
+	*pPORTFIO_EDGE = 1<<12;
+	*pPORTFIO_BOTH = 0;
+	*pPORTFIO_CLEAR = 1<<12;
+	*pPORTFIO_MASKA = 0;
+	*pPORTFIO_MASKB = 0;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -120,6 +140,46 @@ void ReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv, bool *rea
 
 	*pSPORT0_RCR1 = RCKFE|LARFS|LRFS|RFSR|IRFS|IRCLK|RSPEN;
 	*pSPORT1_RCR1 = RCKFE|LARFS|LRFS|RFSR|IRFS|IRCLK|RSPEN;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SyncReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv, bool *ready0, bool *ready1)
+{
+	sport0_Ready = (ready0 != 0) ? ready0 : &defSport0_Ready;
+	sport1_Ready = (ready1 != 0) ? ready1 : &defSport1_Ready;
+
+	*sport0_Ready = false;
+	*sport1_Ready = false;
+
+	*pDMA1_CONFIG = 0;
+	*pDMA3_CONFIG = 0;
+
+	*pSPORT0_RCR1 = 0;
+	*pSPORT0_RCR2 = 15|RXSE;
+	*pSPORT0_RCLKDIV = clkdiv;
+	*pSPORT0_RFSDIV = 49;
+
+	*pSPORT1_RCR1 = 0;
+	*pSPORT1_RCR2 = 15|RXSE;
+	*pSPORT1_RCLKDIV = clkdiv;
+	*pSPORT1_RFSDIV = 49;
+
+	*pDMA1_START_ADDR = dst1;
+	*pDMA1_X_COUNT = len1/2;
+	*pDMA1_X_MODIFY = 2;
+
+	*pDMA3_START_ADDR = dst2;
+	*pDMA3_X_COUNT = len2/2;
+	*pDMA3_X_MODIFY = 2;
+
+	*pDMA1_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
+	*pDMA3_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
+
+
+//	*pPORTF_FER &= ~(1<<12);
+	*pPORTFIO_CLEAR = 1<<12;
+	*pPORTFIO_MASKA = 1<<12;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

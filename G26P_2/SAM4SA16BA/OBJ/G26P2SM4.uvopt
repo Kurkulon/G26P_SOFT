@@ -133,7 +133,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=-1,-1,-1,-1,0)(1007=-1,-1,-1,-1,0)(1008=-1,-1,-1,-1,0)(1009=-1,-1,-1,-1,0)(1012=-1,-1,-1,-1,0)</Name>
+          <Name>(1010=-1,-1,-1,-1,0)(1007=-1,-1,-1,-1,0)(1008=-1,-1,-1,-1,0)(1009=1229,233,1463,767,0)(1012=-1,-1,-1,-1,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -165,34 +165,34 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>161</LineNumber>
+          <LineNumber>107</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>4194974</Address>
+          <Address>4195896</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\main.cpp</Filename>
+          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\req.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26P2SM4\cpp/main.cpp\161</Expression>
+          <Expression>\\G26P2SM4\cpp/req.cpp\107</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>141</LineNumber>
+          <LineNumber>154</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>4194918</Address>
+          <Address>4194542</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\main.cpp</Filename>
+          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\startup_SAM4S.s</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26P2SM4\cpp/main.cpp\141</Expression>
+          <Expression>\\G26P2SM4\cpp/startup_SAM4S.s\154</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -206,7 +206,24 @@
           <WinNumber>1</WinNumber>
           <ItemText>req</ItemText>
         </Ww>
+        <Ww>
+          <count>2</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>_req</ItemText>
+        </Ww>
+        <Ww>
+          <count>3</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>_req</ItemText>
+        </Ww>
       </WatchWindow1>
+      <MemoryWindow1>
+        <Mm>
+          <WinNumber>1</WinNumber>
+          <SubType>0</SubType>
+          <ItemText>sp</ItemText>
+        </Mm>
+      </MemoryWindow1>
       <Tracepoint>
         <THDelay>0</THDelay>
       </Tracepoint>
@@ -238,12 +255,6 @@
       </DebugFlag>
       <LintExecutable></LintExecutable>
       <LintConfigFile></LintConfigFile>
-      <SystemViewers>
-        <Entry>
-          <Name>System Viewer\USART0</Name>
-          <WinId>35905</WinId>
-        </Entry>
-      </SystemViewers>
     </TargetOption>
   </Target>
 

@@ -375,6 +375,13 @@ bool ComPort::Read(ComPort::ReadBuffer *readBuffer, dword preTimeout, dword post
 
 	_prevDmaCounter = _pReadBuffer->maxLen;
 
+	u32 t = (u32)_pReadBuffer->data;
+
+	if (t < 0x20000000 || t >= 0x20028000)
+	{
+		__breakpoint(0);
+	};
+
 	EnableReceive(_pReadBuffer->data, _pReadBuffer->maxLen);
 
 //	cputs("ComPort::Read start\n\r");	

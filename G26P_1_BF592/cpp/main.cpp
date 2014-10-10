@@ -51,7 +51,7 @@ struct Response
 	union
 	{
 		struct  { word crc; } f1;  // старт оцифровки
-		struct  { byte n; byte chnl; u16 data[500]; word crc; } f2;  // чтение вектора
+		struct  { byte n; byte chnl; u16 data1[500]; u16 data2[500]; word crc; } f2;  // чтение вектора
 		struct  { word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
 	};
 };
@@ -85,8 +85,8 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 	if (req->adr == 0 || req->adr != netAdr) return false;
 
 	byte n = req->f2.n;
-	byte ch = (req->f2.chnl>>1)&1;
-	byte cl = req->f2.chnl&1;
+	byte ch = (req->f2.chnl)&1;
+//	byte cl = req->f2.chnl&1;
 
 	rsp.adr = req->adr;
 	rsp.func = req->func;
@@ -95,10 +95,11 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 	for (u16 i = 0; i < 500; i++)
 	{
-		rsp.f2.data[i] = spd[n][ch][i*2+cl];
+		rsp.f2.data1[i] = spd[n][ch][i*2+0];
+		rsp.f2.data2[i] = spd[n][ch][i*2+1];
 	};
 
-	rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp.f2));
+	//rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp.f2));
 
 	wb->data = &rsp;
 	wb->len = sizeof(rsp.f2)+2;

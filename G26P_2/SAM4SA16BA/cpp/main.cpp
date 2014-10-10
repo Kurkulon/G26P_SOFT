@@ -16,6 +16,14 @@ u32 fc = 0;
 static u32 bfCRCOK = 0;
 static u32 bfCRCER = 0;
 
+static bool waitSync = false;
+
+static RequestQuery qrcv(&comrcv);
+
+static R02 r02[8][3][2];
+
+
+
 //static u32 rcvCRCOK = 0;
 //static u32 rcvCRCER = 0;
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -26,8 +34,80 @@ Response rsp;
 
 
 
-static RequestQuery reqQuery(&comrcv);
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackReq01(REQ *q)
+{
+	waitSync = true;;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateReq01(byte adr, byte n)
+{
+	static Req01 req;
+	static ComPort::WriteBuffer wb;
+	static REQ q;
+
+	q.CallBack = CallBackReq01;
+	q.rb = 0;
+	q.wb = &wb;
+	
+	wb.data = &req;
+	wb.len = sizeof(req)-sizeof(req.crc);
+	
+	req.adr = adr;
+	req.func = 1;
+	req.n = n;
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackReq02(REQ *q)
+{
+
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateReq02(byte adr, byte n, byte chnl)
+{
+	adr = (adr-1)&7; chnl &= 1; n = (n+1)&3 - 1;
+
+	Req02 &req = r02[adr][n][chnl].req;
+	Rsp02 &rsp = r02[adr][n][chnl].rsp;
+	
+	ComPort::WriteBuffer &wb = r02[adr][n][chnl].wb;
+	ComPort::ReadBuffer	 &rb = r02[adr][n][chnl].rb;
+	
+	REQ &q = r02[adr][n][chnl].q;
+
+
+	q.CallBack = CallBackReq02;
+	q.rb = &rb;
+	q.wb = &wb;
+	q.preTimeOut = MS2RT(1);
+	q.postTimeOut = 1;
+	
+	wb.data = &req;
+	wb.len = sizeof(req)-sizeof(req.crc);
+
+	rb.data = &rsp;
+	rb.maxLen = sizeof(rsp);
+	
+	req.adr = 1;//adr;
+	req.func = 2;
+	req.n = n;
+	req.chnl = chnl;
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void CallBackReq03(REQ *q)
@@ -140,7 +220,7 @@ static void UpdateBlackFin()
 
 static void UpdateRecievers()
 {
-	static byte i = 0, j = 0;
+	static byte i = 0, n = 0;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
 	static byte buf[1024];
@@ -155,27 +235,21 @@ static void UpdateRecievers()
 	{
 		case 0:
 			
-//			if (rtm.Check(MS2RT(20)))
-			{ 
-				req.adr = 0;
-				req.func = 1;
-				req.f1.n = 0;
+			waitSync = false;
+			
+			qrcv.Add(CreateReq01(0, n));
 
-				req.f1.crc = GetCRC16(&req, sizeof(req.f1));
-
-				wb.data = &req;
-				wb.len = sizeof(req.f1) + 2;
-
-				comrcv.Write(&wb);
-				i++;
-			};
+			i++;
 
 			break;
 
 		case 1:
 
-			if (!comrcv.Update())
+			qrcv.Update();
+		
+			if (waitSync)
 			{
+				waitSync = false;
 				rtm.pt = GetRTT();
 				i++;
 			};
@@ -187,18 +261,15 @@ static void UpdateRecievers()
 			if (rtm.Check(3))
 			{
 				comrcv.TransmitByte(0);
-
 				i++;
 			};
 
 			break;
 
-
 		case 3:
 
 			if (rtm.Check(MS2RT(15)))
 			{
-				j = 0;
 				i++;
 			};
 
@@ -206,44 +277,37 @@ static void UpdateRecievers()
 
 		case 4:
 
-			req.adr = 1;
-			req.func = 2;
-			req.f2.n = 0;
-			req.f2.chnl = j&3;
+			for (byte j = 1; j < 9; j++)
+			{
+				qrcv.Add(CreateReq02(j, n, 0));
+				qrcv.Add(CreateReq02(j, n, 1));
+			};
 
-			req.f2.crc = GetCRC16(&req, sizeof(req.f2));
-
-			wb.data = &req;
-			wb.len = sizeof(req.f2) + 2;
-
-			comrcv.Write(&wb);
 			i++;
 
 			break;
 
 		case 5:
 
-			if (!comrcv.Update())
+			qrcv.Update();
+
+			if (qrcv.Ready())
 			{
-				rb.data = &rsp;
-				rb.maxLen = sizeof(rsp);
-				comrcv.Read(&rb, MS2RT(10), 1);
 				i++;
-			};
+			}
 
 			break;
 
 		case 6:
 
-			if (!comrcv.Update())
+			if (rtm.Check(MS2RT(75)))
 			{
-				j++;
-
-				i = (j < 32) ? 4 : 0;
+				i = 0;
 			};
 
 			break;
 	};
+
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

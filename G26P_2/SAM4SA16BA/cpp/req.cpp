@@ -32,6 +32,7 @@ REQ* RequestQuery::Get()
 	if (_first != 0)
 	{
 		_first = _first->next;
+		r->next = 0;
 	};
 
 	return r;
@@ -42,29 +43,24 @@ REQ* RequestQuery::Get()
 void RequestQuery::Update()
 {
 	static byte i = 0;
-	static REQ* req = 0;
 
 		switch(i)
 		{
 			case 0:
 
-				if (!Empty())
-				{
-					req = Get();
-					i++;
-				};
+				if ((_req = Get()) != 0) i++;
 
 				break;
 
 			case 1:
 
-				if (req != 0 && req->wb != 0)
+				if (_req->wb != 0)
 				{
-					DataPointer p(req->wb->data);
-					p.b += req->wb->len;
-					*p.w = GetCRC16(req->wb->data, req->wb->len);
-					req->wb->len += 2;
-					com->Write(req->wb);
+					DataPointer p(_req->wb->data);
+					p.b += _req->wb->len;
+					*p.w = GetCRC16(_req->wb->data, _req->wb->len);
+					_req->wb->len += 2;
+					com->Write(_req->wb);
 					i++;
 				}
 				else
@@ -78,9 +74,9 @@ void RequestQuery::Update()
 
 				if (!com->Update())
 				{
-					if (req->rb != 0)
+					if (_req->rb != 0)
 					{
-						com->Read(req->rb, req->preTimeOut, req->postTimeOut); 
+						com->Read(_req->rb, _req->preTimeOut, _req->postTimeOut); 
 						i++;
 					}
 					else
@@ -95,7 +91,7 @@ void RequestQuery::Update()
 
 				if (!com->Update())
 				{
-					req->crcOK = GetCRC16(req->rb->data, req->rb->len) == 0;
+//					_req->crcOK = GetCRC16(_req->rb->data, _req->rb->len) == 0;
 					i++;
 				};
 
@@ -103,9 +99,9 @@ void RequestQuery::Update()
 
 			case 4:
 
-				if (req->CallBack != 0)
+				if (_req->CallBack != 0)
 				{
-					req->CallBack(req);
+					_req->CallBack(_req);
 				};
 
 				i = 0;

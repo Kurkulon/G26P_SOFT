@@ -55,7 +55,8 @@ __packed struct Rsp02	// чтение вектора
 	byte func;
 	byte n; 
 	byte chnl; 
-	u16 data[500]; 
+	u16 data1[500]; 
+	u16 data2[500]; 
 	word crc; 
 };  
 
@@ -119,6 +120,7 @@ class RequestQuery
 {
 	REQ* _first;
 	REQ* _last;
+	REQ* _req;
 
 	ComPort *com;
 
@@ -128,11 +130,22 @@ public:
 	void Add(REQ* req);
 	REQ* Get();
 	bool Empty() { return _first == 0; }
+	bool Ready() { return (_first == 0) && (_req == 0); }
 	void Update();
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+struct R02
+{
+	ComPort::WriteBuffer	wb;
+	ComPort::ReadBuffer		rb;
+	REQ		q;
+	Req02	req;
+	Rsp02	rsp;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 

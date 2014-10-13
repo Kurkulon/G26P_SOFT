@@ -9,17 +9,18 @@ static ComPort com;
 //static byte data[256*48];
 
 static u16 spd[3][2][512*2];
-static u16 spd2[512*2];
 
-static i16 ch1[512];
-static i16 ch2[512];
-static i16 ch3[512];
-static i16 ch4[512];
+//static u16 spd2[512*2];
+//
+//static i16 ch1[512];
+//static i16 ch2[512];
+//static i16 ch3[512];
+//static i16 ch4[512];
 
 static bool ready1 = false, ready2 = false;
 
-static u32 CRCOK = 0;
-static u32 CRCER = 0;
+//static u32 CRCOK = 0;
+//static u32 CRCER = 0;
 
 static byte sampleTime[3] = { 19, 19, 9};
 static byte gain[3] = { 7, 7, 7 };
@@ -216,6 +217,24 @@ static void UpdateBlackFin()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void InitNetAdress()
+{
+	U32u f;
+	
+	f.w[1] = ReadADC();
+
+	u32 t = GetRTT();
+
+	while ((GetRTT()-t) < 1000000)
+	{
+		f.d += (i32)ReadADC() - (i32)f.w[1];
+	};
+
+	netAdr = (f.w[1] / 398) + 1;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main( void )
 {
 	static byte s = 0;
@@ -225,6 +244,8 @@ int main( void )
 	InitHardware();
 
 	com.Connect(6250000, 0);
+
+	InitNetAdress();
 
 	//for (u16 i = 0; i < sizeof(data); i++) { data[i] = i; };
 	//wb.data = data;

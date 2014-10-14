@@ -247,55 +247,11 @@ int main( void )
 
 	InitNetAdress();
 
-	//for (u16 i = 0; i < sizeof(data); i++) { data[i] = i; };
-	//wb.data = data;
-	//wb.len = sizeof(data);
-
-	//com1.Write(&wb);
-//	ReadSPORT(spd1, spd2, sizeof(spd1), sizeof(spd2), 19, &ready1, &ready2);
-
-	//*pPORTFIO_SET = 1<<5;
-	//*pPORTFIO_CLEAR = 1<<7;
-
 	while (1)
 	{
-		WritePGA(0x2A61);
-		//float v = ReadADC() * 3.3 / 4095;
-
-		//u32 t = GetRTT();
-
-		//if ((t-pt) >= 33333)
-		//{
-		//	*pPORTFIO_TOGGLE = 1<<5;
-		//	*pPORTFIO_TOGGLE = 1<<7;
-		//	pt = t;
-		//};
-
-		UpdateBlackFin();
-
 		*pPORTFIO_TOGGLE = 1<<5;
 
-//		UpdateHardware();
-
-		//if (!com1.Update())
-		//{
-		//	com1.Write(&wb);
-		//};
-
-		//if (ready1 && ready2)
-		//{
-		//	for (u16 i = 0; i < 512; i++)
-		//	{
-		//		ch1[i] = spd1[i*2] - 0x7FFF;
-		//		ch2[i] = spd1[i*2+1] - 0x7FFF;
-		//		ch3[i] = spd2[i*2] - 0x7FFF;
-		//		ch4[i] = spd2[i*2+1] - 0x7FFF;
-		//	};
-
-		//	*pPORTFIO_TOGGLE = 1<<7;
-		//	ReadSPORT(spd1, spd2, sizeof(spd1), sizeof(spd2), 19, &ready1, &ready2);
-		//	*pPORTFIO_TOGGLE = 1<<7;
-		//};
+		UpdateBlackFin();
 
 		*pPORTFIO_TOGGLE = 1<<5;
 

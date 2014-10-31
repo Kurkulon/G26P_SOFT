@@ -3,7 +3,7 @@
 
 
 
-u16 HV = 0;
+u16 curHV = 0;
 
 
 
@@ -71,11 +71,9 @@ static void UpdateADC()
 
 	if ((SPI0->STAT & 1) == 0) return;
 
-	i32 r = (SPI0->RXDAT & 0xFFF) << 6;
-	i32 d = t>>10;
-	t += r - d;
+	t += (i32)((SPI0->RXDAT & 0xFFF) << 6) - (i32)(t>>10);
 
-	HV = ((t>>16) * 18871) >> 16; // HV * 3.3 / 4095 / 56 * 20000
+	curHV = ((t>>16) * 18871) >> 16; // HV * 3.3 / 4095 / 56 * 20000
 
 	SPI0->TXDATCTL = 0x0F100000; //SPI_TXDATCTL_FLEN(7) | SPI_TXDATCTL_EOT | SPI_TXDATCTL_SSEL_N(0xe);
 }

@@ -10,6 +10,8 @@
 
 extern void InitHardware();
 extern void UpdateHardware();
+extern void FireXX();
+extern void FireYY();
 
 
 

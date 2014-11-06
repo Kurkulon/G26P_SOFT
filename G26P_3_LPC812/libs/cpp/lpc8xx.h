@@ -10,6 +10,7 @@
 
 #define MCK 25000000
 
+#pragma anon_unions
 
 #ifndef WIN32
 #define MK_PTR(n,p)  T_HW::S_##n * const n = ((T_HW::S_##n*)(p))
@@ -25,8 +26,9 @@ extern byte core_sys_array[0x100000];
 
 namespace T_HW
 {
-	typedef volatile unsigned int LPC_REG;// Hardware register definition
-	typedef volatile unsigned char LPC_R8;// Hardware register definition
+	typedef volatile u32	LPC_REG;// Hardware register definition
+	typedef volatile u8		LPC_R8;// Hardware register definition
+	typedef volatile u16	LPC_R16;// Hardware register definition
 	typedef volatile void * LPC_PTR;// Hardware register definition
 
 	typedef void(*LPC_IHP)() __irq;	// Interrupt handler pointer
@@ -95,27 +97,45 @@ namespace T_HW
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	struct S_IOCON
-	{										/*!< (@ 0x40044000) IOCONFIG Structure     */
-		LPC_REG PIO0_17;                    /*!< (@ 0x40044000) I/O configuration for pin PIO0_17 */
-		LPC_REG PIO0_13;                    /*!< (@ 0x40044004) I/O configuration for pin PIO0_13 */
-		LPC_REG PIO0_12;                    /*!< (@ 0x40044008) I/O configuration for pin PIO0_12 */
-		LPC_REG PIO0_5;                     /*!< (@ 0x4004400C) I/O configuration for pin PIO0_5 */
-		LPC_REG PIO0_4;                     /*!< (@ 0x40044010) I/O configuration for pin PIO0_4 */
-		LPC_REG PIO0_3;                     /*!< (@ 0x40044014) I/O configuration for pin PIO0_3 */
-		LPC_REG PIO0_2;                     /*!< (@ 0x40044018) I/O configuration for pin PIO0_2 */
-		LPC_REG PIO0_11;                    /*!< (@ 0x4004401C) I/O configuration for pin PIO0_11 */
-		LPC_REG PIO0_10;                    /*!< (@ 0x40044020) I/O configuration for pin PIO0_10 */
-		LPC_REG PIO0_16;                    /*!< (@ 0x40044024) I/O configuration for pin PIO0_16 */
-		LPC_REG PIO0_15;                    /*!< (@ 0x40044028) I/O configuration for pin PIO0_15 */
-		LPC_REG PIO0_1;                     /*!< (@ 0x4004402C) I/O configuration for pin PIO0_1 */
+	struct S_IOCON							/*!< (@ 0x40044000) IOCONFIG Structure     */
+	{					
+		union S_PIO
+		{
+			LPC_REG		D;
+
+			struct
+			{
+				LPC_REG		res02 : 3;
+				LPC_REG		MODE : 2;
+				LPC_REG		HYS : 1;
+				LPC_REG		INV : 1;
+				LPC_REG		res7 : 1;
+				LPC_REG		I2CMODE : 2;
+				LPC_REG		OD : 1;	
+				LPC_REG		S_MODE : 2;
+				LPC_REG		CLK_DIV : 3;
+			} B;
+		};
+
+		S_PIO 	PIO0_17;                    /*!< (@ 0x40044000) I/O configuration for pin PIO0_17 */
+		S_PIO 	PIO0_13;                    /*!< (@ 0x40044004) I/O configuration for pin PIO0_13 */
+		S_PIO 	PIO0_12;                    /*!< (@ 0x40044008) I/O configuration for pin PIO0_12 */
+		S_PIO 	PIO0_5;                     /*!< (@ 0x4004400C) I/O configuration for pin PIO0_5 */
+		S_PIO 	PIO0_4;                     /*!< (@ 0x40044010) I/O configuration for pin PIO0_4 */
+		S_PIO 	PIO0_3;                     /*!< (@ 0x40044014) I/O configuration for pin PIO0_3 */
+		S_PIO 	PIO0_2;                     /*!< (@ 0x40044018) I/O configuration for pin PIO0_2 */
+		S_PIO 	PIO0_11;                    /*!< (@ 0x4004401C) I/O configuration for pin PIO0_11 */
+		S_PIO 	PIO0_10;                    /*!< (@ 0x40044020) I/O configuration for pin PIO0_10 */
+		S_PIO 	PIO0_16;                    /*!< (@ 0x40044024) I/O configuration for pin PIO0_16 */
+		S_PIO 	PIO0_15;                    /*!< (@ 0x40044028) I/O configuration for pin PIO0_15 */
+		S_PIO 	PIO0_1;                     /*!< (@ 0x4004402C) I/O configuration for pin PIO0_1 */
 		LPC_REG z_Reserved;                 /*!< (@ 0x40044030) I/O configuration for pin (Reserved) */
-		LPC_REG PIO0_9;                     /*!< (@ 0x40044034) I/O configuration for pin PIO0_9 */
-		LPC_REG PIO0_8;                     /*!< (@ 0x40044038) I/O configuration for pin PIO0_8 */
-		LPC_REG PIO0_7;                     /*!< (@ 0x4004403C) I/O configuration for pin PIO0_7 */
-		LPC_REG PIO0_6;                     /*!< (@ 0x40044040) I/O configuration for pin PIO0_6 */
-		LPC_REG PIO0_0;                     /*!< (@ 0x40044044) I/O configuration for pin PIO0_0 */
-		LPC_REG PIO0_14;                    /*!< (@ 0x40044048) I/O configuration for pin PIO0_14 */
+		S_PIO 	PIO0_9;                     /*!< (@ 0x40044034) I/O configuration for pin PIO0_9 */
+		S_PIO 	PIO0_8;                     /*!< (@ 0x40044038) I/O configuration for pin PIO0_8 */
+		S_PIO 	PIO0_7;                     /*!< (@ 0x4004403C) I/O configuration for pin PIO0_7 */
+		S_PIO 	PIO0_6;                     /*!< (@ 0x40044040) I/O configuration for pin PIO0_6 */
+		S_PIO 	PIO0_0;                     /*!< (@ 0x40044044) I/O configuration for pin PIO0_0 */
+		S_PIO 	PIO0_14;                    /*!< (@ 0x40044048) I/O configuration for pin PIO0_14 */
 	};
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -147,10 +167,100 @@ namespace T_HW
 	
 	struct S_SWM
 	{
-		LPC_REG		PINASSIGN[9];
+		struct
+		{
+			LPC_REG		U0_TXD : 8;
+			LPC_REG		U0_RXD : 8; 
+			LPC_REG		U0_RTS : 8; 
+			LPC_REG		U0_CTS : 8;
+		};
+
+		struct
+		{
+			LPC_REG		U0_SCLK : 8;
+			LPC_REG		U1_TXD : 8;
+			LPC_REG		U1_RXD : 8;
+			LPC_REG		U1_RTS : 8;
+		};
+
+		struct
+		{
+			LPC_REG		U1_CTS : 8;
+			LPC_REG		U1_SCLK : 8;
+			LPC_REG		U2_TXD : 8;
+			LPC_REG		U2_RXD : 8;
+		};
+
+		struct
+		{
+			LPC_REG		U2_RTS : 8;
+			LPC_REG		U2_CTS : 8;
+			LPC_REG		U2_SCLK : 8;
+			LPC_REG		SPI0_SCK : 8;
+		};
+
+		struct
+		{
+			LPC_REG		SPI0_MOSI : 8; 
+			LPC_REG		SPI0_MISO : 8;
+			LPC_REG		SPI0_SSEL : 8;
+			LPC_REG		SPI1_SCK : 8;
+		};
+
+		struct
+		{
+			LPC_REG		SPI1_MOSI : 8;
+			LPC_REG		SPI1_MISO : 8;
+			LPC_REG		SPI1_SSEL : 8;
+			LPC_REG		CTIN_0 : 8;
+		};
+
+		struct
+		{
+			LPC_REG		CTIN_1 : 8;
+			LPC_REG		CTIN_2 : 8;
+			LPC_REG		CTIN_3 : 8;
+			LPC_REG		CTOUT_0 : 8;
+		};
+
+		struct
+		{
+			LPC_REG		CTOUT_1 : 8;
+			LPC_REG		CTOUT_2 : 8;
+			LPC_REG		CTOUT_3 : 8;
+			LPC_REG		I2C_SDA : 8;
+		};
+
+		struct
+		{
+			LPC_REG		I2C_SCL : 8;
+			LPC_REG		ACMP_O : 8;
+			LPC_REG		CLKOUT : 8;
+			LPC_REG		GPIO_INT_BMAT : 8;
+		};
+	
+		//LPC_REG		PINASSIGN[9];
 		LPC_REG		z_RESERVED0[103];
-		LPC_REG		PINENABLE0;
-	} ;
+		
+		union
+		{
+			LPC_REG	D;
+
+			struct
+			{
+				LPC_REG		ACMP_I1_EN : 1;
+				LPC_REG		ACMP_I2_EN : 1;
+				LPC_REG		SWCLK_EN : 1;
+				LPC_REG		SWDIO_EN : 1;
+				LPC_REG		XTALIN_EN : 1;
+				LPC_REG		XTALOUT_EN : 1;
+				LPC_REG		RESET_EN : 1;
+				LPC_REG		CLKIN : 1;
+				LPC_REG		VDDCMP : 1;
+
+			} B;
+		} PINENABLE0;
+	};
 	
 	
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -268,6 +378,171 @@ namespace T_HW
 	};
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define CONFIG_SCT_nEV   (6)             /* Number of events */
+#define CONFIG_SCT_nRG   (5)             /* Number of match/compare registers */
+#define CONFIG_SCT_nOU   (4)             /* Number of outputs */
+
+	struct S_SCT
+	{
+		LPC_REG CONFIG;              /* 0x000 Configuration Register */
+		
+		union
+		{
+			LPC_REG CTRL_U;		           /* 0x004 Control Register */
+			struct
+			{
+				LPC_R16 CTRL_L;       /* 0x004 low control register */
+				LPC_R16 CTRL_H;       /* 0x006 high control register */
+			};
+		};
+
+		LPC_R16 LIMIT_L;              /* 0x008 limit register for counter L */
+		LPC_R16 LIMIT_H;              /* 0x00A limit register for counter H */
+		LPC_R16 HALT_L;               /* 0x00C halt register for counter L */
+		LPC_R16 HALT_H;               /* 0x00E halt register for counter H */
+		LPC_R16 STOP_L;               /* 0x010 stop register for counter L */
+		LPC_R16 STOP_H;               /* 0x012 stop register for counter H */
+		LPC_R16 START_L;              /* 0x014 start register for counter L */
+		LPC_R16 START_H;              /* 0x016 start register for counter H */
+		LPC_REG RESERVED1[10];        /* 0x018-0x03C reserved */
+		
+		union
+		{
+			LPC_REG COUNT_U;          /* 0x040 counter register */
+			
+			struct
+			{
+				LPC_R16 COUNT_L;      /* 0x040 counter register for counter L */
+				LPC_R16 COUNT_H;      /* 0x042 counter register for counter H */
+			};
+		};
+
+		LPC_R16 STATE_L;              /* 0x044 state register for counter L */
+		LPC_R16 STATE_H;              /* 0x046 state register for counter H */
+		LPC_REG INPUT;                /* 0x048 input register */
+		LPC_R16 REGMODE_L;            /* 0x04C match - capture registers mode register L */
+		LPC_R16 REGMODE_H;            /* 0x04E match - capture registers mode register H */
+		LPC_REG OUTPUT;               /* 0x050 output register */
+		LPC_REG OUTPUTDIRCTRL;        /* 0x054 Output counter direction Control Register */
+		LPC_REG RES;                  /* 0x058 conflict resolution register */
+		LPC_REG RESERVED2[37];        /* 0x05C-0x0EC reserved */
+		LPC_REG EVEN;                 /* 0x0F0 event enable register */
+		LPC_REG EVFLAG;               /* 0x0F4 event flag register */
+		LPC_REG CONEN;                /* 0x0F8 conflict enable register */
+		LPC_REG CONFLAG;              /* 0x0FC conflict flag register */
+
+		union
+		{
+			union
+			{                    /* 0x100-... Match / Capture value */
+				LPC_REG U;                 /*       SCTMATCH[i].U  Unified 32-bit register */
+				
+				struct
+				{
+					LPC_R16 L;             /*       SCTMATCH[i].L  Access to L value */
+					LPC_R16 H;             /*       SCTMATCH[i].H  Access to H value */
+				};
+
+			} MATCH[CONFIG_SCT_nRG];
+
+			union
+			{
+				LPC_REG U;                 /*       SCTCAP[i].U  Unified 32-bit register */
+				
+				struct
+				{
+					LPC_R16 L;             /*       SCTCAP[i].L  Access to H value */
+					LPC_R16 H;             /*       SCTCAP[i].H  Access to H value */
+				};
+
+			} CAP[CONFIG_SCT_nRG];
+		};
+
+
+		LPC_REG RESERVED3[32-CONFIG_SCT_nRG];      /* ...-0x17C reserved */
+
+		union
+		{
+			LPC_R16 MATCH_L[CONFIG_SCT_nRG];       /* 0x180-... Match Value L counter */
+			LPC_R16 CAP_L[CONFIG_SCT_nRG];         /* 0x180-... Capture Value L counter */
+		};
+
+		LPC_R16 RESERVED4[32-CONFIG_SCT_nRG];      /* ...-0x1BE reserved */
+		
+		union
+		{
+			LPC_R16 MATCH_H[CONFIG_SCT_nRG];       /* 0x1C0-... Match Value H counter */
+			LPC_R16 CAP_H[CONFIG_SCT_nRG];         /* 0x1C0-... Capture Value H counter */
+		};
+
+		LPC_R16 RESERVED5[32-CONFIG_SCT_nRG];      /* ...-0x1FE reserved */
+
+		union
+		{
+			union
+			{                    /* 0x200-... Match Reload / Capture Control value */
+				LPC_REG U;                 /*       SCTMATCHREL[i].U  Unified 32-bit register */
+				
+				struct
+				{
+					LPC_R16 L;             /*       SCTMATCHREL[i].L  Access to L value */
+					LPC_R16 H;             /*       SCTMATCHREL[i].H  Access to H value */
+				};
+
+			} MATCHREL[CONFIG_SCT_nRG];
+			
+			union
+			{
+				LPC_REG U;                 /*       SCTCAPCTRL[i].U  Unified 32-bit register */
+				
+				struct
+				{
+					LPC_R16 L;             /*       SCTCAPCTRL[i].L  Access to H value */
+					LPC_R16 H;             /*       SCTCAPCTRL[i].H  Access to H value */
+				};
+
+			} CAPCTRL[CONFIG_SCT_nRG];
+		};
+
+		LPC_REG RESERVED6[32-CONFIG_SCT_nRG];      /* ...-0x27C reserved */
+
+		union
+		{
+			LPC_R16 MATCHREL_L[CONFIG_SCT_nRG];    /* 0x280-... Match Reload value L counter */
+			LPC_R16 CAPCTRL_L[CONFIG_SCT_nRG];     /* 0x280-... Capture Control value L counter */
+		};
+		
+		LPC_R16 RESERVED7[32-CONFIG_SCT_nRG];      /* ...-0x2BE reserved */
+		
+		union
+		{
+			LPC_R16 MATCHREL_H[CONFIG_SCT_nRG];    /* 0x2C0-... Match Reload value H counter */
+			LPC_R16 CAPCTRL_H[CONFIG_SCT_nRG];     /* 0x2C0-... Capture Control value H counter */
+		};
+		
+		LPC_R16 RESERVED8[32-CONFIG_SCT_nRG];      /* ...-0x2FE reserved */
+
+		struct
+		{                       /* 0x300-0x3FC  SCTEVENT[i].STATE / SCTEVENT[i].CTRL*/
+			LPC_REG STATE;                 /* Event State Register */
+			LPC_REG CTRL;                  /* Event Control Register */
+		} EVENT[CONFIG_SCT_nEV];
+
+		LPC_REG RESERVED9[128-2*CONFIG_SCT_nEV];   /* ...-0x4FC reserved */
+
+		struct
+		{                       /* 0x500-0x57C  SCTOUT[i].SET / SCTOUT[i].CLR */
+			LPC_REG SET;                   /* Output n Set Register */
+			LPC_REG CLR;                   /* Output n Clear Register */
+		} OUT[CONFIG_SCT_nOU];
+
+		LPC_REG RESERVED10[191-2*CONFIG_SCT_nOU];  /* ...-0x7F8 reserved */
+
+		LPC_REG MODULECONTENT;        /* 0x7FC Module Content */
+
+	};
+	
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -307,7 +582,7 @@ namespace HW
 	MK_PTR(USART2,			0x4006C000);
 
 	MK_PTR(CRC,				0x50000000);
-//	MK_PTR(SCT,				0x50004000);
+	MK_PTR(SCT,				0x50004000);
 	MK_PTR(GPIO,			0xA0000000);
 	MK_PTR(PIN_INT,			0xA0004000);
 

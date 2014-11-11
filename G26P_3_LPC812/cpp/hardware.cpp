@@ -1,21 +1,58 @@
 #include "types.h"
 #include "core.h"
-
+#include "time.h"
 
 
 u16 curHV = 0;
 u16 reqHV = 600;
 
-#define eVal_IntervalTimer ((MCK / 5000) * 10)
-#define eVal_StartSample   ((MCK / 5000) *  6)
+//#define eVal_IntervalTimer ((MCK / 5000) * 10)
+//#define eVal_StartSample   ((MCK / 5000) *  6)
+//
+//enum {  eVal_MinValue = 10 } ;
 
-enum {  eVal_MinValue = 10 } ;
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static __irq void IntDummyHandler()
+{
+	__breakpoint(0);
+}
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static __irq void HardFaultHandler()
+{
+	__breakpoint(0);
+}
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-extern u32 __Vectors;                         /* see startup_LPC43xx.s   */
+static __irq void ExtDummyHandler()
+{
+	__breakpoint(0);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitVectorTable()
+{
+	for (u32 i = 0; i < ArraySize(VectorTableInt); i++)
+	{
+		VectorTableInt[i] = IntDummyHandler;
+	};
+
+	for (u32 i = 0; i < ArraySize(VectorTableExt); i++)
+	{
+		VectorTableExt[i] = ExtDummyHandler;
+	};
+
+	VectorTableInt[3] = HardFaultHandler;
+
+	CM0::SCB->VTOR = (u32)VectorTableInt;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 /*----------------------------------------------------------------------------
   Initialize the system
@@ -23,27 +60,12 @@ extern u32 __Vectors;                         /* see startup_LPC43xx.s   */
 extern "C" void SystemInit()
 {
 	u32 i;
-	using namespace CM3;
+	using namespace CM0;
 	using namespace HW;
 
+	SYSCON->SYSAHBCLKCTRL |= CLK::SWM_M | CLK::IOCON_M | CLK::GPIO_M | HW::CLK::MRT_M | HW::CLK::UART0_M;
 
-	//HW::CREG->FLASHCFGA = (HW::CREG->FLASHCFGA & ~0xF000) | 0x6000;
-	//HW::CREG->FLASHCFGB = (HW::CREG->FLASHCFGB & ~0xF000) | 0x6000;
-
-	//HW::EMC->STATICCONFIG0 |= 0x80000;
-
-	/* Disable SysTick timer                                                    */
-	
-//	SysTick->CTRL &= ~(SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk);
-
-	/* Set vector table pointer */
-//	SCB->VTOR = ((u32)(&__Vectors)) & 0xFFF00000UL;
-
-	/* Configure PLL0 and PLL1, connect CPU clock to selected clock source */
-
-	SYSCON->SYSAHBCLKCTRL |= CLK::SWM_M | CLK::IOCON_M | CLK::GPIO_M;
-
-	GPIO->DIR0 |= (1<<11)|(1<<17);
+	GPIO->DIR0 |= (1<<11)|(1<<17)|(1<<0);
 	GPIO->CLR0 = 1<<11;
 
 
@@ -65,7 +87,9 @@ extern "C" void SystemInit()
 
 //	SYSCON->SYSAHBCLKDIV  = SYSAHBCLKDIV_Val;
 
-
+	SYSCON->UARTCLKDIV = 1;
+	SWM->U0_RXD = 14;
+	SWM->U0_TXD = 6;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -205,6 +229,8 @@ static void InitADC()
 
 void InitHardware()
 {
+	InitVectorTable();
+	Init_time();
 	InitADC();
 	InitFire();
 }

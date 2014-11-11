@@ -42,6 +42,14 @@ __heap_base
 Heap_Mem        SPACE   Heap_Size
 __heap_limit
 
+VecTableIntSize	EQU		16*4	
+VecTableExtSize	EQU		32*4	
+
+				AREA	VTBL, NOINIT, READWRITE, ALIGN=8
+                EXPORT  VectorTableInt
+                EXPORT  VectorTableExt
+VectorTableInt	SPACE	VecTableIntSize				
+VectorTableExt	SPACE	VecTableExtSize				
 
                 PRESERVE8
                 THUMB

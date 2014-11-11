@@ -6,7 +6,7 @@
 #endif 
 
 #include "types.h"
-#include "cm3.h"
+#include "cm0.h"
 
 #define MCK 25000000
 
@@ -598,7 +598,7 @@ namespace HW
 }; // namespace HW
 
 extern T_HW::LPC_IHP VectorTableInt[16];
-extern T_HW::LPC_IHP VectorTableExt[53];
+extern T_HW::LPC_IHP VectorTableExt[32];
 
 #undef MK_PTR
 #undef MKPID

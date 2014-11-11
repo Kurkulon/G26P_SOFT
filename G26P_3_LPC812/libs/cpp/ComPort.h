@@ -1,4 +1,4 @@
-#ifdef COMPORT__31_01_2007__15_32
+#ifndef COMPORT__31_01_2007__15_32
 #define COMPORT__31_01_2007__15_32
 
 
@@ -35,14 +35,24 @@ class ComPort
 
 	enum STATUS485 { WRITEING = 0, WAIT_READ = 1, READING = 2, READ_END = 3 };
 
-	union CUSART { void *vp; T_HW::S_UART *DU; T_HW::S_USART *SU; };
-
 	struct ComBase
 	{
 		bool used;
-		const CUSART HU;
-		T_HW::S_PIO* const pm;
-		const dword maskRTS;
+		T_HW::S_USART	*usart;
+		const dword		maskRTS;
+
+		byte*		rdata;
+		u16			rlen;
+
+		byte*		wdata;
+		u16			wlen;
+
+		T_HW::LPC_IHP	ir;
+		T_HW::LPC_IHP	iw;
+
+		byte			ivect;
+
+		u32				tm;
 	};
 
 	static ComBase _bases[3];
@@ -51,40 +61,23 @@ class ComPort
 	byte			_status485;
 	byte			_portNum;
 
-	word			_prevDmaCounter;
+//	word			_prevDmaCounter;
 
 	ReadBuffer		*_pReadBuffer;
 	WriteBuffer		*_pWriteBuffer;
 
 
-
-#ifndef WIN32
-
 	word			_BaudRateRegister;
 
 	dword			_ModeRegister;
 	dword			_maskRTS;
-	T_HW::S_PIO		*_pm;
-	dword			_startTransmitTime;
-	dword			_startReceiveTime;
-	dword			_preReadTimeout;
-	dword			_postReadTimeout;
-	T_HW::S_USART 	*_SU;
 
-#else
+	//dword			_startTransmitTime;
+	//dword			_startReceiveTime;
+	//dword			_preReadTimeout;
+	//dword			_postReadTimeout;
 
-	dword		_readBytes;
-	dword		_writeBytes;
-
-	HANDLE		_comHandle;
-	OVERLAPPED	_ovlRead;
-	OVERLAPPED	_ovlWrite;
-	COMMTIMEOUTS _cto;
-
-	static int		_portTableSize;
-	static dword	_portTable[16];
-
-#endif
+	T_HW::S_USART 	*_usart;
 
 	void 		EnableTransmit(void* src, word count);
 	void 		DisableTransmit();
@@ -98,29 +91,13 @@ class ComPort
 	static ComPort *_objCom2;
 	static ComPort *_objCom3;
 
-#ifndef WIN32
-
 	word 		BoudToPresc(dword speed);
 
-#else
-
-	void		BuildPortTable();
-
-#endif
 
 
   public:
 	  
-#ifndef WIN32
-
 	ComPort() : _connected(false), _status485(READ_END) {}
-
-#else
-
-	ComPort() : _connected(false), _status485(READ_END), _comHandle(INVALID_HANDLE_VALUE) {}
-	bool		Connect(const char* comPort, dword bps, byte parity);
-
-#endif
 
 	bool		Connect(byte port, dword speed, byte parity);
 	bool		Disconnect();
@@ -129,10 +106,13 @@ class ComPort
 	bool		Read(ComPort::ReadBuffer *readBuffer, dword preTimeout, dword postTimeout);
 	bool		Write(ComPort::WriteBuffer *writeBuffer);
 
-	static __irq void _IntHandlerCom1();
-	static __irq void _IntHandlerCom2();
-	static __irq void _IntHandlerCom3();
+	static __irq void ReadHandler_0();
+	static __irq void ReadHandler_1();
+	static __irq void ReadHandler_2();
 
+	static __irq void WriteHandler_0();
+	static __irq void WriteHandler_1();
+	static __irq void WriteHandler_2();
 };
 
 #endif // COMPORT__31_01_2007__15_32

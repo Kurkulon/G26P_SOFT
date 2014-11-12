@@ -12,7 +12,7 @@ extern void InitHardware();
 extern void UpdateHardware();
 extern void FireXX();
 extern void FireYY();
-
+extern u16 GetCRC(const void *data, u32 len);
 
 
 #ifndef WIN32

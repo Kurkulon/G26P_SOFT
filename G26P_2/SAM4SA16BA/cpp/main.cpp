@@ -4,6 +4,7 @@
 #include "req.h"
 
 ComPort com1;
+ComPort comtr;
 ComPort combf;
 ComPort comrcv;
 
@@ -312,6 +313,53 @@ static void UpdateRecievers()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateTransmiter()
+{
+	static byte i = 0;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static byte buf[256] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+	static RTM32 rtm;
+	
+	DataPointer p(buf);
+
+	switch(i)
+	{
+		case 0:
+			wb.data = buf;
+			wb.len = 10;
+			p.b += wb.len;
+
+			*p.w = GetCRC16(wb.data, wb.len);
+			wb.len += 2;
+			comtr.Write(&wb);
+			i++;
+
+			break;
+
+		case 1:
+
+			if (!comtr.Update())
+			{
+				i++;
+			};
+
+			break;
+
+		case 2:
+
+			if (rtm.Check(MS2RT(1000)))
+			{
+				i = 0;
+			};
+
+			break;
+	};
+}
+
+	
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateMisc()
 {
 	static byte i = 0;
@@ -323,6 +371,7 @@ static void UpdateMisc()
 	{
 		CALL( UpdateBlackFin()		);
 		CALL( UpdateRecievers()		);
+		CALL( UpdateTransmiter()	);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -347,6 +396,7 @@ int main()
 
 
 	com1.Connect(0, 6250000, 0);
+	comtr.Connect(1, 1562500, 0);
 	combf.Connect(3, 6250000, 0);
 	comrcv.Connect(2, 6250000, 0);
 

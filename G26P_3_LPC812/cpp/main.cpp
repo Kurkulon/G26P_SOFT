@@ -1,6 +1,7 @@
 #include "hardware.h"
 #include "time.h"
 #include "ComPort.h"
+#include "crc16.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -14,6 +15,56 @@ static byte data[256];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateCom()
+{
+	static byte i = 0;
+
+	switch(i)
+	{ 
+		case 0:
+
+			rb.data = data;
+			rb.maxLen = sizeof(data);
+			com.Read(&rb, -1, 800);
+			i++;
+
+			break;
+
+		case 1:
+
+			if (!com.Update())
+			{
+				if (rb.recieved)
+				{
+					//GetCRC(rb.data, rb.len);
+					//GetCRC16(rb.data, rb.len);
+					wb.data = rb.data;
+					wb.len = rb.len;
+					com.Write(&wb);
+					i++;
+				}
+				else
+				{
+					i = 0;
+				};
+			};
+
+			break;
+
+		case 2:
+
+			if (!com.Update())
+			{
+				i = 0;
+			};
+
+			break;
+	};
+
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 	byte i = 0;
@@ -23,27 +74,15 @@ int main()
 
 	InitHardware();
 
-	com.Connect(0, 1562500, 2);
+	com.Connect(0, 1562500, 0);
 	
 	while (1)
 	{
 		UpdateHardware();
+		UpdateCom();
 
-		if (!com.Update())
-		{
-			if (tm.Check(1000))
-			{
-				rb.data = data;
-				rb.maxLen = sizeof(data);
-				com.Read(&rb, -1, 800);
-				i = 0;
-			};
-		};
-
-		if (HW::USART0->STAT & 4)
-		{
-			HW::GPIO->SET0 = 1;
-			HW::USART0->TXDATA = i++;
-		};
+		HW::GPIO->SET0 = 1<<7;
+		GetCRC16(data, sizeof(data));
+		HW::GPIO->CLR0 = 1<<7;
 	};
 }

@@ -311,7 +311,13 @@ namespace T_HW
 	{
 		LPC_REG MODE;
 		LPC_REG SEED;
-		LPC_REG SUM;
+		union
+		{
+			LPC_REG SUM;
+			LPC_REG D;
+			LPC_R16	W;
+			LPC_R8	B;
+		};
 	};
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

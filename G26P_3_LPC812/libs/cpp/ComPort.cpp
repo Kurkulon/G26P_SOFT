@@ -118,6 +118,7 @@ void ComPort::EnableTransmit(void* src, word count)
 void ComPort::DisableTransmit()
 {
 	_usart->CFG &= ~1;	// Disable transmit and receive
+	_usart->INTENCLR = 4;
 	HW::GPIO->CLR0 = _maskRTS;
 }
 
@@ -151,6 +152,7 @@ void ComPort::EnableReceive(void* dst, word count)
 void ComPort::DisableReceive()
 {
 	_usart->CFG &= ~1;	// Disable transmit and receive
+	_usart->INTENCLR = 1;
 	HW::GPIO->CLR0 = _maskRTS;
 }
 

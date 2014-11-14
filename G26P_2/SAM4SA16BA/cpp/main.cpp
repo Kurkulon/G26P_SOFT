@@ -326,20 +326,23 @@ static void UpdateTransmiter()
 	switch(i)
 	{
 		case 0:
-			wb.data = buf;
-			wb.len = 10;
-			p.b += wb.len;
+			//wb.data = buf;
+			//wb.len = 10;
+			//p.b += wb.len;
 
-			*p.w = GetCRC16(wb.data, wb.len);
-			wb.len += 2;
-			comtr.Write(&wb);
+			//*p.w = GetCRC16(wb.data, wb.len);
+			//wb.len += 2;
+			//comtr.Write(&wb);
+
+			comtr.TransmitByte(0);
+			
 			i++;
 
 			break;
 
 		case 1:
 
-			if (!comtr.Update())
+			//if (!comtr.Update())
 			{
 				i++;
 			};

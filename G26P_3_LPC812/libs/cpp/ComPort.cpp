@@ -16,9 +16,9 @@ extern dword millisecondsCount;
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ComPort::ComBase	ComPort::_bases[3] = { 
-	{false, HW::USART0,	 1<<0,	0, 0, 0, 0, ReadHandler_0, WriteHandler_0, 3	}, 
-	{false, HW::USART1,	 0,		0, 0, 0, 0, ReadHandler_1, WriteHandler_1, 4	},
-	{false, HW::USART2,	 0,		0, 0, 0, 0, ReadHandler_2, WriteHandler_2, 5	}
+	{false, HW::USART0,	 1<<0,	0, 0, 0, 0, ReadHandler_0, WriteHandler_0, UART0_IRQ	}, 
+	{false, HW::USART1,	 0,		0, 0, 0, 0, ReadHandler_1, WriteHandler_1, UART1_IRQ	},
+	{false, HW::USART2,	 0,		0, 0, 0, 0, ReadHandler_2, WriteHandler_2, UART2_IRQ	}
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -170,18 +170,18 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>258</LineNumber>
+          <LineNumber>83</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>1458</Address>
+          <Address>472</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_3_LPC812\cpp\hardware.cpp</Filename>
+          <Filename>d:\Work\G26P_SOFT\G26P_3_LPC812\cpp\main.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26P3LPC812\cpp/hardware.cpp\258</Expression>
+          <Expression>\\G26P3LPC812\cpp/main.cpp\83</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>

@@ -24,6 +24,29 @@ extern byte core_sys_array[0x100000];
 
 #define MKPID(n,i) n##_M=(1UL<<(i&31)), n##_I=i
 
+
+#define SPI0_IRQ	0		/*!< SPI0                                             */
+#define SPI1_IRQ    1 		/*!< SPI1                                             */
+#define	UART0_IRQ   3 		/*!< USART0                                            */
+#define	UART1_IRQ	4 		/*!< USART1                                            */
+#define	UART2_IRQ	5 		/*!< USART2                                            */
+#define	I2C_IRQ  	8 		/*!< I2C                                              */
+#define	SCT_IRQ  	9 		/*!< SCT                                              */
+#define	MRT_IRQ		10		/*!< MRT                                              */
+#define	CMP_IRQ		11		/*!< CMP                                              */
+#define	WDT_IRQ		12      /*!< WDT                                              */
+#define	BOD_IRQ		13   	/*!< BOD                                              */
+#define	WKT_IRQ		15   	/*!< WKT Interrupt                                    */
+#define	PININT0_IRQ	24   	/*!< External Interrupt 0                             */
+#define	PININT1_IRQ	25   	/*!< External Interrupt 1                             */
+#define	PININT2_IRQ	26   	/*!< External Interrupt 2                             */
+#define	PININT3_IRQ	27   	/*!< External Interrupt 3                             */
+#define	PININT4_IRQ	28   	/*!< External Interrupt 4                             */
+#define	PININT5_IRQ	29   	/*!< External Interrupt 5                             */
+#define	PININT6_IRQ	30   	/*!< External Interrupt 6                             */
+#define	PININT7_IRQ	31   	/*!< External Interrupt 7                             */
+
+
 namespace T_HW
 {
 	typedef volatile u32	LPC_REG;// Hardware register definition

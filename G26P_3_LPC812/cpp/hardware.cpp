@@ -11,6 +11,10 @@ u16 reqHV = 600;
 //
 //enum {  eVal_MinValue = 10 } ;
 
+bool	syncActive = false;
+u32		syncTime = 0;
+
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static __irq void IntDummyHandler()
@@ -120,6 +124,69 @@ static void UpdateADC()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void FireM()
+{
+
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void FireXX()
+{
+	HW::SWM->CTOUT_0 = 17;
+	HW::SWM->CTOUT_1 = 13;
+
+	HW::SCT->CTRL_L &= ~(3<<1);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void FireYY()
+{
+	HW::SWM->CTOUT_0 = 12;
+	HW::SWM->CTOUT_1 = 4;
+
+	HW::SCT->CTRL_L &= ~(3<<1);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void(*FireMode)() = FireXX;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void SyncFireHandler()
+{
+	FireMode();
+	HW::PIN_INT->IST = 1;
+	HW::PIN_INT->CIENF = 1;
+	syncActive = false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void WaitFireSync(byte t)
+{
+	HW::PIN_INT->CIENF = 1;
+
+	switch(t)
+	{
+		case 0: FireMode = FireXX; break;
+		case 1: FireMode = FireYY; break;
+		case 2: FireMode = FireM;  break;
+	};
+
+	syncActive = true;
+	syncTime = GetMilliseconds();
+
+	HW::PIN_INT->SIENF = 1;
+	HW::PIN_INT->FALL = 1;
+	HW::PIN_INT->IST = 1;
+
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void InitFire()
 {
 	using namespace HW;
@@ -178,26 +245,14 @@ static void InitFire()
 //	SCT->CTRL_L &= ~(3<<1);
 
 
-}
+	SYSCON->PINTSEL[0] = 14;
+	PIN_INT->ISEL = 0;
+	//PIN_INT->SIENF = 1;
+	//PIN_INT->FALL = 1;
+	//PIN_INT->IST = 1;
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void FireXX()
-{
-	HW::SWM->CTOUT_0 = 17;
-	HW::SWM->CTOUT_1 = 13;
-
-	HW::SCT->CTRL_L &= ~(3<<1);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void FireYY()
-{
-	HW::SWM->CTOUT_0 = 12;
-	HW::SWM->CTOUT_1 = 4;
-
-	HW::SCT->CTRL_L &= ~(3<<1);
+	VectorTableExt[PININT0_IRQ] = SyncFireHandler;
+	CM0::NVIC->ISER[0] = 1<<PININT0_IRQ;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -13,6 +13,41 @@ extern void UpdateHardware();
 extern void FireXX();
 extern void FireYY();
 extern u16 GetCRC(const void *data, u32 len);
+extern void WaitFireSync(byte t);
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline u16 GetCurHV()
+{
+	extern u16 curHV;
+	return curHV;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline void SetReqHV(u16 v)
+{
+	extern u16 reqHV;
+	reqHV = v;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline bool IsSyncActive()
+{
+	extern bool syncActive;
+	return syncActive;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline u32 GetSyncTime()
+{
+	extern u32 syncTime;
+	return syncTime;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 #ifndef WIN32

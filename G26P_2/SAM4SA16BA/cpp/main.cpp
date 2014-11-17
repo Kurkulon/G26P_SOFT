@@ -318,7 +318,7 @@ static void UpdateTransmiter()
 	static byte i = 0;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
-	static byte buf[256] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+	static byte buf[256] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 	static RTM32 rtm;
 	
 	DataPointer p(buf);
@@ -326,34 +326,49 @@ static void UpdateTransmiter()
 	switch(i)
 	{
 		case 0:
-			//wb.data = buf;
-			//wb.len = 10;
-			//p.b += wb.len;
 
-			//*p.w = GetCRC16(wb.data, wb.len);
-			//wb.len += 2;
-			//comtr.Write(&wb);
+			wb.data = buf;
+			wb.len = 2;
 
-			comtr.TransmitByte(0);
-			
+			p.v = wb.data;
+			p.b += wb.len;
+
+			*p.w = GetCRC16(wb.data, wb.len);
+			wb.len += 2;
+			comtr.Write(&wb);
+
 			i++;
 
 			break;
 
 		case 1:
 
-			//if (!comtr.Update())
+			if (!comtr.Update())
 			{
 				i++;
+				rtm.Reset();
 			};
 
 			break;
 
 		case 2:
 
-			if (rtm.Check(MS2RT(1000)))
+			if (rtm.Check(MS2RT(1)))
+			{
+				comtr.TransmitByte(0);
+				i++;
+			};
+
+			break;
+
+
+		case 3:
+
+			if (rtm.Check(MS2RT(100)))
 			{
 				i = 0;
+
+				buf[1]++; if (buf[1] > 3) buf[1] = 1;
 			};
 
 			break;

@@ -130,6 +130,10 @@ void ComPort::TransmitByte(byte v)
 
 	_SU->THR = v;
 
+	while ((_SU->CSR & 0x200) == 0);
+
+	_pm->CODR = _maskRTS;
+
 	_SU->CR = 0xA0;	// Disable transmit and receive
 
 #endif

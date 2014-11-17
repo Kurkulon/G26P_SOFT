@@ -163,15 +163,15 @@ int main()
 	
 	while (1)
 	{
-		if (j >= 1000)
-		{
-			HW::GPIO->SET0 = 1<<7;
-			j = 0;
-		}
-		else if (j == 499)
-		{
-			HW::GPIO->CLR0 = 1<<7;
-		};
+		//if (j >= 1000)
+		//{
+		//	HW::GPIO->SET0 = 1<<7;
+		//	j = 0;
+		//}
+		//else if (j == 499)
+		//{
+		//	HW::GPIO->CLR0 = 1<<7;
+		//};
 
 		UpdateHardware();
 		UpdateCom();

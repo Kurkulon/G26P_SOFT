@@ -95,6 +95,7 @@ struct TM32
 
 	TM32() : pt(ipt++) {}
 	bool Check(u32 v) { if ((GetMilliseconds() - pt) >= v) { pt = GetMilliseconds(); return true; } else { return false; }; }
+	void Reset() { pt = GetMilliseconds(); }
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -105,6 +106,7 @@ struct RTM32
 
 	RTM32() : pt(0) {}
 	bool Check(u32 v) { if ((GetRTT() - pt) >= v) { pt = GetRTT(); return true; } else { return false; }; }
+	void Reset() { pt = GetRTT(); }
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

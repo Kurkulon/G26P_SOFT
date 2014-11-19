@@ -4,7 +4,7 @@
 
 
 u16 curHV = 0;
-u16 reqHV = 600;
+u16 reqHV = 800;
 
 //#define eVal_IntervalTimer ((MCK / 5000) * 10)
 //#define eVal_StartSample   ((MCK / 5000) *  6)
@@ -111,14 +111,14 @@ static void UpdateADC()
 
 	SPI0->TXDATCTL = 0x0F100000; //SPI_TXDATCTL_FLEN(7) | SPI_TXDATCTL_EOT | SPI_TXDATCTL_SSEL_N(0xe);
 
-	//if (curHV < (reqHV-5))
-	//{
-	//	GPIO->SET0 = 1<<11;
-	//}
-	//else if (curHV > (reqHV+5))
-	//{
-	//	GPIO->CLR0 = 1<<11;
-	//};
+	if (curHV < (reqHV-5))
+	{
+		GPIO->SET0 = 1<<11;
+	}
+	else if (curHV > (reqHV+5))
+	{
+		GPIO->CLR0 = 1<<11;
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -202,9 +202,9 @@ static void InitFire()
 	SCT->REGMODE_L = 0;
 
 	SCT->MATCH_L[0] = 1; 
-	SCT->MATCH_L[1] = 25*330;
-	SCT->MATCH_L[2] = 25*333;
-	SCT->MATCH_L[3] = 25*666;
+	SCT->MATCH_L[1] = 25*625;
+	SCT->MATCH_L[2] = 25*635;
+	SCT->MATCH_L[3] = 25*1333;
 	SCT->MATCH_L[4] = 0;
 
 	SCT->OUT[0].SET = 0x0001;

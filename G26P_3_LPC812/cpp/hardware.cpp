@@ -195,23 +195,24 @@ static void InitFire()
 
 	SYSCON->SYSAHBCLKCTRL |= CLK::SCT_M;
 	GPIO->DIR0 |= (1<<13)|(1<<17)|(1<<12)|(1<<4);
-	GPIO->CLR0 = (1<<13)|(1<<17)|(1<<12)|(1<<4);
+	GPIO->CLR0 = (1<<17)|(1<<12);
+	GPIO->SET0 = (1<<13)|(1<<4);
 //	SWM->PINASSIGN.U0_TXD = 0;
 
 	SCT->STATE_L = 0;
 	SCT->REGMODE_L = 0;
 
-	SCT->MATCH_L[0] = 1; 
-	SCT->MATCH_L[1] = 25*625;
-	SCT->MATCH_L[2] = 25*635;
-	SCT->MATCH_L[3] = 25*1333;
+	SCT->MATCH_L[0] = 0; 
+	SCT->MATCH_L[1] = 25*10;
+	SCT->MATCH_L[2] = 25*105;
+	SCT->MATCH_L[3] = 25*115;
 	SCT->MATCH_L[4] = 0;
 
-	SCT->OUT[0].SET = 0x0001;
-	SCT->OUT[0].CLR = 0x0002;
+	SCT->OUT[0].SET = 0x0002;
+	SCT->OUT[0].CLR = 0x0005;
 
-	SCT->OUT[1].SET = 0x0004;
-	SCT->OUT[1].CLR = 0x0008;
+	SCT->OUT[1].SET = 0x0008;
+	SCT->OUT[1].CLR = 0x0001;
 
 //	SCT->OUTPUT |= 1;
 

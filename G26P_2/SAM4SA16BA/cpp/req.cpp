@@ -42,13 +42,13 @@ REQ* RequestQuery::Get()
 
 void RequestQuery::Update()
 {
-	static byte i = 0;
-
-		switch(i)
+		switch(_state)
 		{
 			case 0:
 
-				if ((_req = Get()) != 0) i++;
+				_req = (_run) ? Get() : 0;
+
+				if (_req != 0) _state++;
 
 				break;
 
@@ -58,15 +58,16 @@ void RequestQuery::Update()
 				{
 					DataPointer p(_req->wb->data);
 					p.b += _req->wb->len;
+
 					*p.w = GetCRC16(_req->wb->data, _req->wb->len);
 					_req->wb->len += 2;
 					com->Write(_req->wb);
-					i++;
+					_state++;
 				}
 				else
 				{
-					i = 0;
-				};
+					_state = 0;
+				}; 
 
 				break;
 
@@ -77,11 +78,11 @@ void RequestQuery::Update()
 					if (_req->rb != 0)
 					{
 						com->Read(_req->rb, _req->preTimeOut, _req->postTimeOut); 
-						i++;
+						_state++;
 					}
 					else
 					{
-						i += 2;
+						_state += 2;
 					};
 				};
 
@@ -92,7 +93,7 @@ void RequestQuery::Update()
 				if (!com->Update())
 				{
 //					_req->crcOK = GetCRC16(_req->rb->data, _req->rb->len) == 0;
-					i++;
+					_state++;
 				};
 
 				break;
@@ -104,9 +105,13 @@ void RequestQuery::Update()
 					_req->CallBack(_req);
 				};
 
-				i = 0;
+				_state = 0;
 
 				break;
+
+			default:
+
+				_state = 0;
 		};
 }
 

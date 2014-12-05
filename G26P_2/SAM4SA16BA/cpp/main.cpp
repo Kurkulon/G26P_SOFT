@@ -18,8 +18,10 @@ static u32 bfCRCOK = 0;
 static u32 bfCRCER = 0;
 
 static bool waitSync = false;
+static bool startFire = false;
 
 static RequestQuery qrcv(&comrcv);
+static RequestQuery qtrm(&comtr);
 
 static R02 r02[8][3][2];
 
@@ -38,20 +40,20 @@ Response rsp;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackReq01(REQ *q)
+void CallBackRcvReqFire(REQ *q)
 {
 	waitSync = true;;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateReq01(byte adr, byte n)
+REQ* CreateRcvReqFire(byte adr, byte n)
 {
 	static Req01 req;
 	static ComPort::WriteBuffer wb;
 	static REQ q;
 
-	q.CallBack = CallBackReq01;
+	q.CallBack = CallBackRcvReqFire;
 	q.rb = 0;
 	q.wb = &wb;
 	
@@ -68,14 +70,14 @@ REQ* CreateReq01(byte adr, byte n)
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackReq02(REQ *q)
+void CallBackRcvReq02(REQ *q)
 {
 
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateReq02(byte adr, byte n, byte chnl)
+REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 {
 	adr = (adr-1)&7; chnl &= 1; n = (n+1)&3 - 1;
 
@@ -88,7 +90,7 @@ REQ* CreateReq02(byte adr, byte n, byte chnl)
 	REQ &q = r02[adr][n][chnl].q;
 
 
-	q.CallBack = CallBackReq02;
+	q.CallBack = CallBackRcvReq02;
 	q.rb = &rb;
 	q.wb = &wb;
 	q.preTimeOut = MS2RT(1);
@@ -99,6 +101,7 @@ REQ* CreateReq02(byte adr, byte n, byte chnl)
 
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
+	rb.recieved = false;
 	
 	req.adr = 1;//adr;
 	req.func = 2;
@@ -111,7 +114,7 @@ REQ* CreateReq02(byte adr, byte n, byte chnl)
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackReq03(REQ *q)
+void CallBackRcvReq03(REQ *q)
 {
 	Rsp03 *rsp = (Rsp03*)q->rb->data;
 
@@ -120,7 +123,7 @@ void CallBackReq03(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateReq03(byte adr, byte dt[], byte ka[])
+REQ* CreateRcvReq03(byte adr, byte dt[], byte ka[])
 {
 	static Req03 req;
 	static Rsp03 rsp;
@@ -128,7 +131,7 @@ REQ* CreateReq03(byte adr, byte dt[], byte ka[])
 	static ComPort::ReadBuffer rb;
 	static REQ q;
 
-	q.CallBack = CallBackReq03;
+	q.CallBack = CallBackRcvReq03;
 	q.preTimeOut = MS2RT(10);
 	q.postTimeOut = 1;
 	q.rb = &rb;
@@ -153,6 +156,36 @@ REQ* CreateReq03(byte adr, byte dt[], byte ka[])
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackTrmReqFire(REQ *q)
+{
+	waitSync = true;;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateTrmReqFire(byte n)
+{
+	static __packed struct { byte func; byte n; word crc; } req;
+
+	static ComPort::WriteBuffer wb;
+	static REQ q;
+
+	q.CallBack = CallBackTrmReqFire;
+	q.rb = 0;
+	q.wb = &wb;
+	
+	wb.data = &req;
+	wb.len = sizeof(req)-sizeof(req.crc);
+	
+	req.func = 1;
+	req.n = n;
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -162,114 +195,107 @@ REQ* CreateReq03(byte adr, byte dt[], byte ka[])
 
 static void UpdateBlackFin()
 {
-	static byte i = 0;
-	static ComPort::WriteBuffer wb;
-	static ComPort::ReadBuffer rb;
-	static byte buf[1024];
+	//static byte i = 0;
+	//static ComPort::WriteBuffer wb;
+	//static ComPort::ReadBuffer rb;
+	//static byte buf[1024];
 
-	switch(i)
-	{
-		case 0:
+	//switch(i)
+	//{
+	//	case 0:
 
-			rb.data = buf;
-			rb.maxLen = sizeof(buf);
-			combf.Read(&rb, -1, 1);
-			i++;
+	//		rb.data = buf;
+	//		rb.maxLen = sizeof(buf);
+	//		combf.Read(&rb, -1, 1);
+	//		i++;
 
-			break;
+	//		break;
 
-		case 1:
+	//	case 1:
 
-			if (!combf.Update())
-			{
-				if (rb.recieved && rb.len > 0)
-				{
-					if (GetCRC16(rb.data, rb.len) == 0)	bfCRCOK++;	else	bfCRCER++;
+	//		if (!combf.Update())
+	//		{
+	//			if (rb.recieved && rb.len > 0)
+	//			{
+	//				if (GetCRC16(rb.data, rb.len) == 0)	bfCRCOK++;	else	bfCRCER++;
 
 
-					wb.data = rb.data;
-					wb.len = rb.len;
+	//				wb.data = rb.data;
+	//				wb.len = rb.len;
 
-					DataPointer p(wb.data);
-					p.b += wb.len;
-					*p.w = GetCRC16(wb.data, wb.len);
-					wb.len += 2;
+	//				DataPointer p(wb.data);
+	//				p.b += wb.len;
+	//				*p.w = GetCRC16(wb.data, wb.len);
+	//				wb.len += 2;
 
-					combf.Write(&wb);
-					i++;
-				}
-				else
-				{
-					i = 0;
-				};
-			};
+	//				combf.Write(&wb);
+	//				i++;
+	//			}
+	//			else
+	//			{
+	//				i = 0;
+	//			};
+	//		};
 
-			break;
+	//		break;
 
-		case 2:
+	//	case 2:
 
-			if (!combf.Update())
-			{
-				i = 0;
-			};
+	//		if (!combf.Update())
+	//		{
+	//			i = 0;
+	//		};
 
-			break;
-	};
+	//		break;
+	//};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateRecievers()
+static void UpdateRcvTrm()
 {
 	static byte i = 0, n = 0;
-	static ComPort::WriteBuffer wb;
-	static ComPort::ReadBuffer rb;
-	static byte buf[1024];
 	static 	RTM32 rtm;
 //	static RTM32 rt2;
 
 	static Request req;
-			
-	DataPointer p(buf);
 
+	REQ *reqr;
+	REQ *reqt;
+			
 	switch(i)
 	{
 		case 0:
 			
-			waitSync = false;
-			
-			qrcv.Add(CreateReq01(0, n));
+			qrcv.Update();
 
-			i++;
+			i = (startFire) ? 2 : 1;
 
 			break;
 
 		case 1:
 
-			qrcv.Update();
+			qtrm.Update();
 		
-			if (waitSync)
-			{
-				waitSync = false;
-				rtm.pt = GetRTT();
-				i++;
-			};
+			i = (startFire) ? 2 : 0;
 
 			break;
 
 		case 2:
 
-			if (rtm.Check(3))
-			{
-				comrcv.TransmitByte(0);
-				i++;
-			};
+			qrcv.Stop();
+			qtrm.Stop();
+			i++;
 
 			break;
 
+
 		case 3:
 
-			if (rtm.Check(MS2RT(15)))
+			qrcv.Update();
+			qtrm.Update();
+ 
+			if (qrcv.Stoped() && qtrm.Stoped())
 			{
 				i++;
 			};
@@ -278,33 +304,61 @@ static void UpdateRecievers()
 
 		case 4:
 
-			for (byte j = 1; j < 9; j++)
-			{
-				qrcv.Add(CreateReq02(j, n, 0));
-				qrcv.Add(CreateReq02(j, n, 1));
-			};
+			reqr = CreateRcvReqFire(0, n);
+			reqt = CreateTrmReqFire(n);
+
+			comrcv.Write(reqr->wb);
+			comtr.Write(reqt->wb);
 
 			i++;
 
 			break;
 
+
 		case 5:
 
-			qrcv.Update();
-
-			if (qrcv.Ready())
+			if (!comrcv.Update() && !comtr.Update())
 			{
+				rtm.Reset();
 				i++;
-			}
+			};
 
 			break;
 
 		case 6:
 
-			if (rtm.Check(MS2RT(75)))
+			if (rtm.Check(3))
 			{
-				i = 0;
+				comrcv.TransmitByte(0);
+				comtr.TransmitByte(0);
+				i++;
 			};
+
+			break;
+
+		case 7:
+
+			if (rtm.Check(MS2RT(15)))
+			{
+				i++;
+			};
+
+			break;
+
+		case 8:
+
+			for (byte j = 1; j < 9; j++)
+			{
+				qrcv.Add(CreateRcvReq02(j, n, 0));
+				qrcv.Add(CreateRcvReq02(j, n, 1));
+			};
+
+			startFire = false;
+
+			qrcv.Start();
+			qtrm.Start();
+
+			i = 0;
 
 			break;
 	};
@@ -313,69 +367,54 @@ static void UpdateRecievers()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateTransmiter()
+void UpdateCom1()
 {
 	static byte i = 0;
+
 	static ComPort::WriteBuffer wb;
-	static ComPort::ReadBuffer rb;
-	static byte buf[256] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
 	static RTM32 rtm;
-	
-	DataPointer p(buf);
+
+	ComPort::ReadBuffer &rb = r02[0][0][1].rb;
 
 	switch(i)
 	{
 		case 0:
+	
+			if (rb.recieved)
+			{
+				rb.recieved = false;
+				wb.data = rb.data;
+				wb.len = rb.len;
 
-			wb.data = buf;
-			wb.len = 2;
+				com1.Write(&wb);
 
-			p.v = wb.data;
-			p.b += wb.len;
-
-			*p.w = GetCRC16(wb.data, wb.len);
-			wb.len += 2;
-			comtr.Write(&wb);
-
-			i++;
+				i++;
+			};
 
 			break;
 
 		case 1:
 
-			if (!comtr.Update())
+			if (!com1.Update())
 			{
-				i++;
 				rtm.Reset();
+				i++;
 			};
 
 			break;
 
 		case 2:
 
-			if (rtm.Check(MS2RT(1)))
-			{
-				comtr.TransmitByte(0);
-				i++;
-			};
-
-			break;
-
-
-		case 3:
-
 			if (rtm.Check(MS2RT(100)))
 			{
 				i = 0;
-
-				buf[1]++; if (buf[1] > 3) buf[1] = 1;
 			};
 
 			break;
 	};
 }
 
-	
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void UpdateMisc()
@@ -388,8 +427,8 @@ static void UpdateMisc()
 	switch(i++)
 	{
 		CALL( UpdateBlackFin()		);
-		CALL( UpdateRecievers()		);
-		CALL( UpdateTransmiter()	);
+		CALL( UpdateRcvTrm()		);
+		CALL( UpdateCom1()			);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -413,7 +452,7 @@ int main()
 	RTT_Init();
 
 
-	com1.Connect(0, 6250000, 0);
+	com1.Connect(0, 921600, 0);
 	comtr.Connect(1, 1562500, 0);
 	combf.Connect(3, 6250000, 0);
 	comrcv.Connect(2, 6250000, 0);
@@ -430,9 +469,10 @@ int main()
 
 		fps++;
 
-		if (rtm.Check(32768))
+		if (rtm.Check(MS2RT(500)))
 		{ 
 			fc = fps; fps = 0; 
+			startFire = true;
 //			com1.TransmitByte(0);
 		};
 	};

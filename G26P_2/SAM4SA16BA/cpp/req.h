@@ -121,17 +121,25 @@ class RequestQuery
 	REQ* _first;
 	REQ* _last;
 	REQ* _req;
+	
+	byte _state;
+
 
 	ComPort *com;
 
+	bool _run;
+
 public:
 
-	RequestQuery(ComPort *p) : _first(0), _last(0), com(p) {}
+	RequestQuery(ComPort *p) : _first(0), _last(0), _run(true), _state(0), com(p) {}
 	void Add(REQ* req);
 	REQ* Get();
 	bool Empty() { return _first == 0; }
-	bool Ready() { return (_first == 0) && (_req == 0); }
+	bool Idle() { return (_first == 0) && (_req == 0); }
+	bool Stoped() { return _req == 0; }
 	void Update();
+	void Stop() { _run = false; }
+	void Start() { _run = true; }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

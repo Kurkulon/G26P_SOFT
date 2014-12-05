@@ -23,7 +23,7 @@ static bool ready1 = false, ready2 = false;
 //static u32 CRCER = 0;
 
 static byte sampleTime[3] = { 19, 19, 9};
-static byte gain[3] = { 7, 7, 7 };
+static byte gain[3] = { 0, 0, 0 };
 static byte netAdr = 1;
 
 

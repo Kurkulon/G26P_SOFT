@@ -25,6 +25,7 @@ static RequestQuery qtrm(&comtr);
 
 static R02 r02[8][3][2];
 
+static byte fireType = 0;
 
 
 //static u32 rcvCRCOK = 0;
@@ -79,7 +80,7 @@ void CallBackRcvReq02(REQ *q)
 
 REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 {
-	adr = (adr-1)&7; chnl &= 1; n = (n+1)&3 - 1;
+	adr = (adr-1)&7; //chnl &= 1; n = (n+1)&3 - 1;
 
 	Req02 &req = r02[adr][n][chnl].req;
 	Rsp02 &rsp = r02[adr][n][chnl].rsp;
@@ -285,6 +286,7 @@ static void UpdateRcvTrm()
 
 			qrcv.Stop();
 			qtrm.Stop();
+			n = fireType;
 			i++;
 
 			break;
@@ -367,30 +369,89 @@ static void UpdateRcvTrm()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+bool RequestTestCom01(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+{
+	__packed struct Req { byte func; byte ft; u16 crc; };
+	__packed struct Rsp { byte func; u16 crc; };
+
+	Req *req = (Req*)rb->data;
+
+	static Rsp rsp;
+
+	if (rb->len < 2) return false;
+
+	if (req->ft <= 2)
+	{
+		fireType = req->ft;
+	};
+
+	rsp.func = 1;
+
+	rsp.crc = GetCRC16(&rsp, 1);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	startFire = true;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool RequestTestCom02(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+{
+	__packed struct Req { byte func; byte adr; byte n; byte ch; u16 crc; };
+
+	Req *req = (Req*)rb->data;
+
+	if (rb->len < 4) return false;
+	if (req->adr < 1 || req->adr > 8 || req->n > 2 || req->ch > 1) return false;
+
+	R02 &r = r02[req->adr-1][req->n][req->ch];
+
+	wb->data = &r.rsp;
+	wb->len = sizeof(r.rsp);
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool RequestTestCom(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+{
+	byte *pb = (byte*)rb->data;
+
+	switch (pb[0])
+	{
+		case 1 : return RequestTestCom01(rb, wb);
+		case 2 : return RequestTestCom02(rb, wb);
+		default : return false;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void UpdateCom1()
 {
 	static byte i = 0;
 
 	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb; // = r02[0][0][1].rb;
+	static byte buf[32];
 
 	static RTM32 rtm;
 
-	ComPort::ReadBuffer &rb = r02[0][0][1].rb;
 
 	switch(i)
 	{
 		case 0:
 	
-			if (rb.recieved)
-			{
-				rb.recieved = false;
-				wb.data = rb.data;
-				wb.len = rb.len;
+			rb.data = buf;
+			rb.maxLen = sizeof(buf);
+			com1.Read(&rb, -1, 2);
 
-				com1.Write(&wb);
-
-				i++;
-			};
+			i++;
 
 			break;
 
@@ -398,15 +459,22 @@ void UpdateCom1()
 
 			if (!com1.Update())
 			{
-				rtm.Reset();
-				i++;
+				i = (RequestTestCom(&rb, &wb)) ? i+1 : 0;
 			};
 
 			break;
 
 		case 2:
 
-			if (rtm.Check(MS2RT(100)))
+			com1.Write(&wb);
+
+			i++;
+
+			break;
+
+		case 3: 
+
+			if (!com1.Update())
 			{
 				i = 0;
 			};
@@ -472,7 +540,7 @@ int main()
 		if (rtm.Check(MS2RT(500)))
 		{ 
 			fc = fps; fps = 0; 
-			startFire = true;
+//			startFire = true;
 //			com1.TransmitByte(0);
 		};
 	};

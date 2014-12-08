@@ -338,7 +338,7 @@ void DrawWave(byte n, void *data)
 
 	for (u32 i = 0; i < ArraySize(w); i++)
 	{
-		w[i] = (pw[i]*100.0/65535 - 50)*3;
+		w[i] = (pw[i]*100.0/65535 - 50)*1;
 	};
 
 	rect.top = wh*n; rect.left = 0; rect.bottom = wh*n+wh-1; rect.right = winWidth;

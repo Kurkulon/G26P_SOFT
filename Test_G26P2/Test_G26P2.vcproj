@@ -91,28 +91,16 @@
 				RelativePath=".\cpp\main.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\cpp\req.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
-			<File
-				RelativePath=".\cpp\Alarm.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ArchiveVar.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\Channel.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\events.h"
-				>
-			</File>
 			<File
 				RelativePath=".\cpp\hardware.h"
 				>
@@ -122,7 +110,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\SensorAI.h"
+				RelativePath=".\cpp\req.h"
 				>
 			</File>
 		</Filter>

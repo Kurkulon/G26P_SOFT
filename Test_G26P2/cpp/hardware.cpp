@@ -29,8 +29,8 @@ struct BMPINF
 	RGBQUAD bmiColors[256];
 } bminfo;
 
-const word winWidth = 1800;
-const word winHeight = 200;
+const word winWidth = 1500;
+const word winHeight = 400;
 
 byte screenBuffer[winWidth*winHeight];
 u32 bitsToBytes[256][2];
@@ -188,6 +188,7 @@ static LRESULT CALLBACK WindowProc (HWND hWnd, UINT message, WPARAM wParam, LPAR
 
         case WM_CHAR:
 
+			_ungetch(wParam);
 			run = (lParam != 0x00010001);
 
             break;
@@ -328,7 +329,7 @@ void DrawWave(byte n, void *data)
 	static HBRUSH fgbr = CreateSolidBrush(RGB(0, 128, 0));
 	static HBRUSH bgbr = CreateSolidBrush(RGB(202, 198, 190));
 	static HBRUSH albr = CreateSolidBrush(RGB(192, 0, 0));
-	static HBRUSH debr = CreateSolidBrush(RGB(128, 128, 128));
+	static HBRUSH debr = CreateSolidBrush(RGB(192, 188, 180));
 
 	RECT rect;
 
@@ -338,11 +339,11 @@ void DrawWave(byte n, void *data)
 
 	for (u32 i = 0; i < ArraySize(w); i++)
 	{
-		w[i] = (pw[i]*100.0/65535 - 50)*1;
+		w[i] = (pw[i]*100.0/65535 - 50)*3;
 	};
 
-	rect.top = wh*n; rect.left = 0; rect.bottom = wh*n+wh-1; rect.right = winWidth;
-	FillRect(memdc, &rect, bgbr);
+	rect.top = wh*n; rect.left = 0; rect.bottom = wh*(n+1); rect.right = winWidth;
+	FillRect(memdc, &rect, (n&1) ? debr : bgbr);
 
 	MoveToEx(memdc, 0, wh*n+wh/2-w[0], 0);
 

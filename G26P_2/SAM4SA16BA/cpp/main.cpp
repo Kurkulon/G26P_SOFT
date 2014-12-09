@@ -14,10 +14,10 @@ ComPort comrcv;
 
 u32 fc = 0;
 
-static u32 bfCRCOK = 0;
-static u32 bfCRCER = 0;
+//static u32 bfCRCOK = 0;
+//static u32 bfCRCER = 0;
 
-static bool waitSync = false;
+//static bool waitSync = false;
 static bool startFire = false;
 
 static RequestQuery qrcv(&comrcv);
@@ -26,6 +26,9 @@ static RequestQuery qtrm(&comtr);
 static R02 r02[8][3][2];
 
 static byte fireType = 0;
+
+static byte sampleTime[3] = { 19, 19, 9};
+static byte gain[3] = { 7, 7, 7 };
 
 
 //static u32 rcvCRCOK = 0;
@@ -43,7 +46,7 @@ Response rsp;
 
 void CallBackRcvReqFire(REQ *q)
 {
-	waitSync = true;;
+//	waitSync = true;;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -117,7 +120,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 
 void CallBackRcvReq03(REQ *q)
 {
-	Rsp03 *rsp = (Rsp03*)q->rb->data;
+//	Rsp03 *rsp = (Rsp03*)q->rb->data;
 
 
 }
@@ -161,7 +164,7 @@ REQ* CreateRcvReq03(byte adr, byte dt[], byte ka[])
 
 void CallBackTrmReqFire(REQ *q)
 {
-	waitSync = true;;
+//	waitSync = true;;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -181,7 +184,7 @@ REQ* CreateTrmReqFire(byte n)
 	wb.len = sizeof(req)-sizeof(req.crc);
 	
 	req.func = 1;
-	req.n = n;
+	req.n = n+1;
 
 	return &q;
 }
@@ -259,7 +262,7 @@ static void UpdateRcvTrm()
 	static 	RTM32 rtm;
 //	static RTM32 rt2;
 
-	static Request req;
+//	static Request req;
 
 	REQ *reqr;
 	REQ *reqt;
@@ -418,6 +421,38 @@ bool RequestTestCom02(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+bool RequestTestCom03(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+{
+	__packed struct Req { byte func; byte dt[3]; byte ka[3]; word crc; };
+	__packed struct Rsp { byte func; u16 crc; };
+
+	Req *req = (Req*)rb->data;
+
+	static Rsp rsp;
+
+	if (rb->len < 7) return false;
+
+	sampleTime[0] = req->dt[0];
+	sampleTime[1] = req->dt[1];
+	sampleTime[2] = req->dt[2];
+
+	gain[0] = req->ka[0];
+	gain[1] = req->ka[1];
+	gain[2] = req->ka[2];
+
+	qrcv.Add(CreateRcvReq03(0, sampleTime, gain));
+
+	rsp.func = 3;
+	rsp.crc = GetCRC16(&rsp, 1);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 bool RequestTestCom(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
 {
 	byte *pb = (byte*)rb->data;
@@ -426,6 +461,7 @@ bool RequestTestCom(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
 	{
 		case 1 : return RequestTestCom01(rb, wb);
 		case 2 : return RequestTestCom02(rb, wb);
+		case 3 : return RequestTestCom03(rb, wb);
 		default : return false;
 	};
 }

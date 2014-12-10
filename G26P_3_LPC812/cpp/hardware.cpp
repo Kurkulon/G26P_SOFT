@@ -204,8 +204,8 @@ static void InitFire()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*10;
-	SCT->MATCH_L[2] = 25*105;
-	SCT->MATCH_L[3] = 25*115;
+	SCT->MATCH_L[2] = 25*105; //335
+	SCT->MATCH_L[3] = 25*115; //345
 	SCT->MATCH_L[4] = 0;
 
 	SCT->OUT[0].SET = 0x0002;

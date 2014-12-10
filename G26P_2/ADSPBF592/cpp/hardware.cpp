@@ -55,15 +55,6 @@ static void LowLevelInit();
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static u16 CheckParity(u16 x)
-{
-	u16 y = x ^ (x >> 1);
-
-	y = y ^ (y >> 2);
-	y = y ^ (y >> 4);
-	
-	return (y ^ (y >> 8))^1;
-}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -232,7 +223,7 @@ EX_INTERRUPT_HANDLER(TIMER_ISR)
 
 			ManDisable();
 		
-			data = (u16*)manTB->data;
+			data = manTB->data;
 			len = manTB->len;
 			stateManTrans = 1;
 
@@ -393,7 +384,7 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 
 			l = 17;
 			lp = 7;
-			p = (u32*)manRB->data;
+			p = manRB->data;
 			count = manRB->maxLen;
 			c = false;
 

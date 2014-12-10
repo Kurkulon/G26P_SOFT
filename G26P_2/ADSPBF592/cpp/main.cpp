@@ -1,6 +1,7 @@
 #include "hardware.h"
 #include "ComPort.h"
 #include "CRC16.h"
+#include "req.h"
 
 static ComPort com1;
 static ComPort::WriteBuffer wb;
@@ -8,8 +9,11 @@ static ComPort::ReadBuffer rb;
 
 //static byte data[256*48];
 
-static u16 rdata[100]; 
+static u32 rdata[100]; 
 static u16 tdata[100];
+
+static u16 reqManData[100];
+static u16 rspManData[4096];
 
 static bool ready1 = false, ready2 = false;
 
@@ -19,8 +23,102 @@ static MTB mtb;
 static u32 CRCOK = 0;
 static u32 CRCER = 0;
 
+static u16 manReqWord = 0xAA00;
+static u16 manReqMask = 0xFF00;
+
+static RequestQuery qcom(&com1);
+
+static byte stateMan = 0;
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void CallBackReqMan(REQ *q)
+{
+	mtb.data = rspManData+1;
+	mtb.len = q->rb.len;
+	SendManData(&mtb);
+	stateMan = 3;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateReqMan(void *data, u16 len)
+{
+	static REQ q;
+	
+	q.CallBack = CallBackReqMan;
+	q.preTimeOut = MS2CLK(10);
+	q.postTimeOut = US2CLK(7.2);
+	
+	q.wb.data = data;
+	q.wb.len = len;
+
+	q.rb.data = rspManData;
+	q.rb.maxLen = sizeof(rspManData);
+	
+	return &q;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void RequestMan(MRB *mrb)
+{
+	bool parityErr = false;
+	u32 *s = mrb->data;
+	u16 *d = reqManData;
+
+	u16 c = mrb->len;
+
+	*d++ = 0x5501;
+
+	while (c > 0)
+	{
+		parityErr |= (*s ^ CheckParity(*s >> 1))&1 != 0;
+
+		*d++ = *s++ >> 1;
+		c--;
+	};
+
+	qcom.Add(CreateReqMan(reqManData, (mrb->len+1) << 2));
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateMan()
+{
+	switch (stateMan)
+	{
+		case 0:
+
+			mrb.data = rdata;
+			mrb.maxLen = sizeof(rdata);
+			RcvManData(&mrb);
+
+			stateMan++;
+
+			break;
+
+		case 1:
+
+			if (mrb.ready)
+			{
+				RequestMan(&mrb);
+				stateMan++;
+			};
+
+			break;
+
+		case 2:
+
+			break;
+
+		case 3:
+
+
+	};
+}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -30,7 +128,6 @@ int main( void )
 
 	static u32 pt = 0;
 	static byte c = 0;
-	static u16 i = 0;
 
 	TM32 tm;
 
@@ -48,7 +145,6 @@ int main( void )
 	//*pPORTFIO_SET = 1<<5;
 	//*pPORTFIO_CLEAR = 1<<7;
 
-	i = 2;
 
 	while (1)
 	{
@@ -56,55 +152,23 @@ int main( void )
 
 		//u32 t = GetRTT();
 
-		switch (i)
+		static byte i = 0;
+
+		#define CALL(p) case (__LINE__-S): p; break;
+
+		enum C { S = (__LINE__+3) };
+		switch(i++)
 		{
-			case 0:
-
-//				if (tm.Check(10000000))
-				{
-					DataPointer p(tdata);
-					wb.data = p.v;
-					wb.len = 100;
-					tdata[0]++; tdata[1]++; tdata[2] = 0x5555; 
-					p.b += wb.len;
-					*p.w = GetCRC16(wb.data, wb.len);
-					wb.len += 2;
-					com1.Write(&wb);
-					i++;
-				};
-
-				break;
-
-			case 1:
-
-				if (!com1.Update())
-				{
-					rb.data = rdata;
-					rb.maxLen = sizeof(rdata);
-					com1.Read(&rb, 10000000, 720);
-					i++;
-				};
-
-				break;
-
-			case 2:
-
-				if (!com1.Update())
-				{
-					if (GetCRC16(rb.data, rb.len) == 0)
-					{
-						CRCOK++;
-					}
-					else
-					{
-						CRCER++;
-					};
-
-					i = 0;
-				};
-
-				break;
+			CALL( qcom.Update();		);
+			CALL( UpdateMan();			);
 		};
+
+		i = (i > (__LINE__-S-3)) ? 0 : i;
+
+		#undef CALL
+
+
+		
 
 //		UpdateHardware();
 

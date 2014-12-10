@@ -86,6 +86,10 @@
 				RelativePath=".\cpp\main.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\cpp\req.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -106,6 +110,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\hardware.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\req.h"
 				>
 			</File>
 			<File

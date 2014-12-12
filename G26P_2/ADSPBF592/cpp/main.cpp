@@ -34,10 +34,16 @@ static byte stateMan = 0;
 
 void CallBackReqMan(REQ *q)
 {
-	mtb.data = rspManData+1;
-	mtb.len = q->rb.len;
-	SendManData(&mtb);
-	stateMan = 3;
+	if (q->rb.len >= 4)
+	{
+		mtb.data = rspManData+1;
+		mtb.len = (q->rb.len-2) >> 1;
+		stateMan = (SendManData(&mtb)) ? 3 : 0;
+	}
+	else
+	{
+		stateMan = 0;
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -65,35 +71,26 @@ REQ* CreateReqMan(void *data, u16 len)
 
 static void RequestMan(MRB *mrb)
 {
-	bool parityErr = false;
-	u32 *s = mrb->data;
-	u16 *d = reqManData;
 
-	u16 c = mrb->len;
 
-	*d++ = 0x5501;
-
-	while (c > 0)
-	{
-		parityErr |= (*s ^ CheckParity(*s >> 1))&1 != 0;
-
-		*d++ = *s++ >> 1;
-		c--;
-	};
-
-	qcom.Add(CreateReqMan(reqManData, (mrb->len+1) << 2));
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void UpdateMan()
 {
+	bool parityErr;
+	u32 *s;
+	u16 *d;
+
+	u16 c;
+
 	switch (stateMan)
 	{
 		case 0:
 
 			mrb.data = rdata;
-			mrb.maxLen = sizeof(rdata);
+			mrb.maxLen = ArraySize(rdata);
 			RcvManData(&mrb);
 
 			stateMan++;
@@ -104,8 +101,42 @@ static void UpdateMan()
 
 			if (mrb.ready)
 			{
-				RequestMan(&mrb);
-				stateMan++;
+				parityErr = false;
+				s = mrb.data;
+				d = reqManData;
+				c = mrb.len;
+
+				*d++ = 0x5501;
+
+				while (c > 0)
+				{
+					parityErr |= (*s ^ CheckParity(*s >> 1))&1 != 0;
+
+					*d++ = *s++ >> 1;
+					c--;
+				};
+
+				if (!parityErr)
+				{
+					if ((reqManData[1] & manReqMask) == manReqWord && (reqManData[1] & 0xFF) == 0x80 && reqManData[2] == 2 && reqManData[3] < 4)
+					{
+						SetTrmBoudRate(reqManData[3]);
+
+						rspManData[1] = manReqWord|0x80;
+						mtb.data = rspManData+1;
+						mtb.len = 1;
+						stateMan = (SendManData(&mtb)) ? 3 : 0;
+					}
+					else
+					{
+						qcom.Add(CreateReqMan(reqManData, (mrb.len+1) << 1));
+						stateMan = 2;
+					};
+				}
+				else
+				{
+					stateMan = 0;
+				};
 			};
 
 			break;
@@ -116,7 +147,12 @@ static void UpdateMan()
 
 		case 3:
 
+			if (mtb.ready)
+			{
+				stateMan = 0;
+			};
 
+			break;
 	};
 }
 

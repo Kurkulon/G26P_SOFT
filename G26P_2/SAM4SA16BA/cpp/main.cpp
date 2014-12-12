@@ -14,8 +14,8 @@ ComPort comrcv;
 
 u32 fc = 0;
 
-//static u32 bfCRCOK = 0;
-//static u32 bfCRCER = 0;
+static u32 bfCRCOK = 0;
+static u32 bfCRCER = 0;
 
 //static bool waitSync = false;
 static bool startFire = false;
@@ -30,6 +30,13 @@ static byte fireType = 0;
 static byte sampleTime[3] = { 19, 19, 9};
 static byte gain[3] = { 7, 7, 7 };
 
+static u16 manReqWord = 0xAA00;
+static u16 manReqMask = 0xFF00;
+
+static u16 numDevice = 0;
+static u16 verDevice = 1;
+
+static u32 manCounter = 0;
 
 //static u32 rcvCRCOK = 0;
 //static u32 rcvCRCER = 0;
@@ -191,67 +198,244 @@ REQ* CreateTrmReqFire(byte n)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+static bool RequestMan_00(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+{
+	static u16 rsp[4];
+
+	if (wb == 0) return false;
+
+	rsp[0] = 0x5501;
+	rsp[1] = manReqWord;
+	rsp[2] = numDevice;
+	rsp[3] = verDevice;
+
+	wb->data = rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
+}
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+{
+	__packed struct T { u16 g[8]; u16 st; u16 len; u16 delay; u16 voltage; };
+	__packed struct Rsp { u16 hdr; u16 rw; T t1, t2, t3; };
+	
+	static Rsp rsp;
+
+	if (wb == 0) return false;
+
+	rsp.hdr = 0x5501;
+	rsp.rw = manReqWord|0x10;
+
+	for (byte i = 0; i < 8; i++)
+	{
+		rsp.t1.g[i] = gain[0];
+		rsp.t2.g[i] = gain[1];
+		rsp.t3.g[i] = gain[2];
+	};
+
+	rsp.t1.st = sampleTime[0];
+	rsp.t1.len = 500;
+	rsp.t1.delay = 0;
+	rsp.t1.voltage = 800;
+
+	rsp.t2.st = sampleTime[1];
+	rsp.t2.len = 500;
+	rsp.t2.delay = 0;
+	rsp.t2.voltage = 800;
+
+	rsp.t3.st = sampleTime[2];
+	rsp.t3.len = 500;
+	rsp.t3.delay = 0;
+	rsp.t3.voltage = 800;
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+{
+	static u16 rsp[4];
+
+	if (wb == 0) return false;
+
+	rsp[0] = 0x5501;
+	rsp[1] = manReqWord|0x20;
+	rsp[2] = GD(&manCounter, u16, 0);
+	rsp[3] = GD(&manCounter, u16, 1);
+ 
+	wb->data = rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+{
+	__packed struct Rsp { u16 hdr; u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[2048]; };
+	
+	static Rsp rsp; 
+
+	if (wb == 0 || !(len == 1 || len == 3)) return false;
+
+	u16 c = (len == 1) ? 2048 : data[2];
+
+	if (c > 2048) return false;
+
+	rsp.hdr = 0x5501;
+	rsp.rw = *data;
+
+	rsp.cnt = manCounter;
+	rsp.gain = gain[((rsp.rw>>4)-3)&3];
+	rsp.st = sampleTime[((rsp.rw>>4)-3)&3];
+	rsp.len = 500;
+	rsp.delay = 0;
+
+	wb->data = &rsp;
+	wb->len = 18 + (c<<1);
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan_80(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+{
+	return false;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+{
+	return false;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan_F0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+{
+	return false;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
+{
+	u16 *p = (u16*)rb->data;
+	bool r = false;
+
+	u16 t = p[1];
+
+	if ((t & manReqMask) != manReqWord || rb->len < 6)
+	{
+		return false;
+	};
+
+	u16 len = (rb->len - 4)>>1;
+
+	t = (t>>4) & 0xF;
+
+	switch (t)
+	{
+		case 0: 	r = RequestMan_00(p+1, len, wb); break;
+		case 1: 	r = RequestMan_10(p+1, len, wb); break;
+		case 2: 	r = RequestMan_20(p+1, len, wb); break;
+		case 3: 
+		case 4: 
+		case 5: 	r = RequestMan_30(p+1, len, wb); break;
+		case 8: 	r = RequestMan_80(p+1, len, wb); break;
+		case 9:		r = RequestMan_90(p+1, len, wb); break;
+		case 0xF:	r = RequestMan_F0(p+1, len, wb); break;
+	};
+
+	return r;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestBF(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
+{
+	byte *p = (byte*)rb->data;
+	bool r = false;
+
+	switch(*p)
+	{
+		case 1:	// Запрос Манчестер
+
+			r = RequestMan(wb, rb);
+
+			break;
+
+	};
+
+	return r;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void UpdateBlackFin()
 {
-	//static byte i = 0;
-	//static ComPort::WriteBuffer wb;
-	//static ComPort::ReadBuffer rb;
-	//static byte buf[1024];
+	static byte i = 0;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static byte buf[1024];
 
-	//switch(i)
-	//{
-	//	case 0:
+	switch(i)
+	{
+		case 0:
 
-	//		rb.data = buf;
-	//		rb.maxLen = sizeof(buf);
-	//		combf.Read(&rb, -1, 1);
-	//		i++;
+			rb.data = buf;
+			rb.maxLen = sizeof(buf);
+			combf.Read(&rb, -1, 1);
+			i++;
 
-	//		break;
+			break;
 
-	//	case 1:
+		case 1:
 
-	//		if (!combf.Update())
-	//		{
-	//			if (rb.recieved && rb.len > 0)
-	//			{
-	//				if (GetCRC16(rb.data, rb.len) == 0)	bfCRCOK++;	else	bfCRCER++;
+			if (!combf.Update())
+			{
+				if (rb.recieved && rb.len > 0 && GetCRC16(rb.data, rb.len) == 0)
+				{
+					if (RequestBF(&wb, &rb))
+					{
+						combf.Write(&wb);
+						i++;
+					}
+					else
+					{
+						i = 0;
+					};
 
+					bfCRCOK++;
+				}
+				else
+				{
+					bfCRCER++;
+					i = 0;
+				};
+			};
 
-	//				wb.data = rb.data;
-	//				wb.len = rb.len;
+			break;
 
-	//				DataPointer p(wb.data);
-	//				p.b += wb.len;
-	//				*p.w = GetCRC16(wb.data, wb.len);
-	//				wb.len += 2;
+		case 2:
 
-	//				combf.Write(&wb);
-	//				i++;
-	//			}
-	//			else
-	//			{
-	//				i = 0;
-	//			};
-	//		};
+			if (!combf.Update())
+			{
+				i = 0;
+			};
 
-	//		break;
-
-	//	case 2:
-
-	//		if (!combf.Update())
-	//		{
-	//			i = 0;
-	//		};
-
-	//		break;
-	//};
+			break;
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

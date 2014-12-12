@@ -106,7 +106,10 @@ win32_link_options = -NOLOGO -SUBSYSTEM:CONSOLE -DEBUG -MACHINE:X86 kernel32.lib
 $(objdir)\g26p2man.dxe : $(objdir)\basiccrt.doj $(modules_obj)
 	@echo Linking ...
 	@linker	$(link_options) -Map "$(objdir)\$^&.xml" -MDUSER_CRT="$(objdir)\basiccrt.doj" -o "$^@" $< $(libname)
-	@elfloader -v -f binary -b SPI -proc ADSP-BF592-A -si-revision 0.2 -o "$(objdir)\$^&.ldr" -dmawidth 8 -width 8 $^@ 
+	@elfloader -v -f binary -b flash -proc ADSP-BF592-A -dmawidth 8 -width 8 -o "$(objdir)\$^&.ldr" -MM -Mo "$(objdir)\$^&.dep" $^@ 
+
+#	@elfloader -proc ADSP-BF592-A -b spislave -fBinary -o "$(objdir)\$^&.ldr" $^
+#-si-revision 0.2 	
 	
 !else
 

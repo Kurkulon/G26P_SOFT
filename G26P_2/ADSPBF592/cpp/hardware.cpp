@@ -402,8 +402,13 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 			rw |= *pPORTFIO & 1; // синхро бит 
 			lp--;
 
-			if (rw >= 14 || lp == 0)
+			if (rw >= 14)
 			{
+				stateManRcvr++;
+			}
+			else if (lp == 0)
+			{
+				*pPORTFIO_POLAR ^= (1<<10)|0xF1;
 				stateManRcvr++;
 			};
 

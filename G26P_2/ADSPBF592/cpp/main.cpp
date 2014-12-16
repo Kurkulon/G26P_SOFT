@@ -116,9 +116,9 @@ static void UpdateMan()
 					c--;
 				};
 
-				if (!parityErr)
+				if (!parityErr && (reqManData[1] & manReqMask) == manReqWord)
 				{
-					if ((reqManData[1] & manReqMask) == manReqWord && (reqManData[1] & 0xFF) == 0x80 && reqManData[2] == 2 && reqManData[3] < 4)
+					if ((reqManData[1] & 0xFF) == 0x80 && reqManData[2] == 2 && reqManData[3] < 4)
 					{
 						SetTrmBoudRate(reqManData[3]);
 

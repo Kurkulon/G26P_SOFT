@@ -16,6 +16,8 @@ u32 fc = 0;
 
 static u32 bfCRCOK = 0;
 static u32 bfCRCER = 0;
+static u32 bfURC = 0;
+static u32 bfERC = 0;
 
 //static bool waitSync = false;
 static bool startFire = false;
@@ -337,6 +339,7 @@ static bool RequestMan(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 
 	if ((t & manReqMask) != manReqWord || rb->len < 6)
 	{
+		bfERC++; 
 		return false;
 	};
 
@@ -355,6 +358,8 @@ static bool RequestMan(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 		case 8: 	r = RequestMan_80(p+1, len, wb); break;
 		case 9:		r = RequestMan_90(p+1, len, wb); break;
 		case 0xF:	r = RequestMan_F0(p+1, len, wb); break;
+		
+		default:	bfURC++; 
 	};
 
 	return r;

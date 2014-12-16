@@ -382,8 +382,8 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 	{
 		case 0:
 
-			l = 17;
-			lp = 7;
+			l = 16;
+			lp = 8;
 			p = manRB->data;
 			count = manRB->maxLen;
 			c = false;
@@ -402,13 +402,21 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 			rw |= *pPORTFIO & 1; // синхро бит 
 			lp--;
 
-			if (rw >= 14)
+			if (rw >= 0x1C)
 			{
-				stateManRcvr++;
+				if (((rw+1)&3) > 1)
+				{
+					stateManRcvr = 3;
+				}
+				else
+				{
+					*pTCNTL = 0;
+					stateManRcvr = 0;
+				};
 			}
 			else if (lp == 0)
 			{
-				*pPORTFIO_POLAR ^= (1<<10)|0xF1;
+//				*pPORTFIO_POLAR ^= (1<<10)|0xF1;
 				stateManRcvr++;
 			};
 

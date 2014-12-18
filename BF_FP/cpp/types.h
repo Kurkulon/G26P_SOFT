@@ -28,6 +28,7 @@ typedef signed long long int i64;
 typedef unsigned long long int u64;
 
 #define ArraySize(x) (sizeof(x)/sizeof(x[0]))
+#define GB(adr,i) (*(((byte*)adr)+i))
 
 #ifndef NAN
 static const dword __NAN_dword = 0xFFFFFFFF;
@@ -38,8 +39,6 @@ inline float ABS(float v) { *((u32*)&v) &= 0x7FFFFFFF; return v; }
 
 inline bool fIsValid(float v) { return (((u16*)&v)[2] & 0x7F80) != 0x7F80; }
 inline bool dIsValid(float v) { return (((u32*)&v)[2] & 0x7FF0) != 0x7FF0; }
-
-#define GD(adr, t, i) (*(((t*)adr)+i))
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 union DataCRC
@@ -83,30 +82,30 @@ union F32u
 
 union DataPointer
 {
-	__packed void	*v;
-	__packed byte	*b;
-	__packed word	*w;
-	__packed dword	*d;
-	__packed float	*f;
+	void	*v;
+	byte	*b;
+	word	*w;
+	dword	*d;
+	float	*f;
 
-	DataPointer(__packed void *p) { v = p; } 
+	DataPointer(void *p) { v = p; } 
 
-	void operator=(__packed void *p) { v = p; } 
+	void operator=(void *p) { v = p; } 
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 union ConstDataPointer
 {
-	__packed const void		*v;
-	__packed const byte		*b;
-	__packed const word		*w;
-	__packed const dword	*d;
-	__packed const float	*f;
+	const void		*v;
+	const byte		*b;
+	const word		*w;
+	const dword	*d;
+	const float	*f;
 
-	ConstDataPointer(__packed const void *p) { v = p; } 
+	ConstDataPointer(const void *p) { v = p; } 
 
-	void operator=(__packed const void *p) { v = p; } 
+	void operator=(const void *p) { v = p; } 
 };
 
 

@@ -1,0 +1,106 @@
+
+##################################################################################################
+
+!ifndef version
+version = Release
+!endif
+
+##################################################################################################
+
+ADI_DSP = "C:\Program Files (x86)\Analog Devices\VisualDSP 5.1"
+
+curdir = $+ $(%cdrive):$(%cwd) $-
+hdir = cpp
+libdir = $(curdir)\libs
+bindir = $(ADI_DSP)
+incdir = $(ADI_DSP)\Blackfin\include
+
+!ifeq version Debug
+
+debug_compiler_options = -O0
+debug_linker_options = 
+libsuffix=d
+
+!else ifeq version Win32_Debug
+
+debug_compiler_options = -Od
+debug_linker_options = 
+libsuffix=Win32
+
+!else
+
+debug_compiler_options = -Ov100
+debug_linker_options = 
+libsuffix=r
+
+!endif
+
+##################################################################################################
+
+.ERASE
+.EXTENSIONS:
+.EXTENSIONS: .exe .doj .cpp .h .s .d
+
+##################################################################################################
+
+.cpp:	$(cppdir)
+.doj:	$(objdir)
+.h:	$(hdir)
+.s: $(cppdir)
+.d:	$(objdir)
+
+
+##################################################################################################
+
+.BEFORE
+	@if NOT EXIST $(objdir) @md $(objdir) >nul
+	@call echo Building $(version) version ...
+	@call buildnum.bat
+
+
+##################################################################################################
+
+# -w4 -wcd13 -wcd14 -wcd367 -wcd368 -wcd627 -wcd726
+# -I "d:\progs\Keil\ARM\INC\Atmel\SAM7SE" 
+# -- thumb --arm --asm --interleave 
+# --omf_browse $(objdir)\
+#	--feedback "$(objdir)\brkp.fed"&
+#--diag_suppress=68,368,1299,3017 
+
+compiler_options = $(debug_compiler_options) -c -c++ -g -structs-do-not-overlap -no-multiline &
+	-double-size-32 -decls-strong -warn-protos -si-revision 0.2 -proc ADSP-BF592-A  
+
+#-Wterse
+#-structs-do-not-overlap -no-multiline -I $(VDSP)\Blackfin\include\drivers\flash 
+#-double-size-32 -double-size-any -decls-strong -flags-compiler --diag_warning,implicit_func_decl -warn-protos -si-revision any -proc ADSP-BF592-A -o .\Debug\main.doj -MM
+
+
+
+##################################################################################################
+
+link_options = -e -proc ADSP-BF592-A -si-revision 0.2 -MDNO_UTILITY_ROM -MD__cplusplus
+  
+##################################################################################################
+
+!include $(objdir)\mkoutcpp
+!include $(objdir)\mkoutobj
+
+##################################################################################################
+
+$(objdir)\bf_fp.dxe :  $(modules_obj)
+	@echo Linking ...
+	@linker	$(link_options) -Map "$(objdir)\$^&.xml" -o "$^@" $< $(libname)
+	@elfloader -v -f binary -b SPI -proc ADSP-BF592-A -dmawidth 8 -width 8 -o "$(objdir)\$^&.ldr" $^@ 
+
+##################################################################################################
+
+!include $(objdir)\mkoutdep
+
+##################################################################################################
+
+.cpp.doj: .AUTODEPEND
+	@echo Compiling $[. ...
+	@ccblkfn $(compiler_options) -MD -Mo="$(objdir)\$^&.d" -o "$(objdir)\$^." $[@
+
+##################################################################################################
+

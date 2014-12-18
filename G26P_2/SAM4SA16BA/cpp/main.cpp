@@ -282,27 +282,63 @@ static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	__packed struct Rsp { u16 hdr; u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[2048]; };
+	__packed struct Rsp { u16 hdr; u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[2000]; };
 	
 	static Rsp rsp; 
 
+	//off 0...2005
+
+
 	if (wb == 0 || !(len == 1 || len == 3)) return false;
 
-	u16 c = (len == 1) ? 2048 : data[2];
+	u16 *p = (u16*)&rsp;
 
-	if (c > 2048) return false;
+	u16 c = 0;
+	u16 off = 0;
 
-	rsp.hdr = 0x5501;
-	rsp.rw = *data;
+	if (len == 1)
+	{
+		off = 0;
+		c = 2006;
+	}
+	else
+	{
+		off = data[1];
+		c = data[2];
 
-	rsp.cnt = manCounter;
-	rsp.gain = gain[((rsp.rw>>4)-3)&3];
-	rsp.st = sampleTime[((rsp.rw>>4)-3)&3];
-	rsp.len = 500;
-	rsp.delay = 0;
+		if (off >= 2006)
+		{
+			c = 0; off = 0;
+		}
+		else if ((off+c) > 2006)
+		{
+			c = 2006-off;
+		};
+	};
 
-	wb->data = &rsp;
-	wb->len = 18 + (c<<1);
+	if (off == 0)
+	{
+		for (u16 i = 0; i < 2000; i++)
+		{
+			rsp.data[i] = ((u32)i) * 150; 
+		};
+	};
+
+
+	if (off < 6)
+	{
+		rsp.cnt = manCounter;
+		rsp.gain = gain[((rsp.rw>>4)-3)&3];
+		rsp.st = sampleTime[((rsp.rw>>4)-3)&3];
+		rsp.len = 500;
+		rsp.delay = 0;
+	};
+
+	p[off] = 0x5501;
+	p[off+1] = *data;
+
+	wb->data = p+off;
+	wb->len = (c+2)<<1;
 
 	return true;
 }

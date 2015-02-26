@@ -1,0 +1,11 @@
+SWDSelect
+speed 4000
+r
+h
+exec device = ATSAM4E8E
+w4 0x400e0A04, 0x5A00010B
+mem 0x400e0A0C, 4
+w4 0x400e0A04, 0x5A00010D
+mem 0x400e0A0C, 4
+loadbin obj\g26p4sm4.bin,0x400000
+exit

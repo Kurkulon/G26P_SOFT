@@ -5,6 +5,8 @@
 #error  Must #include "core.h"
 #endif 
 
+#pragma anon_unions
+
 #include "types.h"
 #include "cm4.h"
 
@@ -576,6 +578,128 @@ namespace T_HW
 	};
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	struct S_GMAC
+	{
+		union ADR
+		{
+			u64		U;
+			u16		W[4];
+			
+			struct 
+			{ 
+				AT91_REG	B;	//	Bottom Register 
+				AT91_REG	T;	//	Top Register
+			};
+		};
+
+		AT91_REG		NCR;			//	Network Control Register		
+		AT91_REG		NCFGR;			//	Network Configuration Register
+		AT91_REG		NSR;			//	Network Status Register
+
+		AT91_REG		UR;				//	User Register
+		AT91_REG		DCFGR;			//	DMA Configuration Register
+
+		AT91_REG		TSR;   			//	Transmit Status Register
+		AT91_REG		RBQP;  			//	Receive Buffer Queue Pointer Register 
+		AT91_REG		TBQP;  			//	Transmit Buffer Queue Pointer Register 
+		AT91_REG		RSR;   			//	Receive Status Register
+		AT91_REG		ISR;   			//	Interrupt Status Register
+		AT91_REG		IER;   			//	Interrupt Enable Register
+		AT91_REG		IDR;   			//	Interrupt Disable Register
+		AT91_REG		IMR;   			//	Interrupt Mask Register
+		AT91_REG		MAN;   			//	Phy Maintenance Register
+
+		AT91_REG		RPQ;   			//	Received Pause Quantum Register
+		AT91_REG		TPQ;   			//	Transmit Pause Quantum Register
+		
+		AT91_REG		z__rsrvd1[16];	//	Reserved
+		
+		AT91_REG		HRB;			//	Hash Register Bottom [31:0] Register
+		AT91_REG		HRT;			//	Hash Register Top [63:32] Register
+
+		ADR				SA[4];			//  Specific Address Register
+
+		AT91_REG		TIDM[4];		//  Type ID Match Register
+
+		AT91_REG		z__rsrvd2;		//	Reserved
+
+		AT91_REG		IPGS;			//	IPG Stretch Register
+		AT91_REG		SVLAN;			//	Stacked VLAN Register
+		AT91_REG		TPFCP;			//	Transmit PFC Pause Register
+
+		ADR				SAM;			//  Specific Address 1 Mask Register
+
+		AT91_REG		z__rsrvd3[12];	//	Reserved
+
+		AT91_REG		OTLO;			//	Octets Transmitted [31:0] Register GMAC_OTLO						
+		AT91_REG		OTHI;			//	Octets Transmitted [47:32] Register GMAC_OTHI						
+		AT91_REG		FT;				//	Frames Transmitted Register GMAC_FT									
+		AT91_REG		BCFT;			//	Broadcast Frames Transmitted Register GMAC_BCFT						
+		AT91_REG		MFT;			//	Multicast Frames Transmitted Register GMAC_MFT						
+		AT91_REG		PFT;			//	Pause Frames Transmitted Register GMAC_PFT							
+		AT91_REG		BFT64;			//	64 Byte Frames Transmitted Register GMAC_BFT64						
+		AT91_REG		TBFT127;		//	65 to 127 Byte Frames Transmitted Register GMAC_TBFT127				
+		AT91_REG		TBFT255;		//	128 to 255 Byte Frames Transmitted Register GMAC_TBFT255			
+		AT91_REG		TBFT511;		//	256 to 511 Byte Frames Transmitted Register GMAC_TBFT511			
+		AT91_REG		TBFT1023;		//	512 to 1023 Byte Frames Transmitted Register GMAC_TBFT1023			
+		AT91_REG		TBFT1518;		//	1024 to 1518 Byte Frames Transmitted Register GMAC_TBFT1518			
+		AT91_REG		GTBFT1518;		//	Greater Than 1518 Byte Frames Transmitted Register GMAC_GTBFT1518	
+													
+		AT91_REG		TUR;			//	Transmit Underruns Register GMAC_TUR								
+		AT91_REG		SCF;			//	Single Collision Frames Register GMAC_SCF							
+		AT91_REG		MCF;			//	Multiple Collision Frames Register GMAC_MCF 						
+		AT91_REG		EC;				//	Excessive Collisions Register GMAC_EC								
+		AT91_REG		LC;				//	Late Collisions Register GMAC_LC									
+		AT91_REG		DTF;			//	Deferred Transmission Frames Register GMAC_DTF						
+		AT91_REG		CSE;			//	Carrier Sense Errors Register  GMAC_CSE								
+		AT91_REG		ORLO;			//	Octets Received [31:0] Received GMAC_ORLO							
+		AT91_REG		ORHI;			//	Octets Received [47:32] Received  GMAC_ORHI							
+		AT91_REG		FR;				//	Frames Received Register GMAC_FR									
+		AT91_REG		BCFR;			//	Broadcast Frames Received Register GMAC_BCFR						
+		AT91_REG		MFR;			//	Multicast Frames Received Register GMAC_MFR							
+		AT91_REG		PFR;			//	Pause Frames Received Register GMAC_PFR								
+		AT91_REG		BFR64;			//	64 Byte Frames Received Register GMAC_BFR64							
+		AT91_REG		TBFR127;		//	65 to 127 Byte Frames Received Register GMAC_TBFR127				
+		AT91_REG		TBFR255;		//	128 to 255 Byte Frames Received Register GMAC_TBFR255				
+		AT91_REG		TBFR511;		//	256 to 511Byte Frames Received Register GMAC_TBFR511				
+		AT91_REG		TBFR1023;		//	512 to 1023 Byte Frames Received Register GMAC_TBFR1023				
+		AT91_REG		TBFR1518;		//	1024 to 1518 Byte Frames Received Register GMAC_TBFR1518			
+		AT91_REG		TMXBFR;			//	1519 to Maximum Byte Frames Received Register GMAC_TMXBFR			
+		AT91_REG		UFR;			//	Undersize Frames Received Register GMAC_UFR							
+		AT91_REG		OFR;			//	Oversize Frames Received Register GMAC_OFR							
+		AT91_REG		JR;				//	Jabbers Received Register GMAC_JR									
+		AT91_REG		FCSE;			//	Frame Check Sequence Errors Register GMAC_FCSE						
+		AT91_REG		LFFE;			//	Length Field Frame Errors Register GMAC_LFFE						
+		AT91_REG		RSE;			//	Receive Symbol Errors Register GMAC_RSE								
+		AT91_REG		AE;				//	Alignment Errors Register GMAC_AE									
+		AT91_REG		RRE;			//	Receive Resource Errors Register GMAC_RRE							
+		AT91_REG		ROE;			//	Receive Overrun Register GMAC_ROE									
+		AT91_REG		IHCE;			//	IP Header Checksum Errors Register GMAC_IHCE						
+		AT91_REG		TCE;			//	TCP Checksum Errors Register GMAC_TCE 								
+		AT91_REG		UCE;			//	UDP Checksum Errors Register GMAC_UCE 								
+													
+		AT91_REG		z__rsrvd4[5];	//
+
+		AT91_REG		TSSSL;			//	1588 Timer Sync Strobe Seconds [31:0] Register GMAC_TSSSL			
+		AT91_REG		TSSN;			//	1588 Timer Sync Strobe Nanoseconds Register GMAC_TSSN				
+		AT91_REG		TSL;			//	1588 Timer Seconds [31:0] Register GMAC_TSL							
+		AT91_REG		TN;				//	1588 Timer Nanoseconds Register GMAC_TN								
+		AT91_REG		TA;				//	1588 Timer Adjust Register GMAC_TA									
+		AT91_REG		TI;				//	1588 Timer Increment Register GMAC_TI								
+		AT91_REG		EFTS;			//	PTP Event Frame Transmitted Seconds GMAC_EFTS						
+		AT91_REG		EFTN;			//	PTP Event Frame Transmitted Nanoseconds GMAC_EFTN					
+		AT91_REG		EFRS;			//	PTP Event Frame Received Seconds GMAC_EFRS							
+		AT91_REG		EFRN;			//	PTP Event Frame Received Nanoseconds GMAC_EFRN						
+		AT91_REG		PEFTS;			//	PTP Peer Event Frame Transmitted Seconds GMAC_PEFTS			
+		AT91_REG		PEFTN;			//	PTP Peer Event Frame Transmitted Nanoseconds GMAC_PEFTN		
+		AT91_REG		PEFRS;			//	PTP Peer Event Frame Received Seconds GMAC_PEFRS			
+		AT91_REG		PEFRN;			//	PTP Peer Event Frame Received Nanoseconds
+	};
+
+
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 };
 
 
@@ -587,7 +711,7 @@ namespace HW
 				MKPID(SMC, 8),		MKPID(PIOA, 9),		MKPID(PIOB, 10),	MKPID(PIOC, 11),	MKPID(PIOD, 12),	MKPID(PIOE, 13),	MKPID(USART0, 14),	MKPID(USART1, 15),
 				MKPID(HSMCI, 16),	MKPID(TWI0, 17),	MKPID(TWI1, 18),	MKPID(SPI, 19),		MKPID(DMAC, 20),	MKPID(TC0, 21),		MKPID(TC1, 22),		MKPID(TC2, 23),		MKPID(TC3, 24),		MKPID(TC4, 25), 
 				MKPID(TC5, 26),		MKPID(TC6, 27),		MKPID(TC7, 28),		MKPID(TC8, 29),		MKPID(AFEC0, 30),	MKPID(AFEC1, 31),	MKPID(DACC, 32),	MKPID(ACC, 33),		MKPID(ARM, 34),		MKPID(UDP, 35),		
-				MKPID(PWM, 36),		MKPID(CAN0, 37),	MKPID(CAN1, 38),	MKPID(AES, 39),		MKPID(EMAC, 44),	MKPID(UART1, 45) };
+				MKPID(PWM, 36),		MKPID(CAN0, 37),	MKPID(CAN1, 38),	MKPID(AES, 39),		MKPID(GMAC, 44),	MKPID(UART1, 45) };
 	};
 
 	MK_PTR(SMC, 	0x40060000);
@@ -625,7 +749,13 @@ namespace HW
 
 	MK_PTR(DMAC,	0X400C0000);
 
+	MK_PTR(GMAC,	0X40034000);
+
 //	MK_PTR(UDP,		0x400A4000);
+
+#ifndef EMAC
+#define EMAC GMAC
+#endif
 
 
 

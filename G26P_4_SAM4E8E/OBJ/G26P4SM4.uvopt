@@ -138,7 +138,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name></Name>
+          <Name>/</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -161,29 +161,12 @@
           <Name>-O207 -S9 -C0 -FO7 -FD20000000 -FC800 -FN1 -FF0ATSAM4E_512 -FS0400000 -FL080000)</Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint>
-        <Bp>
-          <Number>0</Number>
-          <Type>0</Type>
-          <LineNumber>336</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>4195618</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\emac.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\G26P4SM4\cpp/emac.cpp\336</Expression>
-        </Bp>
-      </Breakpoint>
+      <Breakpoint/>
       <WatchWindow1>
         <Ww>
           <count>0</count>
           <WinNumber>1</WinNumber>
-          <ItemText>msec</ItemText>
+          <ItemText>msec,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
@@ -193,29 +176,64 @@
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>Rx_Desc</ItemText>
+          <ItemText>reqArpCount,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>reqArpCount,0x0A</ItemText>
+          <ItemText>reqIpCount,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>reqIpCount,0x0A</ItemText>
+          <ItemText>reqUdpCount,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>1</WinNumber>
-          <ItemText>Tx_Desc</ItemText>
+          <ItemText>reqIcmpCount,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>6</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>fps,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>7</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>Rx_Desc</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>countBNA,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>countREC,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>10</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>countRXOVR,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>11</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>countHNO,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>12</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>rxCount,0x10</ItemText>
         </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>0x20005498</ItemText>
+          <ItemText>0x2000007C</ItemText>
         </Mm>
       </MemoryWindow1>
       <Tracepoint>

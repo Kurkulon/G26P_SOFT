@@ -5,11 +5,11 @@
 
 
 /* EMAC Memory Buffer configuration. */
-#define NUM_RX_BUF          8          /* 0x2000 for Rx (64*128=8K)         */
+#define NUM_RX_BUF          4          /* 0x2000 for Rx (64*128=8K)         */
 #define ETH_RX_BUF_SIZE     1536        /* EMAC Receive buffer size.         */
-#define ETH_RX_BUF_NUM      (1536/ETH_RX_BUF_SIZE)
+//#define ETH_RX_BUF_NUM      (1536/ETH_RX_BUF_SIZE)
 
-#define NUM_TX_BUF          8           /* 0x0600 for Tx                     */
+#define NUM_TX_BUF          4           /* 0x0600 for Tx                     */
 #define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
 
 #define AT91C_PHY_ADDR      0
@@ -33,10 +33,12 @@
 //#define pAIC    AT91C_BASE_AIC
 //#define pPMC    AT91C_BASE_PMC
 
-struct MAC
+__packed struct MAC
 {
 	u32 B;
 	u16 T;
+
+	inline void operator=(const MAC &v) { B = v.B; T = v.T; }
 };
 
 struct Buf_Desc
@@ -881,9 +883,9 @@ struct Buf_Desc
 
 __packed struct EthHdr
 {
-	u16		et_dest[3];	/* Destination node		*/
-	u16		et_src[3];	/* Source node			*/
-	u16		et_protlen;	/* Protocol or length		*/
+	MAC		dest;	/* Destination node		*/
+	MAC		src;	/* Source node			*/
+	u16		protlen;	/* Protocol or length		*/
 	byte	data[1];
 };
 
@@ -891,15 +893,15 @@ __packed struct EthHdr
 
 __packed struct ArpHdr
 {
-	u16		ar_hrd;		/* Format of hardware address	*/
-	u16		ar_pro;		/* Format of protocol address	*/
-	byte	ar_hln;		/* Length of hardware address	*/
-	byte	ar_pln;		/* Length of protocol address	*/
-	u16		ar_op;		/* Operation			*/
-	u16		ar_sha[3];	/* Sender hardware address	*/
-	u32		ar_spa;		/* Sender protocol address	*/
-	u16		ar_tha[3];	/* Target hardware address	*/
-	u32		ar_tpa;		/* Target protocol address	*/
+	u16		hrd;		/* Format of hardware address	*/
+	u16		pro;		/* Format of protocol address	*/
+	byte	hln;		/* Length of hardware address	*/
+	byte	pln;		/* Length of protocol address	*/
+	u16		op;			/* Operation			*/
+	MAC		sha;		/* Sender hardware address	*/
+	u32		spa;		/* Sender protocol address	*/
+	MAC		tha;		/* Target hardware address	*/
+	u32		tpa;		/* Target protocol address	*/
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -908,16 +910,16 @@ __packed struct ArpHdr
 
 __packed struct IPheader
 {
-	byte	ip_hl_v;	/* header length and version	*/
-	byte	ip_tos;		/* type of service		*/
-	u16		ip_len;		/* total length			*/
-	u16		ip_id;		/* identification		*/
-	u16		ip_off;		/* fragment offset field	*/
-	byte	ip_ttl;		/* time to live			*/
-	byte	ip_p;		/* protocol			*/
-	u16		ip_sum;		/* checksum			*/
-	u32		ip_src;		/* Source IP address		*/
-	u32		ip_dst;		/* Destination IP address	*/
+	byte	hl_v;		/* header length and version	*/
+	byte	tos;		/* type of service		*/
+	u16		len;		/* total length			*/
+	u16		id;			/* identification		*/
+	u16		off;		/* fragment offset field	*/
+	byte	ttl;		/* time to live			*/
+	byte	p;			/* protocol			*/
+	u16		sum;		/* checksum			*/
+	u32		src;		/* Source IP address		*/
+	u32		dst;		/* Destination IP address	*/
 	u16		udp_src;	/* UDP source port		*/
 	u16		udp_dst;	/* UDP destination port		*/
 	u16		udp_len;	/* Length of UDP packet		*/
@@ -954,10 +956,10 @@ __packed struct IcmpEchoHdr
 //* UDP header structure
 __packed struct UDPHdr
 {
-	u16	udp_src;	/* UDP source port		*/
-	u16	udp_dst;	/* UDP destination port		*/
-	u16	udp_len;	/* Length of UDP packet		*/
-	u16	udp_xsum;	/* Checksum			*/
+	u16	src;	/* UDP source port		*/
+	u16	dst;	/* UDP destination port		*/
+	u16	len;	/* Length of UDP packet		*/
+	u16	xsum;	/* Checksum			*/
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

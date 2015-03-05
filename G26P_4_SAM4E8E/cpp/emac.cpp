@@ -46,7 +46,7 @@
 
 /* Net_Config.c */
 
-static const T_HW::S_GMAC::ADR hwAdr = {0x123456789ABC};
+static const MAC hwAdr = {0x12345678, 0x9ABC};
 static const u32 ipAdr = IP32(192, 168, 10, 2);
 
 /* Local variables */
@@ -62,6 +62,14 @@ static byte linkState = 0;
 
 u32 reqArpCount = 0;
 u32 reqIpCount = 0;
+u32 reqUdpCount = 0;
+u32 reqIcmpCount = 0;
+u32 rxCount = 0;
+u32 countBNA = 0;
+u32 countREC = 0;
+u32 countRXOVR = 0;
+u32 countHNO = 0;
+
 
 
 /* GMAC local IO buffers descriptors. */
@@ -205,9 +213,9 @@ static void RequestARP(EthHdr *eth, u32 stat)
 {
 	ArpHdr *pArp = (ArpHdr*)eth->data;
 
-	if (ReverseWord(pArp->ar_op) == ARP_REQUEST) // ARP REPLY operation
+	if (ReverseWord(pArp->op) == ARP_REQUEST) // ARP REPLY operation
 	{     
-		if (pArp->ar_tpa == ipAdr)
+		if (pArp->tpa == ipAdr)
 		{
 			reqArpCount++;
 
@@ -218,32 +226,22 @@ static void RequestARP(EthHdr *eth, u32 stat)
 			EthHdr *tEth = (EthHdr*)buf->addr;
 			ArpHdr *tArp = (ArpHdr*)tEth->data;
 
-			tEth->et_dest[0] = eth->et_src[0];
-			tEth->et_dest[1] = eth->et_src[1];
-			tEth->et_dest[2] = eth->et_src[2];
+			tEth->dest = eth->src;
+			tEth->src  = hwAdr;
 
-			tEth->et_src[0]  = hwAdr.W[0];
-			tEth->et_src[1]  = hwAdr.W[1];
-			tEth->et_src[2]  = hwAdr.W[2];
+			tEth->protlen = ReverseWord(PROT_ARP);
 
-			tEth->et_protlen = ReverseWord(PROT_ARP);
+			tArp->hrd = 0x100;	
+			tArp->pro = 8;	
+			tArp->hln = 6;	
+			tArp->pln = 4;	
+			tArp->op =  ReverseWord(ARP_REPLY);				
 
-			tArp->ar_hrd = 0x100;	
-			tArp->ar_pro = 8;	
-			tArp->ar_hln = 6;	
-			tArp->ar_pln = 4;	
-			tArp->ar_op =  ReverseWord(ARP_REPLY);				
+			tArp->tha   = pArp->sha;
+			tArp->sha = hwAdr;
 
-			tArp->ar_tha[0]   = pArp->ar_sha[0];
-			tArp->ar_tha[1]   = pArp->ar_sha[1];
-			tArp->ar_tha[2]   = pArp->ar_sha[2];
-
-			tArp->ar_sha[0] = hwAdr.W[0];
-			tArp->ar_sha[1] = hwAdr.W[1];
-			tArp->ar_sha[2] = hwAdr.W[2];
-
-			tArp->ar_tpa = pArp->ar_spa;
-			tArp->ar_spa = ipAdr;
+			tArp->tpa = pArp->spa;
+			tArp->spa = ipAdr;
 
 			TransmitPacket(buf, sizeof(EthHdr) - sizeof(EthHdr::data) + sizeof(ArpHdr));
 		};	
@@ -255,17 +253,22 @@ static void RequestARP(EthHdr *eth, u32 stat)
 
 u16 IcmpChksum(u16 *p, u16 size)
 {
-	U32u sum;
+	register u32 sum = 0;
+	register u32 t;
 
-	sum.d = 0;
-	
-	for(register u16 i = 0; i < size; i++)
+loop:
+
+	__asm
 	{
-		sum.d += ReverseWord(*p++);
-		sum.w[0] += sum.w[1];
-		sum.w[1] = 0;
-	};
+		LDRH	t, [p], #2 
+		REV16	t, t
+		ADD		sum, t
+		SUBS	size, size, #1
+		BNE		loop
 
+		ADD		sum, sum, sum, LSR#16 
+	};
+ 
 	return ~sum;
 }
 
@@ -277,6 +280,8 @@ static void RequestICMP(EthHdr *eth, IPheader *iph, u32 stat)
 	
 	if(icmph->type == ICMP_ECHO_REQUEST)
 	{
+		reqIcmpCount++;
+
 		Buf_Desc *buf = GetTxDesc();
 
 		if (buf == 0) return;
@@ -285,30 +290,25 @@ static void RequestICMP(EthHdr *eth, IPheader *iph, u32 stat)
 		IPheader *tiph = (IPheader*)tEth->data;
 		IcmpEchoHdr *ticmph = (IcmpEchoHdr*)(&tiph->udp_src);
 
-		tEth->et_dest[0] = eth->et_src[0];
-		tEth->et_dest[1] = eth->et_src[1];
-		tEth->et_dest[2] = eth->et_src[2];
+		tEth->dest = eth->src;
+		tEth->src  = hwAdr;
 
-		tEth->et_src[0]  = hwAdr.W[0];
-		tEth->et_src[1]  = hwAdr.W[1];
-		tEth->et_src[2]  = hwAdr.W[2];
+		tEth->protlen = ReverseWord(PROT_IP);
 
-		tEth->et_protlen = ReverseWord(PROT_IP);
+		tiph->hl_v = 0x45;	
+		tiph->tos = 0;		
+		tiph->len = iph->len;		
+		tiph->id = iph->id;		
+		tiph->off = 0;		
+		tiph->ttl = 64;		
+		tiph->p = PROT_ICMP;		
+		tiph->sum = 0;		
+		tiph->src = ipAdr;		
+		tiph->dst = iph->src;	
 
-		tiph->ip_hl_v = 0x45;	
-		tiph->ip_tos = 0;		
-		tiph->ip_len = iph->ip_len;		
-		tiph->ip_id = iph->ip_id;		
-		tiph->ip_off = 0;		
-		tiph->ip_ttl = 64;		
-		tiph->ip_p = PROT_ICMP;		
-		tiph->ip_sum = 0;		
-		tiph->ip_src = ipAdr;		
-		tiph->ip_dst = iph->ip_src;	
+		tiph->sum = ReverseWord(IcmpChksum((u16*)tiph, 10));		
 
-		tiph->ip_sum = ReverseWord(IcmpChksum((u16*)tiph, 10));		
-
-		u16 icmp_len = (ReverseWord(tiph->ip_len) - 20);	// Checksum of the ICMP Message
+		u16 icmp_len = (ReverseWord(tiph->len) - 20);	// Checksum of the ICMP Message
 
 		if (icmp_len & 1)
 		{
@@ -333,40 +333,15 @@ static void RequestICMP(EthHdr *eth, IPheader *iph, u32 stat)
 
 		ticmph->cksum = ReverseWord(IcmpChksum((u16*)ticmph, icmp_len));
 
-		TransmitPacket(buf, ReverseWord(iph->ip_len) + sizeof(EthHdr) - 1);
+		TransmitPacket(buf, ReverseWord(iph->len) + sizeof(EthHdr) - 1);
 	}
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestUDP(EthHdr *eth, u32 stat)
+static void RequestUDP(EthHdr *eth, IPheader *iph, u32 stat)
 {
-
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void RequestIP(EthHdr *eth, u32 stat)
-{
-	reqIpCount++;
-
-	IPheader *iph = (IPheader*)(eth->data);	
-
-	if (!(stat & RD_IP_CHECK))
-	{
-		return;
-	};
-
-	switch(iph->ip_p)
-	{
-		case PROT_ICMP:	
-
-			RequestICMP(eth, iph, stat);
-
-			break; 
-
-		//case PROT_UDP:		
-
+	reqUdpCount++;
 		//	char *adrRxTxBuf;
 		//	char *adrOurBuf;
 		//	int len;
@@ -454,6 +429,22 @@ static void RequestIP(EthHdr *eth, u32 stat)
 		//		need_handle_data =true;
 		//	}
 		//	break; 
+
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void RequestIP(EthHdr *eth, u32 stat)
+{
+	reqIpCount++;
+
+	IPheader *iph = (IPheader*)(eth->data);	
+
+	switch(iph->p)
+	{
+		case PROT_ICMP:	RequestICMP(eth, iph, stat);	break; 
+
+		case PROT_UDP:	if ((stat & RD_IP_CHECK) == RD_IP_UDP_OK) { RequestUDP(eth, iph, stat); };		break;
 	};
 }
 
@@ -463,11 +454,20 @@ void RecieveFrame()
 {
 	Buf_Desc &buf = Rx_Desc[RxBufIndex];
 
+	register u32 t = HW::GMAC->RSR;
+	HW::GMAC->RSR = RSR_HNO | RSR_RXOVR | RSR_REC | RSR_BNA;
+
+	if (t & RSR_BNA)	{ countBNA++;	/*HW::GMAC->RSR = RSR_BNA;*/	};
+	if (t & RSR_REC)	{ countREC++;	/*HW::GMAC->RSR = RSR_REC;*/	};
+	if (t & RSR_RXOVR)	{ countRXOVR++;	/*HW::GMAC->RSR = RSR_RXOVR;*/	};
+	if (t & RSR_HNO)	{ countHNO++;	/*HW::GMAC->RSR = RSR_HNO;*/	};
+
+
 	if((buf.addr & OWNERSHIP_BIT) == 0)
 	{
 		return;
 	};
-	
+
 
 //	UpdateStatistic();
 
@@ -475,7 +475,7 @@ void RecieveFrame()
 
 	EthHdr *pEth = (EthHdr*)(buf.addr & ~3);
 
-	switch (ReverseWord(pEth->et_protlen))
+	switch (ReverseWord(pEth->protlen))
 	{
 		case PROT_ARP: // ARP Packet format
 
@@ -484,12 +484,17 @@ void RecieveFrame()
 
 		case PROT_IP:	// IP protocol frame
 
-			RequestIP(pEth, buf.stat);
+			if (buf.stat & RD_IP_CHECK)
+			{
+				RequestIP(pEth, buf.stat);
+			};
+
 			break;
 	};
 
-	Rx_Desc[RxBufIndex].addr &= ~OWNERSHIP_BIT;
-	RxBufIndex = (Rx_Desc[RxBufIndex].addr & 2) ? 0 : (RxBufIndex+1);
+	buf.addr &= ~OWNERSHIP_BIT;
+	++rxCount;
+	RxBufIndex = (buf.addr & 2) ? 0 : (RxBufIndex+1);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -580,8 +585,8 @@ bool InitEMAC()
 	tx_descr_init ();
 
 	/* The sequence write GMAC_SA1L and write GMAC_SA1H must be respected. */
-	HW::GMAC->SA[0].U = hwAdr.U;
-//	HW::GMAC->SA[0].T = hwAdr.T;
+	HW::GMAC->SA[0].B = hwAdr.B;
+	HW::GMAC->SA[0].T = hwAdr.T;
 
 	/* Enable receiving of all Multicast packets. */
 	HW::GMAC->HRB  = 0xFFFFFFFF;
@@ -754,13 +759,6 @@ void UpdateEMAC()
 				HW::GMAC->NCR &= ~GMAC_RXEN;
 				StartLink();
 				stateEMAC = LINKING;
-			}
-			else if (HW::GMAC->ISR & (ISR_RXUBR | ISR_ROVR))
-			{
-				HW::GMAC->NCR &= ~GMAC_RXEN;
-				rx_descr_init ();
-				HW::GMAC->RSR  = RSR_RXOVR | RSR_REC | RSR_BNA;
-				HW::GMAC->NCR |= GMAC_RXEN;
 			}
 			else
 			{

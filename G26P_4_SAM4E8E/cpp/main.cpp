@@ -4,6 +4,8 @@
 #include "hardware.h"
 #include "emac.h"
 
+u32 fps = 0;
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 int main()
@@ -12,10 +14,9 @@ int main()
 
 	InitEMAC();
 
-	u32 fps = 0;
+	u32 f = 0;
 
-	HW::GMAC->PEFRN = 0x5A5A;
-
+	static RTM32 rtm;
 
 	while(1)
 	{
@@ -36,7 +37,14 @@ int main()
 
 		UpdateEMAC();
 
-		fps++;
+		f++;
+
+		if (rtm.Check(MS2RT(1000)))
+		{
+			fps = f;
+			f = 0;
+		};
+
 //		__asm { WFE };
 	};
 

@@ -26,6 +26,22 @@
 #define ICMP_ECHO_REQUEST	0x08
 #define ICMP_ECHO_REPLY		0x00
 
+#define SWAP16(x)	((u16)((x) << 8) | ((x) >> 8))
+#define SWAP32(x)	(((x)>>24) | (((x)&0x00ff0000) >> 8) | (((x)&0x0000ff00) << 8) | (((x)<<24)))
+
+
+#define BOOTPS SWAP16(67)	// server DHCP
+#define BOOTPC SWAP16(68)	// client DHCP
+
+#define	DHCPDISCOVER	1  
+#define	DHCPOFFER		2  
+#define	DHCPREQUEST		3  
+#define	DHCPDECLINE		4  
+#define	DHCPACK			5  
+#define	DHCPNAK			6  
+#define	DHCPRELEASE		7  
+#define DHCPCOOKIE		0x63538263
+
 ///* Absolute IO access macros */
 //#define pEMAC   AT91C_BASE_EMACB
 //#define pPIOA   AT91C_BASE_PIOA
@@ -886,7 +902,6 @@ __packed struct EthHdr
 	MAC		dest;	/* Destination node		*/
 	MAC		src;	/* Source node			*/
 	u16		protlen;	/* Protocol or length		*/
-	byte	data[1];
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -920,10 +935,6 @@ __packed struct IPheader
 	u16		sum;		/* checksum			*/
 	u32		src;		/* Source IP address		*/
 	u32		dst;		/* Destination IP address	*/
-	u16		udp_src;	/* UDP source port		*/
-	u16		udp_dst;	/* UDP destination port		*/
-	u16		udp_len;	/* Length of UDP packet		*/
-	u16		udp_xsum;	/* Checksum			*/
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -954,7 +965,7 @@ __packed struct IcmpEchoHdr
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //* UDP header structure
-__packed struct UDPHdr
+__packed struct UdpHdr
 {
 	u16	src;	/* UDP source port		*/
 	u16	dst;	/* UDP destination port		*/
@@ -964,10 +975,73 @@ __packed struct UDPHdr
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct EthPack
+__packed struct EthArp
 {
 	EthHdr	eth;
 	ArpHdr	arp;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct EthIp
+{
+	EthHdr		eth;
+	IPheader	iph;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct EthIcmp
+{
+	EthHdr		eth;
+	IPheader	iph;
+	IcmpEchoHdr	icmp;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct EthUdp
+{
+	EthHdr		eth;
+	IPheader	iph;
+	UdpHdr		udp;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct DhcpHdr
+{
+	byte	op;
+	byte	htype;
+	byte	hlen;
+	byte	hops;
+
+	u32		xid;
+	u16		secs;
+	u16		flags;
+
+	u32		ciaddr;
+	u32		yiaddr;
+	u32		siaddr;
+	u32		giaddr;
+
+	MAC		chaddr;
+	byte	pad_chaddr[10];
+
+	char	sname[64];
+	char	file[128];
+	u32		magic;
+	byte	options[336];
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct EthDhcp
+{
+	EthHdr		eth;
+	IPheader	iph;
+	UdpHdr		udp;
+	DhcpHdr		dhcp;
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

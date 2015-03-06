@@ -47,7 +47,12 @@
 /* Net_Config.c */
 
 static const MAC hwAdr = {0x12345678, 0x9ABC};
-static const u32 ipAdr = IP32(192, 168, 10, 2);
+static const MAC hwBroadCast = {0xFFFFFFFF, 0xFFFF};
+static const u32 ipAdr = IP32(192, 168, 10, 1);
+static const u32 ipMask = IP32(255, 255, 255, 0);
+
+static const u16 udpInPort = SWAP16(66);
+static const u16 udpOutPort = SWAP16(66);
 
 /* Local variables */
 
@@ -209,13 +214,13 @@ static bool TransmitPacket(Buf_Desc *buf, u16 len)	// Send a packet
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestARP(EthHdr *eth, u32 stat)
+static void RequestARP(EthArp *h, u32 stat)
 {
-	ArpHdr *pArp = (ArpHdr*)eth->data;
+//	ArpHdr *pArp = (ArpHdr*)eth->data;
 
-	if (ReverseWord(pArp->op) == ARP_REQUEST) // ARP REPLY operation
+	if (ReverseWord(h->arp.op) == ARP_REQUEST) // ARP REPLY operation
 	{     
-		if (pArp->tpa == ipAdr)
+		if (h->arp.tpa == ipAdr)
 		{
 			reqArpCount++;
 
@@ -223,27 +228,26 @@ static void RequestARP(EthHdr *eth, u32 stat)
 
 			if (buf == 0) return;
 
-			EthHdr *tEth = (EthHdr*)buf->addr;
-			ArpHdr *tArp = (ArpHdr*)tEth->data;
+			EthArp *t = (EthArp*)buf->addr;
 
-			tEth->dest = eth->src;
-			tEth->src  = hwAdr;
+			t->eth.dest = h->eth.src;
+			t->eth.src  = hwAdr;
 
-			tEth->protlen = ReverseWord(PROT_ARP);
+			t->eth.protlen = SWAP16(PROT_ARP);
 
-			tArp->hrd = 0x100;	
-			tArp->pro = 8;	
-			tArp->hln = 6;	
-			tArp->pln = 4;	
-			tArp->op =  ReverseWord(ARP_REPLY);				
+			t->arp.hrd = 0x100;	
+			t->arp.pro = 8;	
+			t->arp.hln = 6;	
+			t->arp.pln = 4;	
+			t->arp.op =  SWAP16(ARP_REPLY);				
 
-			tArp->tha   = pArp->sha;
-			tArp->sha = hwAdr;
+			t->arp.tha = h->arp.sha;
+			t->arp.sha = hwAdr;
 
-			tArp->tpa = pArp->spa;
-			tArp->spa = ipAdr;
+			t->arp.tpa = h->arp.spa;
+			t->arp.spa = ipAdr;
 
-			TransmitPacket(buf, sizeof(EthHdr) - sizeof(EthHdr::data) + sizeof(ArpHdr));
+			TransmitPacket(buf, sizeof(EthArp));
 		};	
 		
 	}			
@@ -251,7 +255,7 @@ static void RequestARP(EthHdr *eth, u32 stat)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-u16 IcmpChksum(u16 *p, u16 size)
+u16 IpChkSum(u16 *p, u16 size)
 {
 	register u32 sum = 0;
 	register u32 t;
@@ -261,11 +265,13 @@ loop:
 	__asm
 	{
 		LDRH	t, [p], #2 
-		REV16	t, t
 		ADD		sum, t
 		SUBS	size, size, #1
 		BNE		loop
 
+		LSR		t, sum, #16
+		AND		sum, sum, #0xFFFF
+		ADD		sum, sum, t
 		ADD		sum, sum, sum, LSR#16 
 	};
  
@@ -274,11 +280,9 @@ loop:
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestICMP(EthHdr *eth, IPheader *iph, u32 stat)
+static void RequestICMP(EthIcmp *h, u32 stat)
 {
-	IcmpEchoHdr *icmph = (IcmpEchoHdr*)(&iph->udp_src);
-	
-	if(icmph->type == ICMP_ECHO_REQUEST)
+	if(h->icmp.type == ICMP_ECHO_REQUEST)
 	{
 		reqIcmpCount++;
 
@@ -286,40 +290,38 @@ static void RequestICMP(EthHdr *eth, IPheader *iph, u32 stat)
 
 		if (buf == 0) return;
 
-		EthHdr *tEth = (EthHdr*)buf->addr;
-		IPheader *tiph = (IPheader*)tEth->data;
-		IcmpEchoHdr *ticmph = (IcmpEchoHdr*)(&tiph->udp_src);
+		EthIcmp *t = (EthIcmp*)buf->addr;
 
-		tEth->dest = eth->src;
-		tEth->src  = hwAdr;
+		t->eth.dest = h->eth.src;
+		t->eth.src  = hwAdr;
 
-		tEth->protlen = ReverseWord(PROT_IP);
+		t->eth.protlen = ReverseWord(PROT_IP);
 
-		tiph->hl_v = 0x45;	
-		tiph->tos = 0;		
-		tiph->len = iph->len;		
-		tiph->id = iph->id;		
-		tiph->off = 0;		
-		tiph->ttl = 64;		
-		tiph->p = PROT_ICMP;		
-		tiph->sum = 0;		
-		tiph->src = ipAdr;		
-		tiph->dst = iph->src;	
+		t->iph.hl_v = 0x45;	
+		t->iph.tos = 0;		
+		t->iph.len = h->iph.len;		
+		t->iph.id = h->iph.id;		
+		t->iph.off = 0;		
+		t->iph.ttl = 64;		
+		t->iph.p = PROT_ICMP;		
+		t->iph.sum = 0;		
+		t->iph.src = ipAdr;		
+		t->iph.dst = h->iph.src;	
 
-		tiph->sum = ReverseWord(IcmpChksum((u16*)tiph, 10));		
+		t->iph.sum = IpChkSum((u16*)&t->iph, 10);
 
-		u16 icmp_len = (ReverseWord(tiph->len) - 20);	// Checksum of the ICMP Message
+		u16 icmp_len = (ReverseWord(t->iph.len) - 20);	// Checksum of the ICMP Message
 
 		if (icmp_len & 1)
 		{
-			*((byte*)icmph + icmp_len) = 0;
+			*((byte*)&h->icmp + icmp_len) = 0;
 			icmp_len ++;
 		};
 
 		icmp_len >>= 1;
 
-		u16 *d = (u16*)ticmph;
-		u16 *s = (u16*)icmph;
+		u16 *d = (u16*)&t->icmp;
+		u16 *s = (u16*)&h->icmp;
 		u16 c = icmp_len;
 
 		while (c > 0)
@@ -327,124 +329,179 @@ static void RequestICMP(EthHdr *eth, IPheader *iph, u32 stat)
 			*d++ = *s++; c--;
 		};
 
-		ticmph->type = ICMP_ECHO_REPLY;
-		ticmph->code = 0;
-		ticmph->cksum = 0;
+		t->icmp.type = ICMP_ECHO_REPLY;
+		t->icmp.code = 0;
+		t->icmp.cksum = 0;
 
-		ticmph->cksum = ReverseWord(IcmpChksum((u16*)ticmph, icmp_len));
+		t->icmp.cksum = IpChkSum((u16*)&t->icmp, icmp_len);
 
-		TransmitPacket(buf, ReverseWord(iph->len) + sizeof(EthHdr) - 1);
+		TransmitPacket(buf, ReverseWord(t->iph.len) + sizeof(t->eth));
 	}
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestUDP(EthHdr *eth, IPheader *iph, u32 stat)
+static void RequestDHCP(EthDhcp *h, u32 stat)
 {
-	reqUdpCount++;
-		//	char *adrRxTxBuf;
-		//	char *adrOurBuf;
-		//	int len;
-		//						bool NewPacket = false;
-		//	if(pIpHeader->ip_id != OurRxPacketIpHeader->ip_id) 
-		//	{
-		//		if(((ReverseWord(pIpHeader->ip_off))&0x1FFF)==0)
-		//		{
-  //  						if(pIpHeader->udp_dst != ReverseWord(OurUDPPort)) 
-		//			{ break; }
-		//		}
-		//		NewPacket = true;		
-		//		}
-		//	if(!NewPacket)
-		//	{
-		//		adrRxTxBuf = (char *)(pIpHeader->ip_src);
-		//		adrOurBuf = (char *)(OurRxPacketIpHeader->ip_src);
-		//		len = 8;
-		//			while(len)
-		//		{
-		//			if(*adrOurBuf != *adrRxTxBuf) NewPacket = true;
-		//			adrRxTxBuf++;
-		//			adrOurBuf++;
-		//			len --;
-		//		}
-		//	}
-		//	if(NewPacket)
-		//	{
-		//		UDPBuildLength = 0;
-		//		FirstFragment = false;
-		//		// Copy EthHeader and IPHeader	
-		//		adrRxTxBuf = (char *)(pEth);
-		//		adrOurBuf = (char *)(OurRxPacketEthHeader);
-		//		len = ((pIpHeader->ip_hl_v&0x0F)*sizeof(unsigned int)) + 14;
-		//		while(len)
-		//		{
-		//			*adrOurBuf = *adrRxTxBuf;
-		//			adrRxTxBuf++;
-		//			adrOurBuf++;
-		//			len --;
-		//		}
-		//	}
-		//	
-		//	unsigned short offset;			
-		//	offset = ReverseWord(pIpHeader->ip_off);
-		//	bool IPFragmentation;
-		//	bool IPFragmentLast;
-		//	if(((offset)&0x4000)) IPFragmentation = false;//IP Fragmentation  = no
-		//		else IPFragmentation = true;
-		//	if(((offset)&0x2000)) IPFragmentLast = false; //IP Fragment last = no
-		//		else  IPFragmentLast = true; //IP Fragment last = yes
-		//	adrRxTxBuf = ((char *)(pIpHeader) + (pIpHeader->ip_hl_v&0x0F)*sizeof(unsigned int));
-		//	adrOurBuf = (char *)(OurRxPacketIpHeader) + ((pIpHeader->ip_hl_v&0x0F)*sizeof(unsigned int));
-		//	if(IPFragmentation) adrOurBuf += 8*(offset&0x1FFF);
-		//	char *startAdr = (char *)(RxtdList[0].addr & 0xFFFFFFFC);
-		//	char *endAdr = (char *)((RxtdList[NB_RX_BUFFERS-1].addr & 0xFFFFFFFC) + ETH_RX_BUFFER_SIZE);
-		//	len =  (ReverseWord(pIpHeader->ip_len)) - ((pIpHeader->ip_hl_v&0x0F)*sizeof(unsigned int));
-		//	UDPBuildLength+=len;
-  //                  		char *endOurAdr = (char *)(&OurRxPacket[MAX_OUR_RX_PACKET_SIZE-sizeof(unsigned int)]);
-		//	while(len > 0)
-		//	{
-		//		if(adrOurBuf >= endOurAdr) break;	// Buf is full
-		//		if(adrRxTxBuf >= endAdr) adrRxTxBuf = startAdr;
-		//								*adrOurBuf = *adrRxTxBuf;
-		//		adrRxTxBuf++;
-		//		adrOurBuf++;
-		//		len --;
-		//	}
-		//	if(adrOurBuf >= endOurAdr) 
-		//	{ 
-		//		UDPNeedLength = 0xFFFFFFFF;
-		//		UDPBuildLength = 0;
-		//		break;
-		//	}
-		//	if((offset&0x1FFF) == 0)
-		//	{
-		//		FirstFragment = true;
-		//		UDPNeedLength = ReverseWord(pIpHeader->udp_len);
-		//	}
+	if (h->dhcp.op != 1) return;
 
-		//	if((!IPFragmentation)||(FirstFragment&&(UDPBuildLength == UDPNeedLength)))
-		//	{
-		//		UDPNeedLength = 0xFFFFFFFF;
-		//		UDPBuildLength = 0;
-		//		need_handle_data =true;
-		//	}
-		//	break; 
+	i32 optLen = (i32)ReverseWord(h->iph.len) - sizeof(h->iph) - sizeof(h->udp) - 240;
+
+	if (optLen < 3 || h->dhcp.magic != DHCPCOOKIE) return;
+
+	i32 i = 0; 
+	bool c = false;
+
+	while (i < optLen)
+	{
+		if (h->dhcp.options[i] == 53)
+		{
+			c = true; break;
+		};
+		
+		i++;
+
+		i += h->dhcp.options[i];
+	};
+
+	if (!c) return;
+
+	byte op = h->dhcp.options[i+2];
+
+	if (op != DHCPDISCOVER && op != DHCPREQUEST) return;
+
+	Buf_Desc *buf = GetTxDesc();
+
+	if (buf == 0) return;
+
+
+	EthDhcp *t = (EthDhcp*)buf->addr;
+
+	t->eth.dest = hwBroadCast;
+	t->eth.src  = hwAdr;
+
+	t->eth.protlen = ReverseWord(PROT_IP);
+
+
+	t->dhcp.op = 2;
+	t->dhcp.htype = 1;
+	t->dhcp.hlen = 6;
+	t->dhcp.hops = 0;
+	t->dhcp.xid = h->dhcp.xid;
+	t->dhcp.secs = 0;
+	t->dhcp.flags = 0;
+	t->dhcp.ciaddr = 0;
+	t->dhcp.yiaddr = IP32(192, 168, 10, 2); // New client IP
+	t->dhcp.siaddr = ipAdr;
+	t->dhcp.giaddr = 0;
+	t->dhcp.chaddr = h->dhcp.chaddr; //h->eth.src;
+	t->dhcp.magic = DHCPCOOKIE;
+
+	DataPointer p(t->dhcp.options);
+
+	*p.b++ = 53;
+	*p.b++ = 1;
+	*p.b++ = (op == DHCPDISCOVER) ? DHCPOFFER : DHCPACK;
+
+	*p.b++ = 1; // Sub-net Mask
+	*p.b++ = 4;
+	*p.d++ = ipMask;
+
+	*p.b++ = 54; // Server IP
+	*p.b++ = 4;
+	*p.d++ = ipAdr;
+
+	*p.b++ = -1; // End option
+
+	u16 ipLen = sizeof(h->iph) + sizeof(h->udp) + 240 + 16;
+
+	t->iph.hl_v = 0x45;	
+	t->iph.tos = 0;		
+	t->iph.len = ReverseWord(ipLen);		
+	t->iph.id = h->iph.id;		
+	t->iph.off = 0;		
+	t->iph.ttl = 64;		
+	t->iph.p = PROT_UDP;		
+	t->iph.sum = 0;		
+	t->iph.src = ipAdr;		
+	t->iph.dst = -1; //BroadCast	
+
+	t->iph.sum = IpChkSum((u16*)&t->iph, 10);
+
+	t->udp.src = BOOTPS;
+	t->udp.dst = BOOTPC;
+	t->udp.len = ReverseWord(ipLen - sizeof(t->iph));
+	t->udp.xsum = 0;
+
+	TransmitPacket(buf, ipLen + sizeof(t->eth));
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void RequestMyUDP(EthUdp *h, u32 stat)
+{
+	Buf_Desc *buf = GetTxDesc();
+
+	if (buf == 0) return;
+
+
+	EthUdp *t = (EthUdp*)buf->addr;
+
+	t->eth.dest = h->eth.src;
+	t->eth.src  = hwAdr;
+
+	t->eth.protlen = ReverseWord(PROT_IP);
+
+	t->iph.hl_v = 0x45;	
+	t->iph.tos = 0;		
+	t->iph.len = h->iph.len;		
+	t->iph.id = h->iph.id;		
+	t->iph.off = 0;		
+	t->iph.ttl = 64;		
+	t->iph.p = PROT_UDP;		
+	t->iph.sum = 0;		
+	t->iph.src = ipAdr;		
+	t->iph.dst = h->iph.src;	
+
+	t->iph.sum = IpChkSum((u16*)&t->iph, 10);
+
+	t->udp.src = udpInPort;
+	t->udp.dst = udpOutPort;
+	t->udp.len = h->udp.len;
+	t->udp.xsum = 0;
+
+	TransmitPacket(buf, ReverseWord(t->iph.len) + sizeof(t->eth));
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void RequestUDP(EthUdp *h, u32 stat)
+{
+	switch (h->udp.dst)
+	{
+		case BOOTPS:	RequestDHCP((EthDhcp*)h, stat); break;
+		case udpInPort: RequestMyUDP(h, stat); break;
+	};
+
+	reqUdpCount++;
 
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestIP(EthHdr *eth, u32 stat)
+static void RequestIP(EthIp *h, u32 stat)
 {
+//	IPheader *iph = (IPheader*)(eth->data);	
+
+	if (h->iph.hl_v != 0x45) return;
+
 	reqIpCount++;
 
-	IPheader *iph = (IPheader*)(eth->data);	
-
-	switch(iph->p)
+	switch(h->iph.p)
 	{
-		case PROT_ICMP:	RequestICMP(eth, iph, stat);	break; 
+		case PROT_ICMP:	RequestICMP((EthIcmp*)h, stat);	break; 
 
-		case PROT_UDP:	if ((stat & RD_IP_CHECK) == RD_IP_UDP_OK) { RequestUDP(eth, iph, stat); };		break;
+		case PROT_UDP:	if ((stat & RD_IP_CHECK) == RD_IP_UDP_OK) { RequestUDP((EthUdp*)h, stat); };		break;
 	};
 }
 
@@ -473,20 +530,20 @@ void RecieveFrame()
 
 	// Receive one packet		
 
-	EthHdr *pEth = (EthHdr*)(buf.addr & ~3);
+	EthHdr *eth = (EthHdr*)(buf.addr & ~3);
 
-	switch (ReverseWord(pEth->protlen))
+	switch (ReverseWord(eth->protlen))
 	{
 		case PROT_ARP: // ARP Packet format
 
-			RequestARP(pEth, buf.stat);
+			RequestARP((EthArp*)eth, buf.stat);
 			break; 
 
 		case PROT_IP:	// IP protocol frame
 
 			if (buf.stat & RD_IP_CHECK)
 			{
-				RequestIP(pEth, buf.stat);
+				RequestIP((EthIp*)eth, buf.stat);
 			};
 
 			break;

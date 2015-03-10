@@ -5,45 +5,6 @@
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static void WritePHY(byte reg, u16 data)
-//{
-//	HW::GMAC->MAN = 0x50020000 | (PHYA<<23) | ((reg&0x1F)<<18) | data;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//static u16 ReadPHY(byte reg, u16 data)
-//{
-//	HW::GMAC->MAN = 0x50020000 | (PHYA<<23) | ((reg&0x1F)<<18) | data;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-/*----------------------------------------------------------------------------
- *      RL-ARM - TCPnet
- *----------------------------------------------------------------------------
- *      Name:    GMAC_SAM9G20.C
- *      Purpose: Driver for Atmel AT91SAM9G20 GMAC Ethernet Controller
- *      Rev.:    V4.60
- *----------------------------------------------------------------------------
- *      This code is part of the RealView Run-Time Library.
- *      Copyright (c) 2004-2012 KEIL - An ARM Company. All rights reserved.
- *---------------------------------------------------------------------------*/
-
-//#include <Net_Config.h>
-
-/* The following macro definitions may be used to select the speed
-   of the physical link:
-
-  _10MBIT_   - connect at 10 MBit only
-  _100MBIT_  - connect at 100 MBit only
-
-  By default an autonegotiation of the link speed is used. This may take 
-  longer to connect, but it works for 10MBit and 100MBit physical links.     */
-
 /* Net_Config.c */
 
 static const MAC hwAdr = {0x12345678, 0x9ABC};
@@ -295,7 +256,7 @@ static void RequestICMP(EthIcmp *h, u32 stat)
 		t->eth.dest = h->eth.src;
 		t->eth.src  = hwAdr;
 
-		t->eth.protlen = ReverseWord(PROT_IP);
+		t->eth.protlen = SWAP16(PROT_IP);
 
 		t->iph.hl_v = 0x45;	
 		t->iph.tos = 0;		
@@ -407,13 +368,17 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 	*p.b++ = 4;
 	*p.d++ = ipMask;
 
+	*p.b++ = 51; // IP Address Lease Time
+	*p.b++ = 4;
+	*p.d++ = SWAP32(3600*24);
+
 	*p.b++ = 54; // Server IP
 	*p.b++ = 4;
 	*p.d++ = ipAdr;
 
 	*p.b++ = -1; // End option
 
-	u16 ipLen = sizeof(h->iph) + sizeof(h->udp) + 240 + 16;
+	u16 ipLen = sizeof(h->iph) + sizeof(h->udp) + (sizeof(t->dhcp) - sizeof(t->dhcp.options)) + (p.b - (byte*)t->dhcp.options);
 
 	t->iph.hl_v = 0x45;	
 	t->iph.tos = 0;		
@@ -450,7 +415,7 @@ static void RequestMyUDP(EthUdp *h, u32 stat)
 	t->eth.dest = h->eth.src;
 	t->eth.src  = hwAdr;
 
-	t->eth.protlen = ReverseWord(PROT_IP);
+	t->eth.protlen = SWAP16(PROT_IP);
 
 	t->iph.hl_v = 0x45;	
 	t->iph.tos = 0;		

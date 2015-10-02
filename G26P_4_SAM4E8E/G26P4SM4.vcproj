@@ -88,10 +88,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\gmac.c"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\hardware.cpp"
 				>
 			</File>
@@ -105,6 +101,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\system_SAM4E.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\trap.cpp"
 				>
 			</File>
 		</Filter>
@@ -122,15 +122,15 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\gmac.h"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\hardware.h"
 				>
 			</File>
 			<File
 				RelativePath=".\cpp\nand.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\trap.h"
 				>
 			</File>
 		</Filter>

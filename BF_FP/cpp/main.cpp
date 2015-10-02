@@ -33,6 +33,8 @@ static char 	*pDeviceCompany	=	"Atmel Corporation";
 #define FLASH_START_ADDR	0x00000000
 #define BUFFER_SIZE			0x4000
 
+byte buffer[BUFFER_SIZE];
+
 #ifndef TRUE
 #define TRUE (1)
 #endif
@@ -314,7 +316,10 @@ ERROR_CODE AllocateAFPBuffer()
 	// is in bytes but we store the data as integers to make data
 	// manipulation easier when actually programming the data.  This is why
 	// BUFFER_SIZE bytes are being allocated rather than BUFFER_SIZE * sizeof(int).
-	AFP_Buffer = (int *)malloc(BUFFER_SIZE);
+	
+//	AFP_Buffer = (int *)malloc(BUFFER_SIZE);
+
+	AFP_Buffer = (int *)buffer;
 
 	// AFP_Buffer will be NULL if we could not allocate storage for the
 	// buffer
@@ -343,8 +348,8 @@ ERROR_CODE AllocateAFPBuffer()
 void FreeAFPBuffer()
 {
 	// free the buffer if we were able to allocate one
-	if ( AFP_Buffer )
-		free( AFP_Buffer );
+//	if ( AFP_Buffer )
+//		free( AFP_Buffer );
 
 }
 

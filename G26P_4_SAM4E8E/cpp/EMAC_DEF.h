@@ -5,9 +5,10 @@
 
 
 /* EMAC Memory Buffer configuration. */
-#define NUM_RX_BUF          4          /* 0x2000 for Rx (64*128=8K)         */
-#define ETH_RX_BUF_SIZE     1536        /* EMAC Receive buffer size.         */
-//#define ETH_RX_BUF_NUM      (1536/ETH_RX_BUF_SIZE)
+#define NUM_RX_BUF          8          /* 0x2000 for Rx (64*128=8K)         */
+#define ETH_RX_DRBS			8
+#define ETH_RX_BUF_SIZE     (ETH_RX_DRBS * 64)       /* EMAC Receive buffer size.         */
+
 
 #define NUM_TX_BUF          4           /* 0x0600 for Tx                     */
 #define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
@@ -27,7 +28,7 @@
 #define ICMP_ECHO_REPLY		0x00
 
 #define SWAP16(x)	((u16)((x) << 8) | ((x) >> 8))
-#define SWAP32(x)	(((x)>>24) | (((x)&0x00ff0000) >> 8) | (((x)&0x0000ff00) << 8) | (((x)<<24)))
+#define SWAP32(x)	(((x)>>24) | (((x)&0x00ff0000) >> 8) | (((x)&0x0000ff00) << 8) | (((u32)(x)<<24)))
 
 
 #define BOOTPS SWAP16(67)	// server DHCP
@@ -48,20 +49,6 @@
 //#define pRSTC   AT91C_BASE_RSTC
 //#define pAIC    AT91C_BASE_AIC
 //#define pPMC    AT91C_BASE_PMC
-
-__packed struct MAC
-{
-	u32 B;
-	u16 T;
-
-	inline void operator=(const MAC &v) { B = v.B; T = v.T; }
-};
-
-struct Buf_Desc
-{
-	u32 addr;
-	u32 stat;
-};
 
 #define PHYA 1
 
@@ -896,220 +883,6 @@ struct Buf_Desc
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct EthHdr
-{
-	MAC		dest;	/* Destination node		*/
-	MAC		src;	/* Source node			*/
-	u16		protlen;	/* Protocol or length		*/
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct ArpHdr
-{
-	u16		hrd;		/* Format of hardware address	*/
-	u16		pro;		/* Format of protocol address	*/
-	byte	hln;		/* Length of hardware address	*/
-	byte	pln;		/* Length of protocol address	*/
-	u16		op;			/* Operation			*/
-	MAC		sha;		/* Sender hardware address	*/
-	u32		spa;		/* Sender protocol address	*/
-	MAC		tha;		/* Target hardware address	*/
-	u32		tpa;		/* Target protocol address	*/
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//* IP Header structure
-
-__packed struct IPheader
-{
-	byte	hl_v;		/* header length and version	*/
-	byte	tos;		/* type of service		*/
-	u16		len;		/* total length			*/
-	u16		id;			/* identification		*/
-	u16		off;		/* fragment offset field	*/
-	byte	ttl;		/* time to live			*/
-	byte	p;			/* protocol			*/
-	u16		sum;		/* checksum			*/
-	u32		src;		/* Source IP address		*/
-	u32		dst;		/* Destination IP address	*/
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//* Preudo IP Header
-__packed struct IPPseudoheader
-{
-	u32		srcAdr;	/* Source IP address		*/
-	u32		dstAdr;	/* Destination IP address	*/
-	byte   	zero;
-	byte   	proto;
-	u16		size;
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//* ICMP echo header structure
-
-__packed struct IcmpEchoHdr
-{
-	byte	type;       /* type of message */
-	byte	code;       /* type subcode */
-	u16		cksum;      /* ones complement cksum of struct */
-	u16		id;         /* identifier */
-	u16		seq;        /* sequence number */
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//* UDP header structure
-__packed struct UdpHdr
-{
-	u16	src;	/* UDP source port		*/
-	u16	dst;	/* UDP destination port		*/
-	u16	len;	/* Length of UDP packet		*/
-	u16	xsum;	/* Checksum			*/
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct EthArp
-{
-	EthHdr	eth;
-	ArpHdr	arp;
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct EthIp
-{
-	EthHdr		eth;
-	IPheader	iph;
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct EthIcmp
-{
-	EthHdr		eth;
-	IPheader	iph;
-	IcmpEchoHdr	icmp;
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct EthUdp
-{
-	EthHdr		eth;
-	IPheader	iph;
-	UdpHdr		udp;
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct DhcpHdr
-{
-	byte	op;
-	byte	htype;
-	byte	hlen;
-	byte	hops;
-
-	u32		xid;
-	u16		secs;
-	u16		flags;
-
-	u32		ciaddr;
-	u32		yiaddr;
-	u32		siaddr;
-	u32		giaddr;
-
-	MAC		chaddr;
-	byte	pad_chaddr[10];
-
-	char	sname[64];
-	char	file[128];
-	u32		magic;
-	byte	options[336];
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct EthDhcp
-{
-	EthHdr		eth;
-	IPheader	iph;
-	UdpHdr		udp;
-	DhcpHdr		dhcp;
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-typedef struct os_frame {         /* << System frame buffer structure >>     */
-  u16 length;                     /* Total Length of data in frame           */
-  u16 index;                      /* Buffer Position Index                   */
-  u8  data[1];                    /* Buffer data (protocol headers + data)   */
-} OS_FRAME;
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-typedef struct arp_info {         /* << ARP Cache Entry info >>              */
-  u8  State;                      /* ARP Cache entry current state           */
-  u8  Type;                       /* Cache Entry type                        */
-  u8  Retries;                    /* Number of Retries left                  */
-  u8  Tout;                       /* Cache Entry Timeout                     */
-  u8  HwAdr[ETH_ADRLEN];          /* Ethernet Hardware Address               */
-  u8  IpAdr[IP_ADRLEN];           /* Ethernet IP Address                     */
-} ARP_INFO;
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-typedef struct igmp_info {        /* << IGMP Group info >>                   */
-  u8  State;                      /* Group membership current state          */
-  u8  Tout;                       /* Timeout Timer for sending reports       */
-  u8  Flags;                      /* State machine flags                     */
-  u8  GrpIpAdr[IP_ADRLEN];        /* Group IP address                        */
-} IGMP_INFO;
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-typedef struct udp_info {         /* << UDP Socket info >>                   */
-  u8  State;                      /* UDP Socket entry current state          */
-  u8  Opt;                        /* UDP Socket Options                      */
-  u8  Flags;                      /* State machine flags                     */
-  u8  Tos;                        /* UDP Type of Service                     */
-  u16 LocPort;                    /* Local UDP port of Socket                */
-  u8  McastTtl;                   /* MultiCast Time To Live                  */
-                                  /* Application Event CallBack function     */
-  u16 (*cb_func)(u8 socket, u8 *rem_ip, u16 port, u8 *buf, u16 len);
-} UDP_INFO;
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-typedef struct tcp_info {         /* << TCP Socket info >>                   */
-  u8  State;                      /* TCP Socket entry current state          */
-  u8  Type;                       /* TCP Socket type                         */
-  u8  Flags;                      /* State machine flags                     */
-  u8  Tos;                        /* Type of service allocated               */
-  u8  RemIpAdr[IP_ADRLEN];        /* Remote IP address                       */
-  u16 RemPort;                    /* Remote TCP port                         */
-  u16 LocPort;                    /* Local TCP port                          */
-  u16 MaxSegSize;                 /* Transmit Max. Segment Size              */
-  u16 WinSize;                    /* Receive Window Size                     */
-  u32 SendSeq;                    /* Current Send Sequence Number not acked  */
-  u32 SendSeqNext;                /* Next Send Sequence Number               */
-  u32 RecSeqNext;                 /* Next Receive Sequence Number            */
-  u16 Tout;                       /* Socket idle timeout (in seconds)        */
-  u16 AliveTimer;                 /* Keep Alive timer value                  */
-  u16 RetryTimer;                 /* Retransmission timer value              */
-  u8  TxFlags;                    /* TCP Transmit Flags                      */
-  u8  Retries;                    /* Number of retries left before aborting  */
-  OS_FRAME *ReTransFrm;           /* Retransmission frame                    */
-                                  /* Application Event-CallBack function     */
-  u16 (*cb_func)(u8 socket, u8 event, u8 *p1, u16 p2);
-} TCP_INFO;
-
 
 
 

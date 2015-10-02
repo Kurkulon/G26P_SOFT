@@ -1,7 +1,7 @@
 #include "core.h"
 #include "emac.h"
 #include "EMAC_DEF.h"
-
+#include "trap.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -164,7 +164,7 @@ static bool TransmitPacket(Buf_Desc *buf, u16 len)	// Send a packet
 	};
 
 	buf->stat &= TD_TRANSMIT_OK|TD_TRANSMIT_WRAP;
-	buf->stat |= TD_LAST_BUF | (len & TD_LENGTH_MASK)| (7<<20);
+	buf->stat |= TD_LAST_BUF | (len & TD_LENGTH_MASK);
 	buf->stat &= ~TD_TRANSMIT_OK;
 
 	HW::GMAC->TSR = 0x17F;
@@ -403,40 +403,40 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestMyUDP(EthUdp *h, u32 stat)
-{
-	Buf_Desc *buf = GetTxDesc();
-
-	if (buf == 0) return;
-
-
-	EthUdp *t = (EthUdp*)buf->addr;
-
-	t->eth.dest = h->eth.src;
-	t->eth.src  = hwAdr;
-
-	t->eth.protlen = SWAP16(PROT_IP);
-
-	t->iph.hl_v = 0x45;	
-	t->iph.tos = 0;		
-	t->iph.len = h->iph.len;		
-	t->iph.id = h->iph.id;		
-	t->iph.off = 0;		
-	t->iph.ttl = 64;		
-	t->iph.p = PROT_UDP;		
-	t->iph.sum = 0;		
-	t->iph.src = ipAdr;		
-	t->iph.dst = h->iph.src;	
-
-	t->iph.sum = IpChkSum((u16*)&t->iph, 10);
-
-	t->udp.src = udpInPort;
-	t->udp.dst = udpOutPort;
-	t->udp.len = h->udp.len;
-	t->udp.xsum = 0;
-
-	TransmitPacket(buf, ReverseWord(t->iph.len) + sizeof(t->eth));
-}
+//static void RequestMyUDP(EthUdp *h, u32 stat)
+//{
+//	Buf_Desc *buf = GetTxDesc();
+//
+//	if (buf == 0) return;
+//
+//
+//	EthUdp *t = (EthUdp*)buf->addr;
+//
+//	t->eth.dest = h->eth.src;
+//	t->eth.src  = hwAdr;
+//
+//	t->eth.protlen = SWAP16(PROT_IP);
+//
+//	t->iph.hl_v = 0x45;	
+//	t->iph.tos = 0;		
+//	t->iph.len = h->iph.len;		
+//	t->iph.id = h->iph.id;		
+//	t->iph.off = 0;		
+//	t->iph.ttl = 64;		
+//	t->iph.p = PROT_UDP;		
+//	t->iph.sum = 0;		
+//	t->iph.src = ipAdr;		
+//	t->iph.dst = h->iph.src;	
+//
+//	t->iph.sum = IpChkSum((u16*)&t->iph, 10);
+//
+//	t->udp.src = udpInPort;
+//	t->udp.dst = udpOutPort;
+//	t->udp.len = h->udp.len;
+//	t->udp.xsum = 0;
+//
+//	TransmitPacket(buf, ReverseWord(t->iph.len) + sizeof(t->eth));
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -445,7 +445,7 @@ static void RequestUDP(EthUdp *h, u32 stat)
 	switch (h->udp.dst)
 	{
 		case BOOTPS:	RequestDHCP((EthDhcp*)h, stat); break;
-		case udpInPort: RequestMyUDP(h, stat); break;
+		case udpInPort: RequestTrap(h, stat); break;
 	};
 
 	reqUdpCount++;
@@ -637,7 +637,7 @@ bool InitEMAC()
 	//pAIC->AIC_ICCR   = (1 << AT91C_ID_EMAC);
 	//pAIC->AIC_SPU    = (u32)def_interrupt;
 
-  return true;
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -795,159 +795,6 @@ void UpdateEMAC()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-/*--------------------------- int_enable_eth --------------------------------*/
-
-static void int_enable_eth (void)
-{
-//	CM3::NVIC->ISER[HW::PID::GMAC_I/32] = HW::PID::GMAC_M;
-}
-
-
-//*--------------------------- int_disable_eth -------------------------------*/
-
-static void int_disable_eth (void)
-{
-//	CM3::NVIC->ICER[HW::PID::GMAC_I/32] = HW::PID::GMAC_M;
-}
-
-
-/*--------------------------- send_frame ------------------------------------*/
-
-void send_frame (OS_FRAME *frame) {
-  /* Send frame to GMAC ethernet controller */
-  u32 *sp,*dp;
-  u32 i;
-
-  /* Packet Transmit in progress, wait until finished. */
-  while (HW::GMAC->TSR & TSR_TXGO);
-
-  sp = (u32 *)&frame->data[0];
-  dp = (u32 *)(Tx_Desc[0].addr & ~3);
-  /* Copy frame data to GMAC IO buffer. */
-  for (i = (frame->length + 3) >> 2; i; i--) {
-    *dp++ = *sp++;
-  }
-  Tx_Desc[0].stat = frame->length | TD_LAST_BUF | TD_TRANSMIT_WRAP;
-
-  /* Start frame transmission. */
-  HW::GMAC->NCR |= GMAC_TSTART;
-}
-
-
-/*--------------------------- fetch_packet ----------------------------------*/
-
-//static void fetch_packet (void) {
-//  /* Fetch a packet from DMA buffer and release buffer. */
-//  OS_FRAME *frame;
-//  u32 j,ei,si,RxLen;
-//  u32 *sp,*dp;
-//
-//	for (ei = RxBufIndex; ; RxBufIndex = ei)
-//	{
-//	    /* Scan the receive buffers. */
-//		for (si = ei; ; )
-//		{
-//			if (!(Rx_Desc[ei].addr & AT91C_OWNERSHIP_BIT))	// End of scan, unused buffers found. 
-//			{
-//				if (si != ei) // Found erroneus fragment, release it. 
-//				{
-//					ei = si;
-//					goto rel;
-//		        };
-//
-//				return;
-//			};
-//
-//			// Search for EOF.
-//			
-//			if (Rx_Desc[ei].stat & RD_EOF)
-//			{
-//				break;
-//			};
-//
-//      /* Check the SOF-SOF sequence */
-//      if (Rx_Desc[ei].stat & RD_SOF) {
-//        /* Found one, this is new start of frame. */
-//        si = ei;
-//      }
-//      if (++ei == NUM_RX_BUF) ei = 0;
-//
-//      if (ei == RxBufIndex) {
-//        /* Safety limit to prevent deadlock. */
-//        ei = si;
-//        goto rel;
-//      }
-//    }
-//
-//    /* Get frame length. */
-//    RxLen = Rx_Desc[ei].stat & RD_LENGTH_MASK;
-//    if (++ei == NUM_RX_BUF) ei = 0;
-//
-//    if (RxLen > ETH_MTU) {
-//      /* Packet too big, ignore it and free buffer. */
-//      goto rel;
-//    }
-//
-//    /* Flag 0x80000000 to skip sys_error() call when out of memory. */
-////    frame = alloc_mem (RxLen | 0x80000000);
-//
-//    /* if 'alloc_mem()' has failed, ignore this packet. */
-//    if (frame != 0) {
-//      /* Make sure that block is 4-byte aligned */
-//      dp = (u32 *)&frame->data[0];
-//      for ( ; si != ei; RxLen -= ETH_RX_BUF_SIZE) {
-//        sp = (u32 *)(Rx_Desc[si].addr & ~0x3);
-//        j = RxLen;
-//        if (j > ETH_RX_BUF_SIZE) j = ETH_RX_BUF_SIZE;
-//        for (j = (j + 3) >> 2; j; j--) {
-//          *dp++ = *sp++;
-//        }
-//        if (++si == NUM_RX_BUF) si = 0;
-//      }
-////      put_in_queue (frame);
-//    }
-//
-//    /* Release packet fragments from GMAC IO buffer. */
-//rel:for (j = RxBufIndex; ; ) {
-//      Rx_Desc[j].addr &= ~AT91C_OWNERSHIP_BIT;
-//      if (++j == NUM_RX_BUF) j = 0;
-//      if (j == ei) break;
-//    }
-//  }
-//}
-//
-
-/*--------------------------- interrupt_ethernet ----------------------------*/
-
-//static void interrupt_ethernet (void) __irq
-//{
-//  /* GMAC Ethernet Controller Interrupt function. */
-//  register u32 int_stat;
-//
-//  int_stat = HW::GMAC->ISR;
-//
-//  if (int_stat & (ISR_RXUBR | ISR_ROVR))
-//  {
-//    /* Receive buffer overflow, all packets are invalid, because */
-//    /* a descriptor status is overwritten by DMA engine. */
-//    HW::GMAC->NCR &= ~GMAC_RXEN;
-//    rx_descr_init ();
-//    HW::GMAC->RSR  = RSR_RXOVR | RSR_REC | RSR_BNA;
-//    HW::GMAC->NCR |= GMAC_RXEN;
-//  }
-//  else if (int_stat & ISR_RCOMP)
-//  {
-//    /* Valid frame has been received. */
-//    if (HW::GMAC->RSR & RSR_REC)
-//	{
-//      fetch_packet ();
-//      HW::GMAC->RSR = RSR_REC;
-//    };
-//  };
-//  /* Acknowledge the interrupt. */
-////  pAIC->AIC_EOICR = 0;
-//}
-
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -963,7 +810,7 @@ static void rx_descr_init (void)
 
 	Rx_Desc[NUM_RX_BUF-1].addr |= 0x02; // Set the WRAP bit at the end of the list descriptor.
 
-	HW::GMAC->DCFGR = 0x00180004|GMAC_TXCOEN; // DMA Receive Buffer Size 1536 bytes
+	HW::GMAC->DCFGR = GMAC_DRBS(ETH_RX_DRBS)|GMAC_FBLDO_INCR4|GMAC_TXCOEN; // DMA Receive Buffer Size 512 bytes
 
 	HW::GMAC->RBQP = (u32)&Rx_Desc[0]; // Set Rx Queue pointer to descriptor list.
 }

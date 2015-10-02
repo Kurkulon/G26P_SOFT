@@ -107,6 +107,20 @@ u32 GetSectorSize()
 //////////////////////////////////////////////////////////////
 inline void Wait_For_SPIF(void)
 {
+	volatile int n;
+
+	for(n=0; n<DELAY; n++)
+	{
+		asm("nop;");
+	}
+
+	while((*pSPI0_STAT & SPIF) == 0);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline void Wait_For_RXS_SPIF(void)
+{
 	//volatile int n;
 
 	//for(n=0; n<DELAY; n++)
@@ -114,7 +128,7 @@ inline void Wait_For_SPIF(void)
 	//	asm("nop;");
 	//}
 
-	while((*pSPI0_STAT & SPIF) == 0);
+	while((*pSPI0_STAT & (SPIF|RXS)) != (SPIF|RXS));
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -712,7 +726,7 @@ byte ReadFlash()
 	Wait_For_SPIF();
 
 	*pSPI0_TDBR = 0;
-	Wait_For_SPIF();
+	Wait_For_RXS_SPIF();
 
 	return *pSPI0_RDBR;	
 }

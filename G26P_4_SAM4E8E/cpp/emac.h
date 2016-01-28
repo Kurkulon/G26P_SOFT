@@ -5,6 +5,7 @@
 
 extern bool	InitEMAC();
 extern void	UpdateEMAC();
+extern bool EMAC_SendData(void *pData, u16 length);
 
 
 __packed struct MAC
@@ -13,6 +14,8 @@ __packed struct MAC
 	u16 T;
 
 	inline void operator=(const MAC &v) { B = v.B; T = v.T; }
+	inline bool operator==(const MAC &v) { return (B == v.B) && (T == v.T); }
+	inline bool operator!=(const MAC &v) { return (B != v.B) || (T != v.T); }
 };
 
 struct Buf_Desc
@@ -170,5 +173,15 @@ __packed struct EthDhcp
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+union EthPtr
+{
+	EthHdr	*eth;
+	EthArp	*earp;
+	EthIp	*eip;
+	EthIcmp *eicmp;
+	EthUdp	*eudp;
+	EthDhcp *edhcp;
+};
 
 #endif // EMAC_H__02_03_2015__16_38

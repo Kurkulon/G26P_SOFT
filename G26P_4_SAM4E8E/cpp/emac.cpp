@@ -1,19 +1,24 @@
 #include "core.h"
 #include "emac.h"
 #include "EMAC_DEF.h"
-#include "trap.h"
+#include "xtrap.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 /* Net_Config.c */
 
+#define OUR_IP_ADDR   	IP32(192, 168, 3, 234)
+#define DHCP_IP_ADDR   	IP32(192, 168, 3, 254)
+
 static const MAC hwAdr = {0x12345678, 0x9ABC};
 static const MAC hwBroadCast = {0xFFFFFFFF, 0xFFFF};
-static const u32 ipAdr = IP32(192, 168, 10, 1);
+static const u32 ipAdr = OUR_IP_ADDR;//IP32(192, 168, 10, 1);
 static const u32 ipMask = IP32(255, 255, 255, 0);
 
 static const u16 udpInPort = SWAP16(66);
 static const u16 udpOutPort = SWAP16(66);
+
+static bool EmacIsConnected = false;
 
 /* Local variables */
 
@@ -171,6 +176,106 @@ static bool TransmitPacket(Buf_Desc *buf, u16 len)	// Send a packet
 	HW::GMAC->NCR |= GMAC_TXEN|GMAC_TSTART;
 
 	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+bool EMAC_SendData(void *pData, u16 length)
+{
+	static u16 TxDataID = 0;
+	
+	const u16 BLOK_LEN = 1480;	// Split to max IPlen=1500
+	const u16 MAX_TIME_TO_TRANSMIT_MS = 10;	// ms, do not write zero!
+
+	//if(!EmacIsConnected) return false; 
+	//if(!ComputerFind)  return false;
+	//length += sizeof(AT91S_UDPHdr);
+	//unsigned int blok = 0;
+	//unsigned int sended_len = 0;
+	//unsigned short checksum;
+	//unsigned int i,j;
+	bool ready = true;
+ 
+	TxDataID ++;
+
+	//AT91S_EthHdr *OurTxPacketEthHeader;
+	//AT91S_IPheader *OurTxPacketIpHeader;
+	//while(sended_len < length) 
+	//{
+ //       	OurTxPacketEthHeader = (AT91S_EthHdr *)((unsigned int)((unsigned int)TxPacket + TxBuffIndex*ETH_TX_BUFFER_SIZE)&0xFFFFFFFC);
+	//	OurTxPacketIpHeader = (AT91S_IPheader *)((unsigned int)OurTxPacketEthHeader + 14);
+	//	// EthHeader
+	//	for(i=0;i<6;i++) 
+	//	{ 
+	//		OurTxPacketEthHeader->et_dest[i] = ComputerEmacAddr[i];
+ //      		        OurTxPacketEthHeader->et_src[i] = OurEmacAddr[i];
+	//	}
+	//	OurTxPacketEthHeader->et_protlen = SWAP16(PROT_IP);
+	//	// IpHeader
+	//	for(i=0;i<4;i++) 
+	//	{ 
+	//		OurTxPacketIpHeader->ip_dst[i] = ComputerIpAddr[i];
+	//		OurTxPacketIpHeader->ip_src[i] = OurIpAddr[i];
+	//	}
+	//	OurTxPacketIpHeader->ip_hl_v 	= OurRxPacketIpHeader->ip_hl_v;	// may be fix  = 0x45
+	//	OurTxPacketIpHeader->ip_tos 	= OurRxPacketIpHeader->ip_tos;  // may be fix  = 0x00
+	//	OurTxPacketIpHeader->ip_id 	= SWAP16(TxDataID);
+	//	OurTxPacketIpHeader->ip_ttl	= 128;
+	//	OurTxPacketIpHeader->ip_p	= PROT_UDP;
+	//	unsigned short offset = 0x0000;
+	//	if(length - sended_len > BLOK_LEN) offset |= 0x2000;
+	//	offset |= (sended_len/8)&0x1FFF;
+	//	OurTxPacketIpHeader->ip_off 	= SWAP16(offset);
+	//	// UDP header
+	//	char *data;
+ //       	if(blok==0)	
+	//	{
+	//		OurTxPacketIpHeader->udp_src 	= SWAP16(OurUDPPort);
+	//		OurTxPacketIpHeader->udp_dst 	= SWAP16(ComputerUDPPort);
+	//		OurTxPacketIpHeader->udp_len 	= SWAP16(length);
+	//		OurTxPacketIpHeader->udp_xsum	= 0;
+	//		checksum = ~NetChksumAdd(NetChksumAdd(NetChksum((unsigned short *)(&(OurTxPacketIpHeader->udp_src)), sizeof(AT91S_UDPHdr)), 
+	//						   PseudoChksum((unsigned char *)(OurTxPacketIpHeader->ip_src), (unsigned char *)(OurTxPacketIpHeader->ip_dst), SWAP16(OurTxPacketIpHeader->udp_len))),
+	//					NetChksum((unsigned short *)(pData), length-sizeof(AT91S_UDPHdr)));
+	//		OurTxPacketIpHeader->udp_xsum	= checksum;
+	//		sended_len += sizeof(AT91S_UDPHdr);
+	//		data = (char *)(&OurTxPacketIpHeader->udp_xsum) + sizeof(OurTxPacketIpHeader->udp_xsum);
+	//		i = sizeof(AT91S_UDPHdr);
+	//	}
+	//	else
+	//	{
+	//		i = 0;
+	//		data = (char *)(&OurTxPacketIpHeader->udp_src);
+	//	}
+
+	//	i = sended_len + BLOK_LEN - i;
+	//	if (i>=length) i=length;
+	//	while(sended_len < i)
+	//	{
+	//        	*((unsigned short *)data) = (*((unsigned short *)pData));
+	//		data+=2;
+	//		pData+=2;
+	//		sended_len+=2;
+	//	}
+	//	sended_len = i;
+	//	// IP Header
+	//	unsigned short ip_len		= sended_len - blok*BLOK_LEN + (OurTxPacketIpHeader->ip_hl_v&0x0F)*sizeof(unsigned int);
+	//	OurTxPacketIpHeader->ip_len 	= SWAP16(ip_len);
+ //               OurTxPacketIpHeader->ip_sum	= 0;
+	//	checksum = SWAP16(IPChksum((unsigned short *)OurTxPacketIpHeader, (OurTxPacketIpHeader->ip_hl_v & 0x0F) * sizeof(unsigned int)/sizeof(unsigned short)));
+	//	OurTxPacketIpHeader->ip_sum 	= checksum;
+	//	// Transmit
+	//	ready = ready & ProcessTxEmacPacket();
+	//	TxtdList[TxBuffIndex].addr = (unsigned int)OurTxPacketEthHeader;
+	//	TxtdList[TxBuffIndex].U_Status.S_Status.Length = SWAP16(OurTxPacketIpHeader->ip_len) + 14;
+	//	TxtdList[TxBuffIndex].U_Status.S_Status.LastBuff = 1;
+	//	if (TxBuffIndex == (NB_TX_BUFFERS - 1))	TxBuffIndex = 0; else TxBuffIndex ++;
+	//	AT91C_BASE_EMAC->EMAC_NCR |= AT91C_EMAC_TSTART;
+	//	blok++;
+	//}
+	//EmacTxCounter++;
+	return ready;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -352,7 +457,7 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 	t->dhcp.secs = 0;
 	t->dhcp.flags = 0;
 	t->dhcp.ciaddr = 0;
-	t->dhcp.yiaddr = IP32(192, 168, 10, 2); // New client IP
+	t->dhcp.yiaddr = DHCP_IP_ADDR;//IP32(192, 168, 10, 2); // New client IP
 	t->dhcp.siaddr = ipAdr;
 	t->dhcp.giaddr = 0;
 	t->dhcp.chaddr = h->dhcp.chaddr; //h->eth.src;
@@ -375,6 +480,11 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 	*p.b++ = 54; // Server IP
 	*p.b++ = 4;
 	*p.d++ = ipAdr;
+
+	*p.b++ = 33;	// Static Route
+	*p.b++ = 8;
+	*p.d++ = ipAdr;	// Destination
+	*p.d++ = t->dhcp.yiaddr; // Router
 
 	*p.b++ = -1; // End option
 
@@ -493,22 +603,24 @@ void RecieveFrame()
 
 //	UpdateStatistic();
 
-	// Receive one packet		
+	// Receive one packet
 
-	EthHdr *eth = (EthHdr*)(buf.addr & ~3);
+	EthPtr ep;
 
-	switch (ReverseWord(eth->protlen))
+	ep.eth = (EthHdr*)(buf.addr & ~3);
+
+	switch (ReverseWord(ep.eth->protlen))
 	{
 		case PROT_ARP: // ARP Packet format
 
-			RequestARP((EthArp*)eth, buf.stat);
+			RequestARP(ep.earp, buf.stat);
 			break; 
 
 		case PROT_IP:	// IP protocol frame
 
 			if (buf.stat & RD_IP_CHECK)
 			{
-				RequestIP((EthIp*)eth, buf.stat);
+				RequestIP(ep.eip, buf.stat);
 			};
 
 			break;
@@ -770,6 +882,7 @@ void UpdateEMAC()
 			{
 				stateEMAC = CONNECTED;
 				HW::GMAC->NCR |= GMAC_RXEN;
+				EmacIsConnected = true;
 			};
 			
 			break;
@@ -781,6 +894,7 @@ void UpdateEMAC()
 				HW::GMAC->NCR &= ~GMAC_RXEN;
 				StartLink();
 				stateEMAC = LINKING;
+				EmacIsConnected = false;
 			}
 			else
 			{

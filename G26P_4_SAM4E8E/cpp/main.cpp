@@ -3,6 +3,7 @@
 #include "CRC16.h"
 #include "hardware.h"
 #include "emac.h"
+#include "xtrap.h"
 
 u32 fps = 0;
 
@@ -13,6 +14,8 @@ int main()
 	InitHardware();
 
 	InitEMAC();
+
+	InitTraps();
 
 	u32 f = 0;
 
@@ -36,6 +39,8 @@ int main()
 		//HW::PIOA->SODR = 1<<13;
 
 		UpdateEMAC();
+
+		UpdateTraps();
 
 		f++;
 

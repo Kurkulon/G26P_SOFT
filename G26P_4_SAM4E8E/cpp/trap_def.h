@@ -1,6 +1,8 @@
 #ifndef TRAP_DEF_H__28_01_2016__15_08
 #define TRAP_DEF_H__28_01_2016__15_08
 
+#include "rtc.h"
+#include "emac.h"
 
 #define TRAP_TX_DATA_BUFFER_SIZE	8400
 /**************************************************************/
@@ -50,6 +52,8 @@ __packed struct	TrapHdr
 	byte	version;
 	byte	status;
 	byte	device;
+
+	u16		cmd;
 };	
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -57,8 +61,15 @@ __packed struct	TrapHdr
 __packed struct	Trap
 {
 	TrapHdr	hdr;
-	u16		cmd;
 	byte	data[37];
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	EthTrap
+{
+	EthUdp	eudp;
+	Trap	trap;
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -66,7 +77,6 @@ __packed struct	Trap
 __packed struct	TrapError
 {
 	TrapHdr	hdr;
-	u16		cmd;
 	byte	error;
 };
 
@@ -75,9 +85,165 @@ __packed struct	TrapError
 __packed struct	TrapIP
 {
 	TrapHdr	hdr;
-	u16		cmd;
 	u32 ip;
 	u16 port;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapInfo
+{
+	TrapHdr	hdr;
+	u16 	version;	
+	u16 	number;
+	u16 	memory_mask;
+	i64 	memory_size;
+	u32 	devices_mask;
+	byte 	device_type;
+	byte 	device_telemetry;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapClock
+{
+	TrapHdr	hdr;
+	RTC_type rtc;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapInfoSet
+{
+	TrapHdr	hdr;
+
+	__packed union
+	{
+		u16 	number;
+		byte 	type;
+		byte 	telemetry;
+	};
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapReadVector
+{
+	TrapHdr	hdr;
+	u16 session;
+	i64 last_adress;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapBattSetCoeffs
+{
+	TrapHdr	hdr;
+	float coeff_k;
+	float coeff_b;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapBattSetVolt
+{
+	TrapHdr	hdr;
+	i16 setup_voltage;	//0.1V
+	i16 min_voltage;	//0.1V
+	i16 max_voltage;	//0.1V
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapSensCoeffs
+{
+	TrapHdr	hdr;
+	float ax_coeff_k;
+	float ax_coeff_b;
+	float ay_coeff_k;
+	float ay_coeff_b;
+	float az_coeff_k;
+	float az_coeff_b;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapProgBlock
+{
+	TrapHdr	hdr;
+	u32 offset;
+	u32 size;
+	byte data[];
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapOnlinePeriod
+{
+	TrapHdr	hdr;
+	u32 period_ms;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapOnlineSetDevice
+{
+	TrapHdr	hdr;
+	u32 delay_ms;
+	u32 period_min_ms;
+	byte command_count;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapOnlineSetCmd
+{
+	TrapHdr	hdr;
+	byte command_index;
+	byte telemetry;
+	byte mode;  
+	u16 offset_ms; 
+	byte tx_flags;
+	u32 tx_freq_hz;
+	u16 tx_size;
+	byte rx_flags;
+	u32 rx_freq_hz;
+	u32 rx_timeout_mks; 
+	u16 rx_pause_mks;
+	u16 rx_size;
+	u16 tx_data[]; 
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapOnlineAddCmd
+{
+	TrapHdr	hdr;
+
+	byte device_index;
+	byte command_index;
+	byte telemetry;
+	byte mode;  
+	u16 offset_ms; 
+	byte tx_flags;
+	u32 tx_freq_hz;
+	u16 tx_size;
+	byte rx_flags;
+	u32 rx_freq_hz;
+	u32 rx_timeout_mks; 
+	u16 rx_pause_mks;
+	u16 rx_size;
+	u16 tx_data[]; 
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapOnlineRemoveCmd
+{
+	TrapHdr	hdr;
+
+	byte device_index;
+	byte command_index;
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -4,17 +4,17 @@
 #include "rtc.h"
 
 /*************************/
-typedef __packed struct   
+__packed struct fram_linear_coeffs_type  
 {
 	float k;
 	float b;
-} fram_linear_coeffs_type;
+} ;
 /*************************/
-typedef __packed enum   
+__packed enum  fram_main_device_type 
 {
 	FRAM_MAIN_DEVICE_TYPE_MODULE_MEMORY = 0,
 	FRAM_MAIN_DEVICE_TYPE_MODULE_AUTONOM,
-} fram_main_device_type;
+} ;
 
 enum
 {
@@ -22,48 +22,48 @@ enum
 	FRAM_MAIN_DEVICE_TELEMETRY_USART_BIT,
 };
 
-typedef __packed struct
+__packed struct fram_main_type
 {
 	u16 device_number;
 	byte device_type;	// тип (0 = пам€ть, 1 =автономка)
 	byte device_telemetry;	// режим работы  (0bit = manch, 1bit = USART)
-} fram_main_type;
+};
 /*************************/
-typedef __packed struct
+__packed struct fram_memory_type
 {
 	u16 current_session;     // всЄ что казасетс€ записи векторов и сессий
 	i64 current_adress;
 	i64 current_vector_adress;
 	i64 start_adress;
-} fram_memory_type;
+} ;
 /*************************/
-typedef __packed struct   // всЄ что касаемо питани€
+__packed struct fram_power_type  // всЄ что касаемо питани€
 {
-	short battery_setup_voltage;	//0.1V
-	short battery_min_voltage;	//0.1V
-	short battery_max_voltage;	//0.1V
-	short line_setup_voltage;	//0.1V
-	short line_min_voltage;	//0.1V
-	short line_max_voltage;	//0.1V
+	i16 battery_setup_voltage;	//0.1V
+	i16 battery_min_voltage;	//0.1V
+	i16 battery_max_voltage;	//0.1V
+	i16 line_setup_voltage;	//0.1V
+	i16 line_min_voltage;	//0.1V
+	i16 line_max_voltage;	//0.1V
 	fram_linear_coeffs_type battery_coeffs;
 	fram_linear_coeffs_type line_coeffs;
-} fram_power_type;
+} ;
 /*************************/
-typedef __packed struct     // всЄ что касаемо питани€
+__packed struct fram_sensors_type    // всЄ что касаемо питани€
 {
 	fram_linear_coeffs_type ax_coeffs;
 	fram_linear_coeffs_type ay_coeffs;
 	fram_linear_coeffs_type az_coeffs;
-} fram_sensors_type;
+} ;
 /*************************/
-typedef __packed enum   
+__packed enum fram_autonom_result_type  
 {
         FRAM_AUTONOM_RESULT_NONE = 0, // не производилс€ опрос
         FRAM_AUTONOM_RESULT_ERROR,
         FRAM_AUTONOM_RESULT_READY,
-} fram_autonom_result_type;
+} ;
 
-typedef __packed enum   
+__packed enum fram_autonom_validation_type
 {
         FRAM_AUTONOM_VALIDATION_NONE = 0, // не производилась
         FRAM_AUTONOM_VALIDATION_OK,
@@ -73,11 +73,11 @@ typedef __packed enum
         FRAM_AUTONOM_VALIDATION_ERROR_STRUCT,
         FRAM_AUTONOM_VALIDATION_ERROR_PARAMETR,
         FRAM_AUTONOM_VALIDATION_ERROR_COUNT,
-} fram_autonom_validation_type;
+} ;
 
 #define FRAM_AUTONOM_VERSION	0x1
 
-typedef __packed struct         
+__packed struct fram_autonom_command_type        
 {
 	byte telemetry;
 	byte mode;   
@@ -91,56 +91,56 @@ typedef __packed struct
 	u16 rx_pause_mks;
 	u16 rx_size;
 	u16 tx_data[]; //команды в прибор
-} fram_autonom_command_type;
+} ;
 
-typedef __packed struct     
+__packed struct fram_autonom_device_type    
 {
 	u32 delay_ms; // задержка с момента подачи питани€
 	u32 period_min_ms; // минимальный период опроса
 	byte command_count; // команд в приборе
 	byte command[]; // номера команд в приборе
-} fram_autonom_device_type;
+} ;
 
-typedef __packed struct     
+__packed struct fram_autonom_session_type    
 {
 	RTC_type start;
 	RTC_type stop;
 	u32 period_ms;
 	byte device_count; // приборов в сессии
 	byte device[]; // номера приборов в сессии
-} fram_autonom_session_type;
+} ;
 
-typedef __packed struct     
+__packed struct fram_autonom_control_type    
 {
 	u32 special_period_ms;
 	byte session_count;
 	byte device_count;
 	byte command_count;
 	u16 pointer[];
-} fram_autonom_control_type;
+} ;
 
-typedef __packed struct     
+__packed struct fram_autonom_header_type    
 {
 	byte	version;
 	u16		size;			// размер данных вместе с header
 	byte	crc_data;		// = crc(данные[size - header])
 	byte	crc_header; 	// = crc(size, version, crc_data)
-} fram_autonom_header_type;
+} ;
 
-typedef __packed struct     // управл€юща€ пам€ть автономки
+__packed struct fram_autonom_type   // управл€юща€ пам€ть автономки
 {
 	fram_autonom_header_type header;
 	fram_autonom_control_type control;
-} fram_autonom_type;
+} ;
 /*************************************************/
-typedef __packed struct     
+__packed struct fram_type    
 {
 	fram_main_type main;
 	fram_memory_type memory;
 	fram_power_type power;
 	fram_sensors_type sensors;
 	fram_autonom_type autonom;
-} fram_type;              
+};              
 /*************************************************/
 extern void 		FRAM_Init();
 extern void 		FRAM_Idle();
@@ -161,21 +161,21 @@ extern void 		FRAM_Memory_Current_Vector_Adress_Set(i64 a);
 extern i64 			FRAM_Memory_Start_Adress_Get();               // адрес старта сессии
 extern void			FRAM_Memory_Start_Adress_Set(i64 a);
 
-extern void 		FRAM_Power_Battery_Voltages_Get(short *setup, short *min, short *max);
-extern void 		FRAM_Power_Battery_Voltages_Set(short setup, short min, short max);
+extern void 		FRAM_Power_Battery_Voltages_Get(i16 *setup, i16 *min, i16 *max);
+extern void 		FRAM_Power_Battery_Voltages_Set(i16 setup, i16 min, i16 max);
 extern void 		FRAM_Power_Battery_Coeffs_Get(float *k, float *b);
-extern void 		FRAM_Power_Battery_Coeffs_Set(float *k, float *b);
-extern void 		FRAM_Power_Line_Voltages_Get(short *setup, short *min, short *max);
-extern void 		FRAM_Power_Line_Voltages_Set(short setup, short min, short max);
+extern void 		FRAM_Power_Battery_Coeffs_Set(float k, float b);
+extern void 		FRAM_Power_Line_Voltages_Get(i16 *setup, i16 *min, i16 *max);
+extern void 		FRAM_Power_Line_Voltages_Set(i16 setup, i16 min, i16 max);
 extern void 		FRAM_Power_Line_Coeffs_Get(float *k, float *b);
-extern void 		FRAM_Power_Line_Coeffs_Set(float *k, float *b);
+extern void 		FRAM_Power_Line_Coeffs_Set(float k, float b);
 
 extern void 		FRAM_Sensors_Ax_Coeffs_Get(float *k, float *b);
-extern void 		FRAM_Sensors_Ax_Coeffs_Set(float *k, float *b);
+extern void 		FRAM_Sensors_Ax_Coeffs_Set(float k, float b);
 extern void 		FRAM_Sensors_Ay_Coeffs_Get(float *k, float *b);
-extern void 		FRAM_Sensors_Ay_Coeffs_Set(float *k, float *b);
+extern void 		FRAM_Sensors_Ay_Coeffs_Set(float k, float b);
 extern void 		FRAM_Sensors_Az_Coeffs_Get(float *k, float *b);
-extern void 		FRAM_Sensors_Az_Coeffs_Set(float *k, float *b);
+extern void 		FRAM_Sensors_Az_Coeffs_Set(float k, float b);
 
 extern u16 			FRAM_Autonom_Size_Get();
 extern fram_autonom_validation_type FRAM_Autonom_Validation_Get();

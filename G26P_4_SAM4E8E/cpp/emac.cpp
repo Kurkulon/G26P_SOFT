@@ -24,6 +24,7 @@ static bool EmacIsConnected = false;
 
 static byte RxBufIndex = 0;
 static byte TxBufIndex = 0;
+static byte TxFreeIndex = 0;
 
 enum	StateEM { LINKING, CONNECTED };	
 
@@ -45,11 +46,25 @@ u32 countHNO = 0;
 
 /* GMAC local IO buffers descriptors. */
 Buf_Desc Rx_Desc[NUM_RX_BUF];
-Buf_Desc Tx_Desc[NUM_TX_BUF];
+Buf_Desc Tx_Desc[NUM_TX_DSC];
 
 /* GMAC local buffers must be 8-byte aligned. */
 byte rx_buf[NUM_RX_BUF][ETH_RX_BUF_SIZE];
-byte tx_buf[NUM_TX_BUF][ETH_TX_BUF_SIZE];
+//byte tx_buf[NUM_TX_BUF][ETH_TX_BUF_SIZE];
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct SysEthBuf : public EthBuf
+{
+	byte data[((sizeof(EthDhcp) + 127) & ~127) - sizeof(EthBuf)];
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static SysEthBuf	sysTxBuf[8];
+static byte			indSysTx = 0;
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 struct GSTAT
 {
@@ -79,6 +94,8 @@ struct GSTAT
 };
 
 GSTAT stat = {0};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 /*----------------------------------------------------------------------------
  *      GMAC Ethernet Driver Functions
@@ -114,18 +131,51 @@ inline void StartLink() { linkState = 0; }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static SysEthBuf* GetSysTxBuffer()
+{
+	SysEthBuf &p = sysTxBuf[indSysTx];
+
+	if (p.len == 0)
+	{
+		indSysTx = (indSysTx + 1) & 7;
+		return &p;
+	}
+	else
+	{
+		return 0;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static Buf_Desc* GetTxDesc()
 {
 	Buf_Desc *p = 0;
 	Buf_Desc &td = Tx_Desc[TxBufIndex];
 
-	if (td.stat & TD_TRANSMIT_OK)
+	if ((td.stat & TD_TRANSMIT_OK) && (td.stat & TD_LENGTH_MASK) == 0)
 	{
 		p = &td;
 		TxBufIndex = (td.stat & TD_TRANSMIT_WRAP) ? 0 : TxBufIndex + 1;
 	};
 
 	return p;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void FreeTxDesc()
+{
+	Buf_Desc &td = Tx_Desc[TxFreeIndex];
+
+	if ((td.stat & TD_TRANSMIT_OK) && (td.stat & TD_LENGTH_MASK) != 0)
+	{
+		td.stat &= TD_TRANSMIT_OK|TD_TRANSMIT_WRAP;
+
+		*((u32*)(td.addr-4)) = 0;
+
+		TxFreeIndex = (td.stat & TD_TRANSMIT_WRAP) ? 0 : TxFreeIndex + 1;
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -161,16 +211,17 @@ static void UpdateStatistic()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool TransmitPacket(Buf_Desc *buf, u16 len)	// Send a packet
+static bool TransmitPacket(Buf_Desc *dsc, EthBuf *b)	// Send a packet
 {
-	if (buf == 0)
+	if (dsc == 0 || b == 0 || b->len == 0)
 	{
 		return false;
 	};
 
-	buf->stat &= TD_TRANSMIT_OK|TD_TRANSMIT_WRAP;
-	buf->stat |= TD_LAST_BUF | (len & TD_LENGTH_MASK);
-	buf->stat &= ~TD_TRANSMIT_OK;
+	dsc->addr = (u32)&b->eth;
+	dsc->stat &= TD_TRANSMIT_OK|TD_TRANSMIT_WRAP;
+	dsc->stat |= TD_LAST_BUF | (b->len & TD_LENGTH_MASK);
+	dsc->stat &= ~TD_TRANSMIT_OK;
 
 	HW::GMAC->TSR = 0x17F;
 	HW::GMAC->NCR |= GMAC_TXEN|GMAC_TSTART;
@@ -290,11 +341,13 @@ static void RequestARP(EthArp *h, u32 stat)
 		{
 			reqArpCount++;
 
-			Buf_Desc *buf = GetTxDesc();
+			Buf_Desc *dsc = GetTxDesc();
 
-			if (buf == 0) return;
+			EthBuf *buf = GetSysTxBuffer();
 
-			EthArp *t = (EthArp*)buf->addr;
+			if (dsc == 0 || buf == 0) return;
+
+			EthArp *t = (EthArp*)&buf->eth;
 
 			t->eth.dest = h->eth.src;
 			t->eth.src  = hwAdr;
@@ -313,9 +366,10 @@ static void RequestARP(EthArp *h, u32 stat)
 			t->arp.tpa = h->arp.spa;
 			t->arp.spa = ipAdr;
 
-			TransmitPacket(buf, sizeof(EthArp));
+			buf->len = sizeof(EthArp);
+
+			TransmitPacket(dsc, buf);
 		};	
-		
 	}			
 }
 
@@ -352,11 +406,13 @@ static void RequestICMP(EthIcmp *h, u32 stat)
 	{
 		reqIcmpCount++;
 
-		Buf_Desc *buf = GetTxDesc();
+		Buf_Desc *dsc = GetTxDesc();
 
-		if (buf == 0) return;
+		EthBuf *buf = GetSysTxBuffer();
 
-		EthIcmp *t = (EthIcmp*)buf->addr;
+		if (dsc == 0 || buf == 0) return;
+
+		EthIcmp *t = (EthIcmp*)&buf->eth;
 
 		t->eth.dest = h->eth.src;
 		t->eth.src  = hwAdr;
@@ -401,7 +457,9 @@ static void RequestICMP(EthIcmp *h, u32 stat)
 
 		t->icmp.cksum = IpChkSum((u16*)&t->icmp, icmp_len);
 
-		TransmitPacket(buf, ReverseWord(t->iph.len) + sizeof(t->eth));
+		buf->len = ReverseWord(t->iph.len) + sizeof(t->eth);
+
+		TransmitPacket(dsc, buf);
 	}
 }
 
@@ -436,12 +494,13 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 
 	if (op != DHCPDISCOVER && op != DHCPREQUEST) return;
 
-	Buf_Desc *buf = GetTxDesc();
+	Buf_Desc *dsc = GetTxDesc();
 
-	if (buf == 0) return;
+	EthBuf *buf = GetSysTxBuffer();
 
+	if (dsc == 0 || buf == 0) return;
 
-	EthDhcp *t = (EthDhcp*)buf->addr;
+	EthDhcp *t = (EthDhcp*)&buf->eth;
 
 	t->eth.dest = hwBroadCast;
 	t->eth.src  = hwAdr;
@@ -508,7 +567,9 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 	t->udp.len = ReverseWord(ipLen - sizeof(t->iph));
 	t->udp.xsum = 0;
 
-	TransmitPacket(buf, ipLen + sizeof(t->eth));
+	buf->len = ipLen + sizeof(t->eth);
+
+	TransmitPacket(dsc, buf);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -597,6 +658,8 @@ void RecieveFrame()
 
 	if((buf.addr & OWNERSHIP_BIT) == 0)
 	{
+		FreeTxDesc();
+
 		return;
 	};
 
@@ -607,28 +670,31 @@ void RecieveFrame()
 
 	EthPtr ep;
 
-	ep.eth = (EthHdr*)(buf.addr & ~3);
-
-	switch (ReverseWord(ep.eth->protlen))
+	if ((buf.stat & (RD_EOF|RD_SOF)) == (RD_EOF|RD_SOF)) // buffer contains a whole frame
 	{
-		case PROT_ARP: // ARP Packet format
+		ep.eth = (EthHdr*)(buf.addr & ~3);
 
-			RequestARP(ep.earp, buf.stat);
-			break; 
+		switch (ReverseWord(ep.eth->protlen))
+		{
+			case PROT_ARP: // ARP Packet format
 
-		case PROT_IP:	// IP protocol frame
+				RequestARP(ep.earp, buf.stat);
+				break; 
 
-			if (buf.stat & RD_IP_CHECK)
-			{
-				RequestIP(ep.eip, buf.stat);
-			};
+			case PROT_IP:	// IP protocol frame
 
-			break;
+				if (buf.stat & RD_IP_CHECK)
+				{
+					RequestIP(ep.eip, buf.stat);
+				};
+
+				break;
+		};
 	};
 
 	buf.addr &= ~OWNERSHIP_BIT;
 	++rxCount;
-	RxBufIndex = (buf.addr & 2) ? 0 : (RxBufIndex+1);
+	RxBufIndex = (buf.addr & WRAP_BIT) ? 0 : (RxBufIndex+1);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -936,13 +1002,13 @@ static void tx_descr_init (void)
 {
 	TxBufIndex = 0;
 
-	for (u32 i = 0; i < NUM_TX_BUF; i++)
+	for (u32 i = 0; i < NUM_TX_DSC; i++)
 	{
-		Tx_Desc[i].addr = (u32)&tx_buf[i];
+		Tx_Desc[i].addr = 0;//(u32)&tx_buf[i];
 		Tx_Desc[i].stat = TD_TRANSMIT_OK;
 	};
   
-	Tx_Desc[NUM_TX_BUF-1].stat |= TD_TRANSMIT_WRAP; // Set the WRAP bit at the end of the list descriptor. 
+	Tx_Desc[NUM_TX_DSC-1].stat |= TD_TRANSMIT_WRAP; // Set the WRAP bit at the end of the list descriptor. 
 
 	HW::GMAC->TBQP = (u32)&Tx_Desc[0]; // Set Tx Queue pointer to descriptor list. 
 }

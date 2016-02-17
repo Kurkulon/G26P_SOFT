@@ -11,7 +11,7 @@
 #define RTC_TIME_PERIOD_MS		1	// Дискрет времени 1мс
 #define RTC_TIME_PERIOD_TICS 		(u32)(((float)(CLOCK_MCK/16) * (float)RTC_TIME_PERIOD_MS/1000.0f) - 1)
 
-typedef __packed struct
+__packed struct RTC_type
 {
 	__packed union
 	{
@@ -37,7 +37,7 @@ typedef __packed struct
 		u32 date;
 	};
 
-} RTC_type;
+};
 
 /************ RDC functions *************/
 extern void RTC_Init();

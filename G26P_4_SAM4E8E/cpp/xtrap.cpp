@@ -1,35 +1,9 @@
 #include "xtrap.h"
 #include "trap.h"
-
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct	TrapHdr
-{
-	u32		counter;
-	u16		errors;
-	byte	version;
-	byte	status;
-	byte	device;
-};	
+#include "trap_def.h"
+#include "list.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct	Trap
-{
-	TrapHdr	hdr;
-	u16		cmd;
-	byte	data[37];
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct	EthTrap
-{
-	EthUdp	eudp;
-	Trap	trap;
-};
-
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 struct TrapReq
@@ -46,28 +20,12 @@ struct TrapReq
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct TrapList
-{
-
-protected:
-
-	TrapReq *first;
-	TrapReq *last;
-
-  public:
-
-	TrapList() : first(0), last(0) {}
-
-	TrapReq*	Get();
-	void		Add(TrapReq* r);
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 static TrapReq  traps[10];
 
-static TrapList freeTrapList;
-static TrapList reqTrapList;
+static List<TrapReq> freeTrapList;
+static List<TrapReq> reqTrapList;
+
+static List<SmallTx> txList;
 
 static MAC ComputerEmacAddr = {0,0};	// Our Ethernet MAC address and IP address
 static u32 ComputerIpAddr	= 0;
@@ -76,47 +34,13 @@ static u32 ComputerOldIpAddr	= 0;
 static u16 ComputerOldUDPPort	= 0;
 static bool ComputerFind = false;
 
+static SmallTx	smallTxBuf[8];
+static HugeTx	hugeTxBuf[4];
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+static byte indSmallTx = 0;
+static byte indHugeTx = 0;
 
-TrapReq* TrapList::Get()
-{
-	TrapReq* r = first;
 
-	if (r != 0)
-	{
-		first = r->next;
-
-		if (first == 0)
-		{
-			last = 0;
-		};
-
-	};
-
-	return r;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TrapList::Add(TrapReq* r)
-{
-	if (r == 0)
-	{
-		return;
-	};
-
-	if (last == 0)
-	{
-		first = last = r;
-		r->next = 0;
-	}
-	else
-	{
-		last->next = r;
-		last = r;
-	};
-}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -167,6 +91,10 @@ void RequestTrap(EthUdp *h, u32 stat)
 {
 	if ((h->udp.len = ReverseWord(h->udp.len)) < 19) return;
 
+	u16 len = h->udp.len - sizeof(h->udp);
+
+	if (len > sizeof(Trap)) return;
+
 	TrapReq* req = freeTrapList.Get();
 
 	if (req == 0) return;
@@ -174,8 +102,7 @@ void RequestTrap(EthUdp *h, u32 stat)
 	req->srcHA = h->eth.src;
 	req->srcIP = h->iph.src;
 	req->srcPort = h->udp.src;
-	
-	u16 len = req->dlen = h->udp.len - sizeof(h->udp);
+	req->dlen = len;
 
 	EthTrap *t = (EthTrap*)h;
 
@@ -191,6 +118,47 @@ void RequestTrap(EthUdp *h, u32 stat)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void SendTrap(SmallTx *p)
+{
+	txList.Add(p);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+SmallTx* GetSmallTxBuffer()
+{
+	SmallTx *p = &smallTxBuf[indSmallTx];
+
+	if (p->len == 0)
+	{
+		indSmallTx = (indSmallTx + 1) & 7;
+		return p;
+	}
+	else
+	{
+		return 0;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+HugeTx* GetHugeTxBuffer()
+{
+	HugeTx *p = &hugeTxBuf[indHugeTx];
+
+	if (p->len == 0)
+	{
+		indHugeTx = (indHugeTx + 1) & 3;
+		return p;
+	}
+	else
+	{
+		return 0;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void InitTraps()
 {
 	for (u32 i = 0; i < ArraySize(traps); i++)
@@ -201,7 +169,7 @@ void InitTraps()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void UpdateTraps()
+static void UpdateRequestTraps()
 {
 	static byte i = 0;
 	static TrapReq *req = 0;
@@ -231,16 +199,17 @@ void UpdateTraps()
 			}
 			else
 			{
-				i = 4;
+				i = 5;
 			};
 
 			break;
 
 		case 2:
 
-			TRAP_INFO_SendLostIP(req->srcIP, ReverseWord(req->srcPort));
-
-			i++;
+			if (TRAP_INFO_SendLostIP(req->srcIP, ReverseWord(req->srcPort)))
+			{
+				i++;
+			};
 
 			break;
 
@@ -253,9 +222,63 @@ void UpdateTraps()
 			ComputerIpAddr		= req->srcIP;
 			ComputerUDPPort		= req->srcPort;
 
-			TRAP_INFO_SendCaptureIP(ComputerOldIpAddr, ReverseWord(ComputerOldUDPPort));
 
 			ComputerFind = true;
+
+			i++;
+
+		case 4:
+
+			i += (TRAP_INFO_SendCaptureIP(ComputerOldIpAddr, ReverseWord(ComputerOldUDPPort))) ? 1 : 0;
+
+			break;
+
+		case 5:
+
+			TRAP_HandleRxData(&req->trap, req->dlen);
+
+			freeTrapList.Add(req);
+
+			i = 0;
+
+			break;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateSendTraps()
+{
+	static byte i = 0;
+	static SmallTx *tx = 0;
+
+	switch(i)
+	{
+		case 0:
+
+			tx = txList.Get();
+
+			if (tx != 0)
+			{
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			i++;
+
+			break;
+
+		case 2:
+
+			i++;
+
+			break;
+
+		case 3:
+
 
 			i++;
 
@@ -263,12 +286,30 @@ void UpdateTraps()
 
 		case 4:
 
-			TRAP_HandleRxData((char*)(&req->trap), req->dlen);
-
 			i = 0;
 
 			break;
 	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void UpdateTraps()
+{
+	static byte i = 0;
+
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( UpdateRequestTraps()		);
+		CALL( UpdateSendTraps()		);
+	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

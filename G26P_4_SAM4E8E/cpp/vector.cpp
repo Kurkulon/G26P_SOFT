@@ -38,33 +38,34 @@ u16 Vector_Make(u16 session, u16 device, RTC_type rtc, byte flags, byte *in, byt
 	((vector_type *)out)->control.rtc = rtc;
 	((vector_type *)out)->control.adress_vector.hi = (byte)((i64)FRAM_Memory_Current_Vector_Adress_Get() >> 32);
 	((vector_type *)out)->control.adress_vector.lo = (u32)FRAM_Memory_Current_Vector_Adress_Get();
+	
 	if(vector_current_session != ((vector_type *)out)->control.id_session) // новая сессия
 	{
 		vector_current_session_adress = -1;
 		vector_current_session = ((vector_type *)out)->control.id_session;
 	}
-	else
-	if(vector_current_session_adress == -1)
+	else if(vector_current_session_adress == -1)
 	{  	
 	        vector_current_session_adress = FRAM_Memory_Current_Vector_Adress_Get();
-	}
+	};
+
   	((vector_type *)out)->control.adress_session.hi = (byte)(vector_current_session_adress >> 32);
 	((vector_type *)out)->control.adress_session.lo = (u32)vector_current_session_adress;
 	((vector_type *)out)->control.flags = flags;
 
-        u16 i;
+    u16 i;
 	byte crc = 0;
 
 	for(i = 0; i < size; i++)               // crc данных
 	{
 		out[i + sizeof(vector_type)] = in[i];
 		crc += in[i];
-	}                    
+	};
 
 	for(i = sizeof(vector_header_type); i < sizeof(vector_type); i++) // crc control_header
 	{
 		crc += out[i];
-	}                    
+	};
 
 	((vector_type *)out)->header.magic = VECTOR_MAGIC;
 	((vector_type *)out)->header.version = VECTOR_VERSION;

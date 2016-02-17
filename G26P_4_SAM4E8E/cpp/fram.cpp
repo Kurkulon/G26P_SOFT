@@ -188,14 +188,14 @@ void FRAM_Power_Idle()
 	else fram_power_change = false;
 }
 
-void FRAM_Power_Battery_Voltages_Get(short *setup, short *min, short *max)
+void FRAM_Power_Battery_Voltages_Get(i16 *setup, i16 *min, i16 *max)
 {
 	*setup = fram_power_buf.battery_setup_voltage;
 	*min = fram_power_buf.battery_min_voltage;
 	*max = fram_power_buf.battery_max_voltage;
 }
 
-void FRAM_Power_Battery_Voltages_Set(short setup, short min, short max)
+void FRAM_Power_Battery_Voltages_Set(i16 setup, i16 min, i16 max)
 {
 	fram_power_buf.battery_setup_voltage = setup;
  	fram_power_buf.battery_min_voltage = min;
@@ -205,25 +205,25 @@ void FRAM_Power_Battery_Voltages_Set(short setup, short min, short max)
 
 void FRAM_Power_Battery_Coeffs_Get(float *k, float *b)
 {
-	COPY((char *)&fram_power_buf.battery_coeffs.k, (char *)k, sizeof(float));
-	COPY((char *)&fram_power_buf.battery_coeffs.b, (char *)b, sizeof(float));
+	*k = fram_power_buf.battery_coeffs.k;
+	*b = fram_power_buf.battery_coeffs.b;
 }
 
-void FRAM_Power_Battery_Coeffs_Set(float *k, float *b)
+void FRAM_Power_Battery_Coeffs_Set(float k, float b)
 {
-	COPY((char *)k, (char *)&fram_power_buf.battery_coeffs.k, sizeof(float));
-	COPY((char *)b, (char *)&fram_power_buf.battery_coeffs.b, sizeof(float));
+	fram_power_buf.battery_coeffs.k = k;
+	fram_power_buf.battery_coeffs.b = b;
 	fram_power_change = true;
 }
 
-void FRAM_Power_Line_Voltages_Get(short *setup, short *min, short *max)
+void FRAM_Power_Line_Voltages_Get(i16 *setup, i16 *min, i16 *max)
 {
 	*setup = fram_power_buf.line_setup_voltage;
 	*min = fram_power_buf.line_min_voltage;
 	*max = fram_power_buf.line_max_voltage;
 }
 
-void FRAM_Power_Line_Voltages_Set(short setup, short min, short max)
+void FRAM_Power_Line_Voltages_Set(i16 setup, i16 min, i16 max)
 {
 	fram_power_buf.line_setup_voltage = setup;
 	fram_power_buf.line_min_voltage = min;
@@ -233,14 +233,14 @@ void FRAM_Power_Line_Voltages_Set(short setup, short min, short max)
 
 void FRAM_Power_Line_Coeffs_Get(float *k, float *b)
 {
-	COPY((char *)&fram_power_buf.line_coeffs.k, (char *)k, sizeof(float));
-	COPY((char *)&fram_power_buf.line_coeffs.b, (char *)b, sizeof(float));
+	*k = fram_power_buf.line_coeffs.k;
+	*b = fram_power_buf.line_coeffs.b;
 }
 
-void FRAM_Power_Line_Coeffs_Set(float *k, float *b)
+void FRAM_Power_Line_Coeffs_Set(float k, float b)
 {
-	COPY((char *)k, (char *)&fram_power_buf.line_coeffs.k, sizeof(float));
-	COPY((char *)b, (char *)&fram_power_buf.line_coeffs.b, sizeof(float));
+	fram_power_buf.line_coeffs.k = k;
+	fram_power_buf.line_coeffs.b = b;
 	fram_power_change = true;
 }
 
@@ -275,40 +275,40 @@ void FRAM_Sensors_Idle()
 
 void FRAM_Sensors_Ax_Coeffs_Get(float *k, float *b)
 {
-	COPY((char *)&fram_sensors_buf.ax_coeffs.k, (char *)k, sizeof(float));
-	COPY((char *)&fram_sensors_buf.ax_coeffs.b, (char *)b, sizeof(float));
+	*k = fram_sensors_buf.ax_coeffs.k;
+	*b = fram_sensors_buf.ax_coeffs.b;
 }
 
-void FRAM_Sensors_Ax_Coeffs_Set(float *k, float *b)
+void FRAM_Sensors_Ax_Coeffs_Set(float k, float b)
 {
-	COPY((char *)k, (char *)&fram_sensors_buf.ax_coeffs.k, sizeof(float));
-	COPY((char *)b, (char *)&fram_sensors_buf.ax_coeffs.b, sizeof(float));
+	fram_sensors_buf.ax_coeffs.k = k;
+	fram_sensors_buf.ax_coeffs.b = b;
 	fram_sensors_change = true;
 }
 
 void FRAM_Sensors_Ay_Coeffs_Get(float *k, float *b)
 {
-	COPY((char *)&fram_sensors_buf.ay_coeffs.k, (char *)k, sizeof(float));
-	COPY((char *)&fram_sensors_buf.ay_coeffs.b, (char *)b, sizeof(float));
+	*k = fram_sensors_buf.ay_coeffs.k;
+	*b = fram_sensors_buf.ay_coeffs.b;
 }
 
-void FRAM_Sensors_Ay_Coeffs_Set(float *k, float *b)
+void FRAM_Sensors_Ay_Coeffs_Set(float k, float b)
 {
-	COPY((char *)k, (char *)&fram_sensors_buf.ay_coeffs.k, sizeof(float));
-	COPY((char *)b, (char *)&fram_sensors_buf.ay_coeffs.b, sizeof(float));
+	fram_sensors_buf.ay_coeffs.k = k;
+	fram_sensors_buf.ay_coeffs.b = b;
 	fram_sensors_change = true;
 }
 
 void FRAM_Sensors_Az_Coeffs_Get(float *k, float *b)
 {
-	COPY((char *)&fram_sensors_buf.az_coeffs.k, (char *)k, sizeof(float));
-	COPY((char *)&fram_sensors_buf.az_coeffs.b, (char *)b, sizeof(float));
+	*k = fram_sensors_buf.az_coeffs.k;
+	*b = fram_sensors_buf.az_coeffs.b;
 }
 
-void FRAM_Sensors_Az_Coeffs_Set(float *k, float *b)
+void FRAM_Sensors_Az_Coeffs_Set(float k, float b)
 {
-	COPY((char *)k, (char *)&fram_sensors_buf.az_coeffs.k, sizeof(float));
-	COPY((char *)b, (char *)&fram_sensors_buf.az_coeffs.b, sizeof(float));
+	fram_sensors_buf.az_coeffs.k = k;
+	fram_sensors_buf.az_coeffs.b = b;
 	fram_sensors_change = true;
 }
      
@@ -322,14 +322,16 @@ fram_autonom_result_type fram_autonom_result[256]; //отработавшие команды
 
 byte Fram_Automon_CRC(byte *data, u16 size)
 {
-    	byte crc = 0xFF;
-    	byte i;
+	byte crc = 0xFF;
+	byte i;
+
 	while(size --)
-    	{
-        	crc ^= *data++;
- 	        for (i = 0; i < 8; i++) crc = crc & 0x80 ? (crc << 1) ^ 0x31 : crc << 1;
-	}
-        return crc;
+   	{
+		crc ^= *data++;
+		for (i = 0; i < 8; i++) crc = crc & 0x80 ? (crc << 1) ^ 0x31 : crc << 1;
+	};
+
+	return crc;
 }
 
 fram_autonom_validation_type FRAM_Autonom_Validation()

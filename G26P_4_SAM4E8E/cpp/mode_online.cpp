@@ -33,7 +33,7 @@ void Mode_Online_Main_Init()
 	Mode_Online_Main_Reset();
 }
 
-bool Mode_Online_Main_Idle()
+void Mode_Online_Main_Idle()
 {       
 	if(mode_online_main_enable != mode_online_main_enable_need)
 	{
@@ -90,7 +90,7 @@ inline unsigned int Mode_Online_RDC_Time_Ms_Get()
 	return mode_online_rdc_time_ms;
 }
 
-/*inline*/ unsigned int Mode_Online_RDC_Time_Reset()
+/*inline*/ void Mode_Online_RDC_Time_Reset()
 {
 	mode_online_rdc_time_msec = RTC_Get_Millisecond();
 	mode_online_rdc_time_ms = 0;
@@ -139,7 +139,7 @@ void Mode_Online_RDC_Init()
 	Mode_Online_RDC_Reset();
 }
 
-bool Mode_Online_RDC_Idle()
+void Mode_Online_RDC_Idle()
 {       
 	RTC_type rtc = RTC_Get();
 	unsigned short dmsec = ((unsigned short)((rtc.msec + 1000) - mode_online_rdc_time_msec) % 1000);

@@ -40,68 +40,68 @@ void Mode_Autonom_Main_Init()
 
 bool Mode_Autonom_Main_Idle() // здесь будет вс€ работа в временами старта/стопа сессий, сделать сессию до включени€, рабочие сессии и после выключени€
 {       
-	//if(mode_autonom_main_timeout_sec)
-	//{
-	//	RTC_type rtc = RTC_Get();
-	//	if(rtc.sec != mode_autonom_main_time_sec)
-	//	{
-	//		mode_autonom_main_timeout_sec --;
-	//		mode_autonom_main_time_sec = rtc.sec;
-	//		if(!mode_autonom_main_timeout_sec)    // общий старт автономки
-	//		{
-	//			EMAC_Power_Off();
-	//		}
-	//	}	
-	//}
-	//if(!mode_autonom_main_timeout_sec) 	// далее парсинг времен сессий
-	//{
-	//	if((!Mode_Autonom_Special_Busy()) && (!Mode_Autonom_Measure_Busy()))
-	//	{
-	//		bool new_session = false;
-	//		if(!mode_autonom_main_enable)
-	//		{
-	//			mode_autonom_main_enable = true; // включаю
-	//			new_session = true;
-	//		}
-	//		if(mode_autonom_main_enable)
-	//		{
-	//			if(!mode_autonom_main_session_enable)	// если сесси€ не включена
-	//			{				
-	//				unsigned char n;	
-	//				for(n = 0; n < FRAM_Autonom_Session_Count_Get(); n ++) // от 0, вдруг сессии перемешаны
-	//				{
-	//					if((RTC_Check(FRAM_Autonom_Session_Start_Get(n))) && (!RTC_Check(FRAM_Autonom_Session_Stop_Get(n)))) // включить
-	//					{
-	//	       		                  	mode_autonom_main_session_enable = true; // включаю
-	//						mode_autonom_main_session = n; // включаю
-	//	                			Power_Switch_Set(true);	// врубаю питание
-	//						new_session = true;
-	//						break;
-	//					}
-	//				}
- //      				}
-	//			else	// включена сесси€
-	//			{
-	//				if((!RTC_Check(FRAM_Autonom_Session_Start_Get(mode_autonom_main_session))) || (RTC_Check(FRAM_Autonom_Session_Stop_Get(mode_autonom_main_session)))) // выключить
-	//				{
-	//					mode_autonom_main_session = 0;
-	//                       		  	mode_autonom_main_session_enable = false; // выключаю
-	//					mode_autonom_main_enable = false; // и это выключаю, само перевключитс€
-	//                			Power_Switch_Set(false);
-	//				}
-	//			}
-	//		
-	//		}
-	//		if(new_session) 
-	//		{
- //      		         	FRAM_Memory_Current_Session_Set(FRAM_Memory_Current_Session_Get() + 1); // добавл€ю сессию
- //      			 	FLASH_Vectors_Saved_Reset();
-	//		 	FLASH_Vectors_Errors_Reset();
-	//			Mode_Autonom_Special_Reset();	// обнул€ю все по ћѕ
-	//			Mode_Autonom_Measure_Reset();	// обнул€ю по приборам
-	//		}
-	//	}		
-	//}
+	if(mode_autonom_main_timeout_sec)
+	{
+		RTC_type rtc = RTC_Get();
+		if(rtc.sec != mode_autonom_main_time_sec)
+		{
+			mode_autonom_main_timeout_sec --;
+			mode_autonom_main_time_sec = rtc.sec;
+			if(!mode_autonom_main_timeout_sec)    // общий старт автономки
+			{
+//				EMAC_Power_Off();
+			}
+		}	
+	}
+	if(!mode_autonom_main_timeout_sec) 	// далее парсинг времен сессий
+	{
+		if((!Mode_Autonom_Special_Busy()) && (!Mode_Autonom_Measure_Busy()))
+		{
+			bool new_session = false;
+			if(!mode_autonom_main_enable)
+			{
+				mode_autonom_main_enable = true; // включаю
+				new_session = true;
+			}
+			if(mode_autonom_main_enable)
+			{
+				if(!mode_autonom_main_session_enable)	// если сесси€ не включена
+				{				
+					unsigned char n;	
+					for(n = 0; n < FRAM_Autonom_Session_Count_Get(); n ++) // от 0, вдруг сессии перемешаны
+					{
+						if((RTC_Check(FRAM_Autonom_Session_Start_Get(n))) && (!RTC_Check(FRAM_Autonom_Session_Stop_Get(n)))) // включить
+						{
+		       		                  	mode_autonom_main_session_enable = true; // включаю
+							mode_autonom_main_session = n; // включаю
+		                			Power_Switch_Set(true);	// врубаю питание
+							new_session = true;
+							break;
+						}
+					}
+       				}
+				else	// включена сесси€
+				{
+					if((!RTC_Check(FRAM_Autonom_Session_Start_Get(mode_autonom_main_session))) || (RTC_Check(FRAM_Autonom_Session_Stop_Get(mode_autonom_main_session)))) // выключить
+					{
+						mode_autonom_main_session = 0;
+	                       		  	mode_autonom_main_session_enable = false; // выключаю
+						mode_autonom_main_enable = false; // и это выключаю, само перевключитс€
+	                			Power_Switch_Set(false);
+					}
+				}
+			
+			}
+			if(new_session) 
+			{
+       		         	FRAM_Memory_Current_Session_Set(FRAM_Memory_Current_Session_Get() + 1); // добавл€ю сессию
+//       			 	FLASH_Vectors_Saved_Reset();
+//			 	FLASH_Vectors_Errors_Reset();
+				Mode_Autonom_Special_Reset();	// обнул€ю все по ћѕ
+				Mode_Autonom_Measure_Reset();	// обнул€ю по приборам
+			}
+		}		
+	}
 
 }
 

@@ -97,8 +97,7 @@ extern void Mode_Online_Vector_Disable();
 extern void Mode_Online_Main_Enable();
 extern void Mode_Online_Main_Disable();
 
-extern unsigned int Mode_Online_RDC_Time_Reset();
-extern unsigned int Mode_Online_RDC_Time_Reset();
+extern void Mode_Online_RDC_Time_Reset();
 extern void Mode_Online_RDC_Imitation_Enable(int depth, int speed);
 extern void Mode_Online_RDC_Imitation_Disable();
 extern void Mode_Online_RDC_Depth_Set(int depth);

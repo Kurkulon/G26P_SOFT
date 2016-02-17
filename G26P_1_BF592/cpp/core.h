@@ -5,8 +5,20 @@
 
 #define CLKIN 25000000
 #define VRCTL_VALUE         0x0000
-#define PLLCTL_VALUE        0x1000
-#define PLLDIV_VALUE        0x0012
+
+#define PLLDIV_CSEL			1	// 0 - CCLK = VCO / 1
+								// 1 - CCLK = VCO / 2
+								// 2 - CCLK = VCO / 4
+								// 3 - CCLK = VCO / 8
+
+#define PLLDIV_SSEL			2	// 1-15 - SCLK = VCO / X
+
+#define PLLDIV_VALUE        ((PLLDIV_CSEL<<4)|PLLDIV_SSEL)
+
+#define PLLCTL_MSEL			8
+
+#define PLLCTL_VALUE        (PLLCTL_MSEL<<9)
+
 #define PLLLOCKCNT_VALUE    0x0000
 #define PLLSTAT_VALUE       0x0000
 #define RSICLK_DIV          0x0001

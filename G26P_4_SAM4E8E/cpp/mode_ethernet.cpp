@@ -214,7 +214,8 @@ bool Mode_Ethernet_Flash_Idle()
 				} 
 				else 
 				{
-					mode_ethernet_flash_read_vector_adress --;
+					mode_ethernet_flash_read_vector_adress--;
+
 					if(mode_ethernet_flash_read_vector_adress < 0) mode_ethernet_flash_read_vector_adress += FLASH_Full_Size_Get();
 					mode_ethernet_flash_status = MODE_ETHERNET_FLASH_STATUS_READ_SESSION_FIND;
 					mode_ethernet_flash_state = MODE_ETHERNET_FLASH_READ_SESSION_STATE_WAIT;
@@ -261,6 +262,7 @@ bool Mode_Ethernet_Flash_Idle()
 				need_max_size = FRAM_Memory_Current_Adress_Get() - FRAM_Memory_Start_Adress_Get();
 				if(need_max_size < 0) need_max_size += FLASH_Full_Size_Get();
 			} 
+			
 			if(need_max_size > 0)
 			{
 				if(mode_ethernet_flash_read_vector_size != 0)
@@ -276,7 +278,9 @@ bool Mode_Ethernet_Flash_Idle()
 						if(Vector_Get_ID_Session(mode_ethernet_flash_read_vector) == mode_ethernet_flash_read_vector_session_need)	
 						{
 							unsigned char *data_vector;
+
 							unsigned short size_vector = Vector_Get_Data(mode_ethernet_flash_read_vector, &data_vector);
+
 							Vector_Get_RTC(mode_ethernet_flash_read_vector, &mode_ethernet_flash_read_vector_last_rtc);
 							TRAP_MEMORY_SendVector(Vector_Get_ID_Session(mode_ethernet_flash_read_vector), 
 								Vector_Get_ID_Device(mode_ethernet_flash_read_vector),

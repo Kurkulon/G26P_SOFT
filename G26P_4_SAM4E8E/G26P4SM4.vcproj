@@ -108,10 +108,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\gmac.c"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\hardware.cpp"
 				>
 			</File>
@@ -219,6 +215,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\k9k8g08U.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\list.h"
 				>
 			</File>
 			<File

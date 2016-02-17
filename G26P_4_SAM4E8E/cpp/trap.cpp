@@ -13,8 +13,7 @@
 #include "bootloader.h"
 
 #include "trap_def.h"
-
-
+#include "xtrap.h"
 
 #pragma diag_suppress 2548,546
 
@@ -33,81 +32,117 @@ static void MakePacketHeaders(TrapHdr *p, bool need_ask, bool is_ask, char devic
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_INFO_SendError(u32 error)
+bool TRAP_INFO_SendError(u32 error)
 {
-	TrapError *trap = (TrapError*)TrapTxDataBuffer;
+	SmallTx* buf = GetSmallTxBuffer();
+
+	if (buf == 0) return false;
+
+	TrapError &trap = (TrapError&)buf->th;
+
+	MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_INFO_DEVICE);
+
+	trap.hdr.cmd = TRAP_INFO_COMMAND_ERROR;
+	trap.error = error;
+
+	buf->len = sizeof(EthUdp) + sizeof(TrapError);
 	
-	MakePacketHeaders(&trap->hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_INFO_DEVICE);
+	SendTrap(buf);
 
-	trap->cmd = TRAP_INFO_COMMAND_ERROR;
-	trap->error = error;
-	EMAC_SendData((char *)TrapTxDataBuffer, sizeof(TrapError));
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_INFO_SendCaptureIP(u32 old_ip, u16 old_port)
+bool TRAP_INFO_SendCaptureIP(u32 old_ip, u16 old_port)
 {
-	TrapIP *trap = (TrapIP*)TrapTxDataBuffer;
+	SmallTx* buf = GetSmallTxBuffer();
 
-	MakePacketHeaders(&trap->hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_INFO_DEVICE);
-	trap->cmd = TRAP_INFO_CAPTURE_IP;
-	trap->ip = old_ip;
-	trap->port = old_port;
+	if (buf == 0) return false;
 
-	EMAC_SendData((char *)TrapTxDataBuffer, sizeof(TrapIP));
+	TrapIP &trap = (TrapIP&)buf->th;
+
+	MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_INFO_DEVICE);
+	trap.hdr.cmd = TRAP_INFO_CAPTURE_IP;
+	trap.ip = old_ip;
+	trap.port = old_port;
+
+	buf->len = sizeof(EthUdp) + sizeof(TrapIP);
+
+	SendTrap(buf);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_INFO_SendLostIP(u32 new_ip, u16 new_port)
+bool TRAP_INFO_SendLostIP(u32 new_ip, u16 new_port)
 {
-	TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_INFO_DEVICE);
-	TRAP_command_type c;
-	c.command = TRAP_INFO_LOST_IP;
-	COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	TRAP_INFO_ip_type ip;	
-	ip.ip = new_ip;
-	ip.port = new_port;
-	COPY((char *)(&ip.ip), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(TRAP_INFO_ip_type));
-	EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_INFO_ip_type));
+	SmallTx* buf = GetSmallTxBuffer();
+
+	if (buf == 0) return false;
+
+	TrapIP &trap = (TrapIP&)buf->th;
+
+	MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_INFO_DEVICE);
+	trap.hdr.cmd = TRAP_INFO_LOST_IP;
+	trap.ip = new_ip;
+	trap.port = new_port;
+
+	buf->len = sizeof(EthUdp) + sizeof(TrapIP);
+
+	SendTrap(buf);
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_INFO_SendInfo()
+bool TRAP_INFO_SendInfo()
 {
-	TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_INFO_DEVICE);
-	TRAP_command_type c;
-	c.command = TRAP_INFO_COMMAND_INFO;
-	COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	TRAP_INFO_info_type info;	
-	info.version = VERSION;
-	info.number = FRAM_Main_Device_Number_Get();
-	info.memory_mask = FLASH_Chip_Mask_Get();
-	info.memory_size = FLASH_Full_Size_Get();
-	info.devices_mask = TRAP_DEVICES_MASK;
-	info.device_type = FRAM_Main_Device_Type_Get();
-	info.device_telemetry = FRAM_Main_Device_Telemetry_Get();
-	COPY((char *)(&info), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(TRAP_INFO_info_type));
-	EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_INFO_info_type));
+	SmallTx* buf = GetSmallTxBuffer();
 
+	if (buf == 0) return false;
+
+	TrapInfo &trap = (TrapInfo&)buf->th;
+
+	MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_INFO_DEVICE);
+
+	trap.hdr.cmd = TRAP_INFO_COMMAND_INFO;
+
+	trap.version = VERSION;
+	trap.number = FRAM_Main_Device_Number_Get();
+	trap.memory_mask = FLASH_Chip_Mask_Get();
+	trap.memory_size = FLASH_Full_Size_Get();
+	trap.devices_mask = TRAP_DEVICES_MASK;
+	trap.device_type = FRAM_Main_Device_Type_Get();
+	trap.device_telemetry = FRAM_Main_Device_Telemetry_Get();
+	
+	buf->len = sizeof(EthUdp) + sizeof(TrapInfo);
+
+	SendTrap(buf);
+
+	return true;
 }
 
 /******************** CLOCK ******************************/
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_CLOCK_SendMain(RTC_type rtc)
+bool TRAP_CLOCK_SendMain(const RTC_type &rtc)
 {
-	TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_CLOCK_DEVICE);
-	TRAP_command_type c;
-	c.command = TRAP_CLOCK_COMMAND_MAIN;
-	COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	TRAP_CLOCK_main_type m;
-	m.rtc = rtc;	
-	COPY((char *)(&m), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(m));
-	EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(m));
+	SmallTx* buf = GetSmallTxBuffer();
+
+	if (buf == 0) return false;
+
+	TrapClock &trap = (TrapClock&)buf->th;
+
+	MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_CLOCK_DEVICE);
+
+	trap.hdr.cmd = TRAP_CLOCK_COMMAND_MAIN;
+	trap.rtc = rtc;	
+
+	buf->len = sizeof(EthUdp) + sizeof(TrapClock);
+
+	SendTrap(buf);
 }
 
 /******************** TRACE ******************************/
@@ -521,345 +556,495 @@ void TRAP_SendAsknowlege(byte device, u32 on_packet)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_HandleRxData(char *data, u32 size)
+void TRAP_HandleRxData(Trap *t, u32 size)
 {
 	if(size < TRAP_RX_HEADERS_LEN) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); return; }
-	TRAP_RX_PACKET_type *packet = (TRAP_RX_PACKET_type *)data;
-	if((TrapRxCounter == 0)||(packet->counter<=1)) TrapRxLost = 0;
-	else TrapRxLost += (int)((int)(packet->counter) - (int)TrapRxCounter - 1);	
-	TrapRxCounter = packet->counter;
-	bool need_ask = (((packet->status)>>3)&0x1);
-	bool is_ask = (((packet->status)>>2)&0x1);
-	byte version = packet->version;
+
+//	TRAP_RX_PACKET_type *packet = (TRAP_RX_PACKET_type *)data;
+
+	if((TrapRxCounter == 0) || (t->hdr.counter <= 1))
+	{
+		TrapRxLost = 0;
+	}
+	else
+	{
+		TrapRxLost += t->hdr.counter - TrapRxCounter - 1;	
+	};
+
+	TrapRxCounter = t->hdr.counter;
+
+	bool need_ask = (((t->hdr.status)>>3)&0x1);
+
+	bool is_ask = (((t->hdr.status)>>2)&0x1);
+
+	byte version = t->hdr.version;
+
 	if(version > TRAP_PACKET_VERSION)
 	{
 		TRAP_INFO_SendError(TRAP_PACKET_ERROR_VERSION);
 		return;
-	}
+	};
+
 	if(is_ask == TRAP_PACKET_NO_ASK)
 	{
-		TRAP_command_type *cmd = (TRAP_command_type *)(data + TRAP_RX_HEADERS_LEN);	
-		switch (packet->device)
-		{
-			/*******************************************************************************/
-		case TRAP_INFO_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
-			switch (cmd->command)
-			{
-			case TRAP_INFO_COMMAND_GET_INFO:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);					
-				TRAP_INFO_SendInfo();
-				break;
-			case TRAP_INFO_COMMAND_SET_NUMBER:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
-				FRAM_Main_Device_Number_Set(((TRAP_INFO_set_number_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->number);
-				break;
-			case TRAP_INFO_COMMAND_SET_TYPE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
-				FRAM_Main_Device_Type_Set(((TRAP_INFO_set_type_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->type);
-				break;
-			case TRAP_INFO_COMMAND_SET_TELEMETRY:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
-				FRAM_Main_Device_Telemetry_Set(((TRAP_INFO_set_telemetry_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->telemetry);
-				break;
-			default: 
-				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-				break;
-			}
-			break;
-			/*******************************************************************************/
-		case TRAP_CLOCK_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
-			switch (cmd->command)
-			{
-			case TRAP_CLOCK_COMMAND_GET:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_CLOCK_DEVICE, TrapRxCounter);					
-				TRAP_CLOCK_SendMain(RTC_Get());
-				break;
-			case TRAP_CLOCK_COMMAND_SET:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_CLOCK_DEVICE, TrapRxCounter);	
-				RTC_Set(((TRAP_CLOCK_set_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->rtc);
-				break;
-			default: 
-				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-				break;
-			}
-			break;
-			/*******************************************************************************/
-		case TRAP_MEMORY_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
-			switch (cmd->command)
-			{
-			case TRAP_MEMORY_COMMAND_GET_INFO:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-				TRAP_MEMORY_SendInfo();
-				break;
-			case TRAP_MEMORY_COMMAND_READ_SESSION_START:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-				Mode_Ethernet_Flash_Read_Session_Start();
-				break;
-			case TRAP_MEMORY_COMMAND_READ_VECTOR_START:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-				Mode_Ethernet_Flash_Read_Vector_Start(((TRAP_MEMORY_start_read_vector_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->session, ((TRAP_MEMORY_start_read_vector_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->last_adress);
-				break;
-			case TRAP_MEMORY_COMMAND_STOP:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-				Mode_Ethernet_Flash_Stop();
-				break;
-			case TRAP_MEMORY_COMMAND_PAUSE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-				Mode_Ethernet_Flash_Pause();
-				break;
-			case TRAP_MEMORY_COMMAND_RESUME:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-				Mode_Ethernet_Flash_Resume();
-				break;
-			case TRAP_MEMORY_COMMAND_ERASE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-				Mode_Ethernet_Flash_Erase();
-				break;
-			case TRAP_MEMORY_COMMAND_UNERASE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-				Mode_Ethernet_Flash_UnErase();
-				break;
-			default: 
-				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-				break;
-			}
-			break;
-			/*******************************************************************************/
-		case TRAP_BOOTLOADER_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
-			switch (cmd->command)
-			{
-			case TRAP_BOOTLOADER_COMMAND_START:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BOOTLOADER_DEVICE, TrapRxCounter);
-				BootLoader_Start_Delay();
-				break;
-			default: 
-				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-				break;
-			}
-			break;
-			/*******************************************************************************/
-		case TRAP_BATTERY_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
-			switch (cmd->command)
-			{
-			case TRAP_BATTERY_COMMAND_GET_MAIN:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				TRAP_BATTERY_TakeMain();
-				break;
-			case TRAP_BATTERY_COMMAND_GET_STATUS:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				TRAP_BATTERY_TakeStatus();
-				break;
-			case TRAP_BATTERY_COMMAND_SET_BATTERY_COEFFS:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				FRAM_Power_Battery_Coeffs_Set((float *)(&((TRAP_BATTERY_set_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->coeff_k), (float *)(&((TRAP_BATTERY_set_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->coeff_b));
-				break;
-			case TRAP_BATTERY_COMMAND_SET_LINE_COEFFS:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				FRAM_Power_Line_Coeffs_Set((float *)(&((TRAP_BATTERY_set_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->coeff_k), (float *)(&((TRAP_BATTERY_set_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->coeff_b));
-				break;
-			case TRAP_BATTERY_COMMAND_SET_BATTERY_VOLTAGES:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				FRAM_Power_Battery_Voltages_Set(((TRAP_BATTERY_set_voltages_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->setup_voltage, ((TRAP_BATTERY_set_voltages_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->min_voltage, ((TRAP_BATTERY_set_voltages_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->max_voltage);
-				break;
-			case TRAP_BATTERY_COMMAND_SET_LINE_VOLTAGES:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				FRAM_Power_Line_Voltages_Set(((TRAP_BATTERY_set_voltages_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->setup_voltage, ((TRAP_BATTERY_set_voltages_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->min_voltage, ((TRAP_BATTERY_set_voltages_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->max_voltage);
-				break;
-			case TRAP_BATTERY_COMMAND_SWITCH_ON:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				Power_Switch_Set(true);
-				break;
-			case TRAP_BATTERY_COMMAND_SWITCH_OFF:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				Power_Switch_Set(false);
-				break;
-			case TRAP_BATTERY_COMMAND_MAIN_ENABLE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				Power_Transmission_Set(true);
-				break;
-			case TRAP_BATTERY_COMMAND_MAIN_DISABLE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-				Power_Transmission_Set(false);
-				break;
-			default: 
-				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-				break;
-			}
-			break;
-			/*******************************************************************************/
-		case TRAP_SENSORS_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
-			switch (cmd->command)
-			{
-			case TRAP_SENSORS_COMMAND_GET_MAIN:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_SENSORS_DEVICE, TrapRxCounter);
-				TRAP_SENSORS_TakeMain();
-				break;
-			case TRAP_SENSORS_COMMAND_GET_A_COEFFS:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_SENSORS_DEVICE, TrapRxCounter);
-				TRAP_SENSORS_Take_A_Coeffs();
-				break;
-			case TRAP_SENSORS_COMMAND_SET_A_COEFFS:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_SENSORS_DEVICE, TrapRxCounter);
-				FRAM_Sensors_Ax_Coeffs_Set((float *)(&((TRAP_SENSORS_a_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->ax_coeff_k), (float *)(&((TRAP_SENSORS_a_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->ax_coeff_b));
-				FRAM_Sensors_Ay_Coeffs_Set((float *)(&((TRAP_SENSORS_a_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->ay_coeff_k), (float *)(&((TRAP_SENSORS_a_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->ay_coeff_b));
-				FRAM_Sensors_Az_Coeffs_Set((float *)(&((TRAP_SENSORS_a_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->az_coeff_k), (float *)(&((TRAP_SENSORS_a_coeffs_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->az_coeff_b));
-				break;
-			default: 
-				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-				break;
-			}
-			break;
-			/*******************************************************************************/
-		case TRAP_PROGRAMMING_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
-			switch (cmd->command)
-			{
-			case TRAP_PROGRAMMING_COMMAND_GET_INFO:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-				TRAP_PROGRAMMING_TakeInfo();
-				break;
-			case TRAP_PROGRAMMING_COMMAND_WRITE_BEGIN:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-				FRAM_Autonom_Write_Begin();
-				break;
-			case TRAP_PROGRAMMING_COMMAND_WRITE_END:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-				FRAM_Autonom_Write_End();
-				break;
-			case TRAP_PROGRAMMING_COMMAND_WRITE_BLOCK:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-				FRAM_Autonom_Write_Block(((TRAP_PROGRAMMING_block_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->offset, ((TRAP_PROGRAMMING_block_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->size, ((byte *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_PROGRAMMING_block_type))));
-				break;
-			case TRAP_PROGRAMMING_COMMAND_READ_BLOCK:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-				TRAP_PROGRAMMING_ReadBlock(((TRAP_PROGRAMMING_block_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->offset, ((TRAP_PROGRAMMING_block_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->size);
-				break;
-			default: 
-				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-				break;
-			}
-			break;
-			/*******************************************************************************/
-		case TRAP_VECTOR_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
-			switch (cmd->command)
-			{
-			case TRAP_VECTOR_COMMAND_ENABLE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_VECTOR_DEVICE, TrapRxCounter);
-				Mode_Online_Main_Enable();
-				break;
-			case TRAP_VECTOR_COMMAND_DISABLE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_VECTOR_DEVICE, TrapRxCounter);
-				Mode_Online_Main_Disable();
-				break;
-			default: 
-				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-				break;
-			}
-			break;
-			/*******************************************************************************/
-		case TRAP_ONLINE_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
+//		TRAP_command_type *cmd = (TRAP_command_type *)(data + TRAP_RX_HEADERS_LEN);	
 
-			switch (cmd->command)
-			{
-			case TRAP_ONLINE_COMMAND_GET_PERIOD:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				TRAP_ONLINE_TakePeriod();
+		if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type))
+		{ 
+			TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); 
+			return; 
+		};
+
+		switch (t->hdr.device)
+		{
+			case TRAP_INFO_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+				TrapInfoSet &ts = (TrapInfoSet&)*t;
+
+				switch (t->hdr.cmd)
+				{
+					case TRAP_INFO_COMMAND_GET_INFO:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);					
+						TRAP_INFO_SendInfo();
+						break;
+
+					case TRAP_INFO_COMMAND_SET_NUMBER:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
+						FRAM_Main_Device_Number_Set(ts.number);
+						break;
+
+					case TRAP_INFO_COMMAND_SET_TYPE:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
+						FRAM_Main_Device_Type_Set(ts.type);
+						break;
+
+					case TRAP_INFO_COMMAND_SET_TELEMETRY:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
+						FRAM_Main_Device_Telemetry_Set(ts.telemetry);
+						break;
+
+					default: 
+
+						TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+						break;
+				};
+
 				break;
-			case TRAP_ONLINE_COMMAND_SET_PERIOD:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				TRAP_ONLINE_SendStatus(Mode_Online_Control_Period_MS_Set(((TRAP_ONLINE_period_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->period_ms));
+
+			case TRAP_CLOCK_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+				switch (t->hdr.cmd)
+				{
+					case TRAP_CLOCK_COMMAND_GET:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_CLOCK_DEVICE, TrapRxCounter);					
+						TRAP_CLOCK_SendMain(RTC_Get());
+						break;
+
+					case TRAP_CLOCK_COMMAND_SET:
+
+						TrapClock &tc = (TrapClock&)*t;
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_CLOCK_DEVICE, TrapRxCounter);	
+						RTC_Set(tc.rtc);
+						break;
+
+					default: 
+
+						TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+						break;
+				}
 				break;
-			case TRAP_ONLINE_COMMAND_BEGIN:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				Mode_Online_Control_Begin();
+
+			case TRAP_MEMORY_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+				switch (t->hdr.cmd)
+				{
+					case TRAP_MEMORY_COMMAND_GET_INFO:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						TRAP_MEMORY_SendInfo();
+						break;
+
+					case TRAP_MEMORY_COMMAND_READ_SESSION_START:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						Mode_Ethernet_Flash_Read_Session_Start();
+						break;
+
+					case TRAP_MEMORY_COMMAND_READ_VECTOR_START:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
+
+						TrapReadVector &tr = (TrapReadVector&)*t;
+
+						Mode_Ethernet_Flash_Read_Vector_Start(tr.session, tr.last_adress);
+
+						break;
+
+					case TRAP_MEMORY_COMMAND_STOP:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						Mode_Ethernet_Flash_Stop();
+						break;
+
+					case TRAP_MEMORY_COMMAND_PAUSE:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						Mode_Ethernet_Flash_Pause();
+						break;
+
+					case TRAP_MEMORY_COMMAND_RESUME:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						Mode_Ethernet_Flash_Resume();
+						break;
+
+					case TRAP_MEMORY_COMMAND_ERASE:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						Mode_Ethernet_Flash_Erase();
+						break;
+
+					case TRAP_MEMORY_COMMAND_UNERASE:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						Mode_Ethernet_Flash_UnErase();
+						break;
+
+					default: 
+
+						TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+						break;
+				};
+
 				break;
-			case TRAP_ONLINE_COMMAND_CANCEL:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				Mode_Online_Control_Cancel();
+
+			case TRAP_BOOTLOADER_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+				switch (t->hdr.cmd)
+				{
+					case TRAP_BOOTLOADER_COMMAND_START:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BOOTLOADER_DEVICE, TrapRxCounter);
+						BootLoader_Start_Delay();
+
+						break;
+
+					default: 
+
+						TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+
+						break;
+				};
+
 				break;
-			case TRAP_ONLINE_COMMAND_END:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				Mode_Online_Control_End();
+
+			case TRAP_BATTERY_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+				TrapBattSetCoeffs &tbsc = (TrapBattSetCoeffs&)*t;
+				TrapBattSetVolt &tbsv = (TrapBattSetVolt&)*t;
+
+
+				switch (t->hdr.cmd)
+				{
+					case TRAP_BATTERY_COMMAND_GET_MAIN:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+						TRAP_BATTERY_TakeMain();
+						break;
+
+					case TRAP_BATTERY_COMMAND_GET_STATUS:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+						TRAP_BATTERY_TakeStatus();
+						break;
+
+					case TRAP_BATTERY_COMMAND_SET_BATTERY_COEFFS:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+
+						FRAM_Power_Battery_Coeffs_Set(tbsc.coeff_k, tbsc.coeff_b);
+
+						break;
+						
+					case TRAP_BATTERY_COMMAND_SET_LINE_COEFFS:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+						FRAM_Power_Line_Coeffs_Set(tbsc.coeff_k, tbsc.coeff_b);
+						break;
+
+					case TRAP_BATTERY_COMMAND_SET_BATTERY_VOLTAGES:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+						FRAM_Power_Battery_Voltages_Set(tbsv.setup_voltage, tbsv.min_voltage, tbsv.max_voltage);
+						break;
+
+					case TRAP_BATTERY_COMMAND_SET_LINE_VOLTAGES:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+						FRAM_Power_Line_Voltages_Set(tbsv.setup_voltage, tbsv.min_voltage, tbsv.max_voltage);
+						break;
+
+					case TRAP_BATTERY_COMMAND_SWITCH_ON:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+						Power_Switch_Set(true);
+						break;
+
+					case TRAP_BATTERY_COMMAND_SWITCH_OFF:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+						Power_Switch_Set(false);
+						break;
+
+					case TRAP_BATTERY_COMMAND_MAIN_ENABLE:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+						Power_Transmission_Set(true);
+						break;
+
+					case TRAP_BATTERY_COMMAND_MAIN_DISABLE:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
+						Power_Transmission_Set(false);
+						break;
+
+					default: 
+
+						TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+						break;
+				};
+
 				break;
-			case TRAP_ONLINE_COMMAND_SET_DEVICE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				TRAP_ONLINE_set_device_type *set_device = (TRAP_ONLINE_set_device_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type));
-				TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Add(set_device->delay_ms, set_device->period_min_ms, set_device->command_count));
+
+			case TRAP_SENSORS_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+				switch (t->hdr.cmd)
+				{
+					case TRAP_SENSORS_COMMAND_GET_MAIN:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_SENSORS_DEVICE, TrapRxCounter);
+						TRAP_SENSORS_TakeMain();
+						break;
+
+					case TRAP_SENSORS_COMMAND_GET_A_COEFFS:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_SENSORS_DEVICE, TrapRxCounter);
+						TRAP_SENSORS_Take_A_Coeffs();
+						break;
+
+					case TRAP_SENSORS_COMMAND_SET_A_COEFFS:
+
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_SENSORS_DEVICE, TrapRxCounter);
+
+						TrapSensCoeffs &tsc = (TrapSensCoeffs&)*t;
+
+						FRAM_Sensors_Ax_Coeffs_Set(tsc.ax_coeff_k, tsc.ax_coeff_b);
+						FRAM_Sensors_Ay_Coeffs_Set(tsc.ay_coeff_k, tsc.ay_coeff_b);
+						FRAM_Sensors_Az_Coeffs_Set(tsc.az_coeff_k, tsc.az_coeff_b);
+						break;
+
+					default: 
+
+						TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+						break;
+				};
+
 				break;
-			case TRAP_ONLINE_COMMAND_SET_COMMAND:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				TRAP_ONLINE_set_command_type *set_command = (TRAP_ONLINE_set_command_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type));
-				TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Command_Add(Mode_Online_Control_Device_Index_Get(), set_command->command_index, set_command->telemetry, set_command->mode, set_command->offset_ms, set_command->tx_flags, set_command->tx_freq_hz, set_command->tx_size, set_command->rx_flags, set_command->rx_freq_hz, set_command->rx_timeout_mks, set_command->rx_pause_mks, set_command->rx_size, set_command->tx_data));
+
+			case TRAP_PROGRAMMING_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+				TrapProgBlock &tpb = (TrapProgBlock&)*t;
+
+				switch (t->hdr.cmd)
+				{
+				case TRAP_PROGRAMMING_COMMAND_GET_INFO:
+
+					if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
+					TRAP_PROGRAMMING_TakeInfo();
+					break;
+
+				case TRAP_PROGRAMMING_COMMAND_WRITE_BEGIN:
+
+					if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
+					FRAM_Autonom_Write_Begin();
+					break;
+
+				case TRAP_PROGRAMMING_COMMAND_WRITE_END:
+
+					if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
+					FRAM_Autonom_Write_End();
+					break;
+
+				case TRAP_PROGRAMMING_COMMAND_WRITE_BLOCK:
+
+					if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
+					FRAM_Autonom_Write_Block(tpb.offset, tpb.size, tpb.data);
+					break;
+
+				case TRAP_PROGRAMMING_COMMAND_READ_BLOCK:
+
+					if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
+					TRAP_PROGRAMMING_ReadBlock(tpb.offset, tpb.size);
+					break;
+
+				default: 
+
+					TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+					break;
+				}
 				break;
-			case TRAP_ONLINE_COMMAND_ADD_COMMAND:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				TRAP_ONLINE_add_command_type *add_command = (TRAP_ONLINE_add_command_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type));
-				TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Command_Add(add_command->device_index, add_command->command_index, add_command->telemetry, add_command->mode, add_command->offset_ms, add_command->tx_flags, add_command->tx_freq_hz, add_command->tx_size, add_command->rx_flags, add_command->rx_freq_hz, add_command->rx_timeout_mks, add_command->rx_pause_mks, add_command->rx_size, add_command->tx_data));
+
+			case TRAP_VECTOR_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+				switch (t->hdr.cmd)
+				{
+				case TRAP_VECTOR_COMMAND_ENABLE:
+					if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_VECTOR_DEVICE, TrapRxCounter);
+					Mode_Online_Main_Enable();
+					break;
+				case TRAP_VECTOR_COMMAND_DISABLE:
+					if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_VECTOR_DEVICE, TrapRxCounter);
+					Mode_Online_Main_Disable();
+					break;
+				default: 
+					TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+					break;
+				}
 				break;
-			case TRAP_ONLINE_COMMAND_REMOVE_COMMAND:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				TRAP_ONLINE_remove_command_type *remove_command = (TRAP_ONLINE_remove_command_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type));
-				TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Command_Remove(remove_command->device_index, remove_command->command_index));
-				break;
-			case TRAP_ONLINE_COMMAND_GET_INDEX:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-				TRAP_ONLINE_TakeIndex();
-				break;
-			default: 
+
+			//case TRAP_ONLINE_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			//	switch (t->hdr.cmd)
+			//	{
+			//	case TRAP_ONLINE_COMMAND_GET_PERIOD:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+			//		TRAP_ONLINE_TakePeriod();
+			//		break;
+
+			//	case TRAP_ONLINE_COMMAND_SET_PERIOD:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+
+			//		TrapOnlinePeriod &top = (TrapOnlinePeriod&)*t;
+
+			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Period_MS_Set(top.period_ms));
+			//		break;
+			//	case TRAP_ONLINE_COMMAND_BEGIN:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+			//		Mode_Online_Control_Begin();
+			//		break;
+			//	case TRAP_ONLINE_COMMAND_CANCEL:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+			//		Mode_Online_Control_Cancel();
+			//		break;
+
+			//	case TRAP_ONLINE_COMMAND_END:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+			//		Mode_Online_Control_End();
+			//		break;
+
+			//	case TRAP_ONLINE_COMMAND_SET_DEVICE:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+
+			//		TrapOnlineSetDevice &tosd = (TrapOnlineSetDevice&)*t;
+
+			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Add(tosd.delay_ms, tosd.period_min_ms, tosd.command_count));
+			//		break;
+
+			//	case TRAP_ONLINE_COMMAND_SET_COMMAND:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+
+			//		TrapOnlineSetCmd &tosc = (TrapOnlineSetCmd&)*t;
+
+			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Command_Add(Mode_Online_Control_Device_Index_Get(), tosc.command_index, tosc.telemetry, tosc.mode, tosc.offset_ms, set_command->tx_flags, set_command->tx_freq_hz, set_command->tx_size, set_command->rx_flags, set_command->rx_freq_hz, set_command->rx_timeout_mks, set_command->rx_pause_mks, set_command->rx_size, set_command->tx_data));
+			//		break;
+
+			//	case TRAP_ONLINE_COMMAND_ADD_COMMAND:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+
+			//		TRAP_ONLINE_add_command_type *add_command = (TRAP_ONLINE_add_command_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type));
+			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Command_Add(add_command->device_index, add_command->command_index, add_command->telemetry, add_command->mode, add_command->offset_ms, add_command->tx_flags, add_command->tx_freq_hz, add_command->tx_size, add_command->rx_flags, add_command->rx_freq_hz, add_command->rx_timeout_mks, add_command->rx_pause_mks, add_command->rx_size, add_command->tx_data));
+			//		break;
+
+			//	case TRAP_ONLINE_COMMAND_REMOVE_COMMAND:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+
+			//		TRAP_ONLINE_remove_command_type *remove_command = (TRAP_ONLINE_remove_command_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type));
+			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Command_Remove(remove_command->device_index, remove_command->command_index));
+			//		break;
+
+			//	case TRAP_ONLINE_COMMAND_GET_INDEX:
+
+			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
+
+			//		TRAP_ONLINE_TakeIndex();
+			//		break;
+
+			//	default: 
+
+			//		TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+			//		break;
+			//	}
+			//	break;
+
+			//case TRAP_RDC_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			//	switch (t->hdr.cmd)
+			//	{
+			//		case TRAP_RDC_COMMAND_IMITATION_ENABLE:
+			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
+			//			Mode_Online_RDC_Imitation_Enable(((TRAP_RDC_imitation_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->depth_sm, ((TRAP_RDC_imitation_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->speed_mh);
+			//			break;
+			//		case TRAP_RDC_COMMAND_IMITATION_DISABLE:
+			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
+			//			Mode_Online_RDC_Imitation_Disable();
+			//			break;
+			//		case TRAP_RDC_COMMAND_SET_DEPTH:
+			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
+			//			Mode_Online_RDC_Depth_Set(((TRAP_RDC_depth_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->depth_sm);
+			//			break;
+			//		case TRAP_RDC_COMMAND_CHANGE_DEPTH:
+			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
+			//			Mode_Online_RDC_Depth_Set(Mode_Online_RDC_Depth_Get() + ((TRAP_RDC_depth_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->depth_sm);
+			//			break;
+			//		case TRAP_RDC_COMMAND_MESSAGING_ENABLE:
+			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
+			//			Mode_Online_RDC_Messaging_Enable();
+			//			break;
+			//		case TRAP_RDC_COMMAND_MESSAGING_DISABLE:
+			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
+			//			Mode_Online_RDC_Messaging_Disable();
+			//			break;
+			//		case TRAP_RDC_COMMAND_TIME_RESET:
+			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
+			//			Mode_Online_RDC_Time_Reset();
+			//			break;
+			//		default: 
+			//			TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+			//			break;
+			//	}
+			//	break;
+
+
+			default: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
+
 				break;
-			}
-			break;
-			/*******************************************************************************/
-		case TRAP_RDC_DEVICE:
-			if(size < TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)) { TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW); break; }
-			switch (cmd->command)
-			{
-			case TRAP_RDC_COMMAND_IMITATION_ENABLE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-				Mode_Online_RDC_Imitation_Enable(((TRAP_RDC_imitation_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->depth_sm, ((TRAP_RDC_imitation_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->speed_mh);
-				break;
-			case TRAP_RDC_COMMAND_IMITATION_DISABLE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-				Mode_Online_RDC_Imitation_Disable();
-				break;
-			case TRAP_RDC_COMMAND_SET_DEPTH:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-				Mode_Online_RDC_Depth_Set(((TRAP_RDC_depth_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->depth_sm);
-				break;
-			case TRAP_RDC_COMMAND_CHANGE_DEPTH:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-				Mode_Online_RDC_Depth_Set(Mode_Online_RDC_Depth_Get() + ((TRAP_RDC_depth_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->depth_sm);
-				break;
-			case TRAP_RDC_COMMAND_MESSAGING_ENABLE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-				Mode_Online_RDC_Messaging_Enable();
-				break;
-			case TRAP_RDC_COMMAND_MESSAGING_DISABLE:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-				Mode_Online_RDC_Messaging_Disable();
-				break;
-			case TRAP_RDC_COMMAND_TIME_RESET:
-				if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-				Mode_Online_RDC_Time_Reset();
-				break;
-			default: 
-				TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-				break;
-			}
-			break;
-			/*******************************************************************************/
-		default:
-			TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-			break;
 
 		}
 	}

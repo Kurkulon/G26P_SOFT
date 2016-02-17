@@ -10,12 +10,13 @@
 #define ETH_RX_BUF_SIZE     (ETH_RX_DRBS * 64)       /* EMAC Receive buffer size.         */
 
 
-#define NUM_TX_BUF          4           /* 0x0600 for Tx                     */
+#define NUM_TX_DSC          16         /* 0x0600 for Tx                     */
 #define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
 
 #define AT91C_PHY_ADDR      0
 
 #define OWNERSHIP_BIT		1
+#define WRAP_BIT			2
 
 #define ARP_REQUEST			0x0001
 #define ARP_REPLY			0x0002
@@ -52,7 +53,7 @@
 
 #define PHYA 1
 
-#define IP32(b1, b2, b3, b4) ((b1&0xFF)|((b2&0xFF)<<8)|((b3&0xFF)<<16)|((b4&0xFF)<<24))
+#define IP32(b1, b2, b3, b4) (((u32)b1&0xFF)|(((u32)b2&0xFF)<<8)|(((u32)b3&0xFF)<<16)|(((u32)b4&0xFF)<<24))
 
 
 /* -------- GMAC_NCR : (GMAC Offset: 0x000) Network Control Register -------- */

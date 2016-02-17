@@ -60,7 +60,7 @@ libname = $(curdir)\sam4sa_$(libsuffix).a
 
 ##################################################################################################
 
-compiler_options = $(debug_compiler_options) -g -c --cpu CORTEX-M4.fp.sp --thumb --diag_style=ide &
+compiler_options = $(debug_compiler_options) --asm --interleave -g -c --cpu CORTEX-M4.fp.sp --thumb --diag_style=ide &
 	 --diag_suppress=68,368,1299,3017 -D__MICROLIB &
 	 --no_depend_system_headers --reduce_paths
 

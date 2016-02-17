@@ -20,8 +20,8 @@ __packed struct MAC
 
 struct Buf_Desc
 {
-	u32 addr;
-	u32 stat;
+	u32		addr;
+	u32		stat;
 };
 
 
@@ -183,5 +183,47 @@ union EthPtr
 	EthUdp	*eudp;
 	EthDhcp *edhcp;
 };
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct EthBuf
+{
+	EthBuf*		next;
+
+	u32			len;
+	EthHdr		eth;
+
+	EthBuf() : next(0), len(0) {}
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct EthArpBuf : public EthBuf
+{
+	ArpHdr	arp;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct EthIpBuf : public EthBuf
+{
+	IPheader	iph;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct EthIcmpBuf : public EthIpBuf
+{
+	IcmpEchoHdr	icmp;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct EthUdpBuf : public EthIpBuf
+{
+	UdpHdr	udp;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #endif // EMAC_H__02_03_2015__16_38

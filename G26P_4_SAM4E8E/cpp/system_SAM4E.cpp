@@ -126,8 +126,8 @@ extern "C" void SystemInit (void)
 	PMC->PCER0 = PID::SMC_M;
 
 	SMC->CSR[0].SETUP = 1;
-	SMC->CSR[0].PULSE = 0x04040404;
-	SMC->CSR[0].CYCLE = 0x00080008;
+	SMC->CSR[0].PULSE = 0x08080808;
+	SMC->CSR[0].CYCLE = 0x00120012;
 	SMC->CSR[0].MODE = 0x00000003;
 
 
@@ -144,6 +144,11 @@ extern "C" void SystemInit (void)
 	__asm { DSB };
 	__asm { ISB };
 
+	HW::CMCC->CTRL = 1; // cache enable
+	HW::CMCC->MAINT0 = 1; // invalidate all cache entries
+
+	__asm { DSB };
+	__asm { ISB };
 
 // Init ADC
 

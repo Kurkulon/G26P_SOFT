@@ -9,7 +9,7 @@
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-typedef struct __attribute__ ((packed))   
+__packed struct vector_header_type   
 {
 	byte magic;
 	byte version;		// версия структуры 
@@ -17,19 +17,19 @@ typedef struct __attribute__ ((packed))
 	byte crc_header;	// контрольная сумма header_type, исключая crc
 	byte crc_data;		// контрольная сумма данных
 	u16 size;		// длина пакета в байтах включая header и control
-} vector_header_type;
+} ;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-typedef struct __attribute__ ((packed))   
+__packed struct vector_adress_type   
 {
 	byte hi;
  	u32 lo;	//адрес предыдущего вектора
-} vector_adress_type;
+} ;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-typedef struct __attribute__ ((packed))   
+__packed struct vector_control_type   
 {
 	u16 id_session;
 	u16 id_device;
@@ -37,15 +37,15 @@ typedef struct __attribute__ ((packed))
 	vector_adress_type adress_vector;	// адрес предыдущего вектора
 	vector_adress_type adress_session;	// адрес начала сессии
 	byte flags;	// erorr  т.п	
-} vector_control_type;
+} ;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-typedef struct __attribute__ ((packed))   
+__packed struct vector_type
 {
 	vector_header_type header;
 	vector_control_type control;
-} vector_type;
+} ;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

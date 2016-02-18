@@ -226,4 +226,10 @@ __packed struct EthUdpBuf : public EthIpBuf
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+extern bool TransmitEth(EthBuf *b);
+extern bool TransmitIp(EthIpBuf *b);
+extern bool TransmitUdp(EthUdpBuf *b);
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #endif // EMAC_H__02_03_2015__16_38

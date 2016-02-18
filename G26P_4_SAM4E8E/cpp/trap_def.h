@@ -13,23 +13,23 @@
 #define TRAP_CLOCK_DEVICE		'C'
 #define TRAP_MEMORY_DEVICE		'O'
 #define TRAP_BOOTLOADER_DEVICE	'L'
-#define TRAP_BATTERY_DEVICE		'B'
-#define TRAP_SENSORS_DEVICE		'S'
-#define TRAP_PROGRAMMING_DEVICE	'P'
-#define TRAP_VECTOR_DEVICE		'V'
-#define TRAP_ONLINE_DEVICE		'Y'
-#define TRAP_RDC_DEVICE			'G'
+//#define TRAP_BATTERY_DEVICE		'B'
+//#define TRAP_SENSORS_DEVICE		'S'
+//#define TRAP_PROGRAMMING_DEVICE	'P'
+//#define TRAP_VECTOR_DEVICE		'V'
+//#define TRAP_ONLINE_DEVICE		'Y'
+//#define TRAP_RDC_DEVICE			'G'
 #define TRAP_DEVICES_MASK	((1u << (TRAP_TRACE_DEVICE - 'A')) | \
 							(1u << (TRAP_INFO_DEVICE - 'A')) | \
 							(1u << (TRAP_CLOCK_DEVICE - 'A')) | \
 							(1u << (TRAP_MEMORY_DEVICE - 'A')) | \
-							(1u << (TRAP_BOOTLOADER_DEVICE - 'A')) | \
-							(1u << (TRAP_BATTERY_DEVICE - 'A')) | \
-                            (1u << (TRAP_SENSORS_DEVICE - 'A')) | \
-                            (1u << (TRAP_PROGRAMMING_DEVICE - 'A')) | \
-                            (1u << (TRAP_VECTOR_DEVICE - 'A')) | \
-                            (1u << (TRAP_ONLINE_DEVICE - 'A')) | \
-							(1u << (TRAP_RDC_DEVICE - 'A')))
+							(1u << (TRAP_BOOTLOADER_DEVICE - 'A')))// | \
+							//(1u << (TRAP_BATTERY_DEVICE - 'A')) | \
+       //                     (1u << (TRAP_SENSORS_DEVICE - 'A')) | \
+       //                     (1u << (TRAP_PROGRAMMING_DEVICE - 'A')) | \
+       //                     (1u << (TRAP_VECTOR_DEVICE - 'A')) | \
+       //                     (1u << (TRAP_ONLINE_DEVICE - 'A')) | \
+							//(1u << (TRAP_RDC_DEVICE - 'A')))
 
 #define TRAP_PACKET_ERROR_VERSION	0x7	// ошибка версии протокола
 #define TRAP_PACKET_ERROR_CHECKSUM	0x6	// ошибка контрольной суммы
@@ -78,6 +78,14 @@ __packed struct	TrapError
 {
 	TrapHdr	hdr;
 	byte	error;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct	TrapAsk
+{
+	TrapHdr	hdr;
+	u32		on_packet;
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -40,6 +40,8 @@ static HugeTx	hugeTxBuf[4];
 static byte indSmallTx = 0;
 static byte indHugeTx = 0;
 
+static u16  txIpID = 0;
+
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -111,7 +113,7 @@ void RequestTrap(EthUdp *h, u32 stat)
 
 	len = (len+3) >> 2;
 
-	while (len > 0)	{ *d++ = *p++; };
+	while (len > 0)	{ *d++ = *p++; len--; };
 
 	reqTrapList.Add(req);
 }
@@ -131,6 +133,7 @@ SmallTx* GetSmallTxBuffer()
 
 	if (p->len == 0)
 	{
+		p->len = 1;
 		indSmallTx = (indSmallTx + 1) & 7;
 		return p;
 	}
@@ -249,46 +252,19 @@ static void UpdateRequestTraps()
 
 static void UpdateSendTraps()
 {
-	static byte i = 0;
-	static SmallTx *tx = 0;
+	SmallTx *t = txList.Get();
 
-	switch(i)
+	if (t != 0)
 	{
-		case 0:
+		t->eth.dest = ComputerEmacAddr;
 
-			tx = txList.Get();
+		t->iph.id = ReverseWord(txIpID);		
 
-			if (tx != 0)
-			{
-				i++;
-			};
+		t->iph.dst = ComputerIpAddr;	
 
-			break;
+		t->udp.dst = ComputerUDPPort;
 
-		case 1:
-
-			i++;
-
-			break;
-
-		case 2:
-
-			i++;
-
-			break;
-
-		case 3:
-
-
-			i++;
-
-			break;
-
-		case 4:
-
-			i = 0;
-
-			break;
+		TransmitUdp(t);
 	};
 }
 

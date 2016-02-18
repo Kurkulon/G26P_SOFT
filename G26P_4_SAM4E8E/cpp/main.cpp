@@ -90,46 +90,22 @@ int main()
 
 	while(1)
 	{
-//		HW::PIOA->CODR = 1<<13;
-		
-//		PageReadAsync(0);
+		static byte i = 0;
 
-		//*FLC = 0x90;
-		//*FLA = 0;
+		#define CALL(p) case (__LINE__-S): p; break;
 
-		//flashID[0] = *FLD;
-		//flashID[1] = *FLD;
-		//flashID[2] = *FLD;
-		//flashID[3] = *FLD;
-		//flashID[4] = *FLD;
+		enum C { S = (__LINE__+3) };
+		switch(i++)
+		{
+			CALL( UpdateEMAC();	);
+			CALL( UpdateTraps();	);
+		};
 
-		//HW::PIOA->SODR = 1<<13;
+		i = (i > (__LINE__-S-3)) ? 0 : i;
 
-
-
-		//static byte i = 0;
-
-		//#define CALL(p) case (__LINE__-S): p; break;
-
-		//enum C { S = (__LINE__+3) };
-		//switch(i++)
-		//{
-		//	CALL( UpdateEMAC();	);
-		//	CALL( NAND_Idle();	);
-		//	CALL( UpdateWriteFlash();	);
-		//};
-
-		//i = (i > (__LINE__-S-3)) ? 0 : i;
-
-		//#undef CALL
-
-//		UpdateTraps();
-
-		UpdateEMAC();		
+		#undef CALL
 
 		f++;
-
-//		Heap_Mem[0] = f;
 
 		if (rtm.Check(MS2RT(1000)))
 		{

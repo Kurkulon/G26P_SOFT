@@ -10,7 +10,7 @@
 __packed struct SmallTx : public EthUdpBuf
 {
 	TrapHdr th;		// 9
-	u16 cmd;		// 2
+
 	byte data[75];
 };
 

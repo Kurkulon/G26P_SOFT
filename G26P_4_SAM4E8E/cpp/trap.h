@@ -15,8 +15,8 @@ extern void TRAP_Idle();
 extern bool TRAP_INFO_SendCaptureIP(u32 old_ip, u16 old_port);
 extern bool TRAP_INFO_SendLostIP(u32 new_ip, u16 new_port);
 /************ TRACE *******************************************/
-extern void TRAP_TRACE_SendData(char *pData, u32 size);
-extern void TRAP_TRACE_PrintString(char *data);
+extern bool TRAP_TRACE_SendData(const char *pData, u32 size);
+extern bool TRAP_TRACE_PrintString(const char *data);
 extern void TRAP_TRACE_PrintChar(char data);
 extern void TRAP_TRACE_PrintDec(int number);
 extern void TRAP_TRACE_PrintHex(u32 number);

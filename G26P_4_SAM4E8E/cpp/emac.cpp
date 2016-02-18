@@ -2,6 +2,7 @@
 #include "emac.h"
 #include "EMAC_DEF.h"
 #include "xtrap.h"
+#include "list.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -63,6 +64,10 @@ __packed struct SysEthBuf : public EthBuf
 
 static SysEthBuf	sysTxBuf[8];
 static byte			indSysTx = 0;
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static List<EthBuf> txList;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -211,22 +216,84 @@ static void UpdateStatistic()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool TransmitPacket(Buf_Desc *dsc, EthBuf *b)	// Send a packet
+u16 IpChkSum(u16 *p, u16 size)
 {
-	if (dsc == 0 || b == 0 || b->len == 0)
+	register u32 sum = 0;
+	register u32 t;
+
+loop:
+
+	__asm
+	{
+		LDRH	t, [p], #2 
+		ADD		sum, t
+		SUBS	size, size, #1
+		BNE		loop
+
+		LSR		t, sum, #16
+		AND		sum, sum, #0xFFFF
+		ADD		sum, sum, t
+		ADD		sum, sum, sum, LSR#16 
+	};
+ 
+	return ~sum;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool TransmitEth(EthBuf *b)
+{
+	if (b == 0 || b->len < sizeof(EthHdr))
 	{
 		return false;
 	};
 
-	dsc->addr = (u32)&b->eth;
-	dsc->stat &= TD_TRANSMIT_OK|TD_TRANSMIT_WRAP;
-	dsc->stat |= TD_LAST_BUF | (b->len & TD_LENGTH_MASK);
-	dsc->stat &= ~TD_TRANSMIT_OK;
+	b->eth.src = hwAdr;
 
-	HW::GMAC->TSR = 0x17F;
-	HW::GMAC->NCR |= GMAC_TXEN|GMAC_TSTART;
+	txList.Add(b);
 
 	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool TransmitIp(EthIpBuf *b)
+{
+	if (b == 0 || b->len < sizeof(EthIp))
+	{
+		return false;
+	};
+
+	b->eth.protlen = SWAP16(PROT_IP);
+
+	b->iph.hl_v = 0x45;	
+	b->iph.tos = 0;		
+	b->iph.off = 0;		
+	b->iph.ttl = 64;		
+	b->iph.sum = 0;		
+	b->iph.src = ipAdr;		
+	b->iph.len = ReverseWord(b->len - sizeof(EthHdr));		
+
+	b->iph.sum = IpChkSum((u16*)&b->iph, 10);
+
+	return TransmitEth(b);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool TransmitUdp(EthUdpBuf *b)
+{
+	if (b == 0 || b->len < sizeof(EthUdp))
+	{
+		return false;
+	};
+
+	b->iph.p = PROT_UDP;
+	b->udp.src = udpOutPort;
+	b->udp.xsum = 0;
+	b->udp.len = ReverseWord(b->len - sizeof(EthIp));
+
+	return TransmitIp(b);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -341,16 +408,16 @@ static void RequestARP(EthArp *h, u32 stat)
 		{
 			reqArpCount++;
 
-			Buf_Desc *dsc = GetTxDesc();
+//			Buf_Desc *dsc = GetTxDesc();
 
 			EthBuf *buf = GetSysTxBuffer();
 
-			if (dsc == 0 || buf == 0) return;
+			if (/*dsc == 0 || */buf == 0) return;
 
 			EthArp *t = (EthArp*)&buf->eth;
 
 			t->eth.dest = h->eth.src;
-			t->eth.src  = hwAdr;
+//			t->eth.src  = hwAdr;
 
 			t->eth.protlen = SWAP16(PROT_ARP);
 
@@ -368,34 +435,9 @@ static void RequestARP(EthArp *h, u32 stat)
 
 			buf->len = sizeof(EthArp);
 
-			TransmitPacket(dsc, buf);
+			TransmitEth(buf);
 		};	
 	}			
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-u16 IpChkSum(u16 *p, u16 size)
-{
-	register u32 sum = 0;
-	register u32 t;
-
-loop:
-
-	__asm
-	{
-		LDRH	t, [p], #2 
-		ADD		sum, t
-		SUBS	size, size, #1
-		BNE		loop
-
-		LSR		t, sum, #16
-		AND		sum, sum, #0xFFFF
-		ADD		sum, sum, t
-		ADD		sum, sum, sum, LSR#16 
-	};
- 
-	return ~sum;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -406,31 +448,31 @@ static void RequestICMP(EthIcmp *h, u32 stat)
 	{
 		reqIcmpCount++;
 
-		Buf_Desc *dsc = GetTxDesc();
+//		Buf_Desc *dsc = GetTxDesc();
 
-		EthBuf *buf = GetSysTxBuffer();
+		EthIpBuf *buf = (EthIpBuf*)GetSysTxBuffer();
 
-		if (dsc == 0 || buf == 0) return;
+		if (/*dsc == 0 ||*/ buf == 0) return;
 
 		EthIcmp *t = (EthIcmp*)&buf->eth;
 
 		t->eth.dest = h->eth.src;
-		t->eth.src  = hwAdr;
+//		t->eth.src  = hwAdr;
 
-		t->eth.protlen = SWAP16(PROT_IP);
+//		t->eth.protlen = SWAP16(PROT_IP);
 
-		t->iph.hl_v = 0x45;	
-		t->iph.tos = 0;		
+		//t->iph.hl_v = 0x45;	
+		//t->iph.tos = 0;		
 		t->iph.len = h->iph.len;		
 		t->iph.id = h->iph.id;		
-		t->iph.off = 0;		
-		t->iph.ttl = 64;		
+		//t->iph.off = 0;		
+		//t->iph.ttl = 64;		
 		t->iph.p = PROT_ICMP;		
-		t->iph.sum = 0;		
-		t->iph.src = ipAdr;		
+		//t->iph.sum = 0;		
+		//t->iph.src = ipAdr;		
 		t->iph.dst = h->iph.src;	
 
-		t->iph.sum = IpChkSum((u16*)&t->iph, 10);
+		//t->iph.sum = IpChkSum((u16*)&t->iph, 10);
 
 		u16 icmp_len = (ReverseWord(t->iph.len) - 20);	// Checksum of the ICMP Message
 
@@ -459,7 +501,7 @@ static void RequestICMP(EthIcmp *h, u32 stat)
 
 		buf->len = ReverseWord(t->iph.len) + sizeof(t->eth);
 
-		TransmitPacket(dsc, buf);
+		TransmitIp(buf);
 	}
 }
 
@@ -494,18 +536,12 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 
 	if (op != DHCPDISCOVER && op != DHCPREQUEST) return;
 
-	Buf_Desc *dsc = GetTxDesc();
+	EthIpBuf *buf = (EthIpBuf*)GetSysTxBuffer();
 
-	EthBuf *buf = GetSysTxBuffer();
-
-	if (dsc == 0 || buf == 0) return;
+	if (buf == 0) return;
 
 	EthDhcp *t = (EthDhcp*)&buf->eth;
 
-	t->eth.dest = hwBroadCast;
-	t->eth.src  = hwAdr;
-
-	t->eth.protlen = ReverseWord(PROT_IP);
 
 
 	t->dhcp.op = 2;
@@ -547,20 +583,25 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 
 	*p.b++ = -1; // End option
 
-	u16 ipLen = sizeof(h->iph) + sizeof(h->udp) + (sizeof(t->dhcp) - sizeof(t->dhcp.options)) + (p.b - (byte*)t->dhcp.options);
+	u16 ipLen = sizeof(EthDhcp) - sizeof(t->dhcp.options) + (p.b - (byte*)t->dhcp.options);
 
-	t->iph.hl_v = 0x45;	
-	t->iph.tos = 0;		
-	t->iph.len = ReverseWord(ipLen);		
+	t->eth.dest = hwBroadCast;
+//	t->eth.src  = hwAdr;
+
+//	t->eth.protlen = ReverseWord(PROT_IP);
+
+	//t->iph.hl_v = 0x45;	
+	//t->iph.tos = 0;		
+//	t->iph.len = ReverseWord(ipLen);		
 	t->iph.id = h->iph.id;		
-	t->iph.off = 0;		
-	t->iph.ttl = 64;		
+//	t->iph.off = 0;		
+//	t->iph.ttl = 64;		
 	t->iph.p = PROT_UDP;		
-	t->iph.sum = 0;		
-	t->iph.src = ipAdr;		
+//	t->iph.sum = 0;		
+//	t->iph.src = ipAdr;		
 	t->iph.dst = -1; //BroadCast	
 
-	t->iph.sum = IpChkSum((u16*)&t->iph, 10);
+//	t->iph.sum = IpChkSum((u16*)&t->iph, 10);
 
 	t->udp.src = BOOTPS;
 	t->udp.dst = BOOTPC;
@@ -569,7 +610,7 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 
 	buf->len = ipLen + sizeof(t->eth);
 
-	TransmitPacket(dsc, buf);
+	TransmitIp(buf);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -643,7 +684,7 @@ static void RequestIP(EthIp *h, u32 stat)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void RecieveFrame()
+static void RecieveFrame()
 {
 	Buf_Desc &buf = Rx_Desc[RxBufIndex];
 
@@ -699,6 +740,57 @@ void RecieveFrame()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateTransmit()
+{
+	static byte i = 0;
+
+	static EthBuf *buf = 0;
+	static Buf_Desc *dsc = 0;
+
+	switch (i)
+	{
+		case 0:
+
+			if ((buf = txList.Get()) != 0)
+			{
+				i += 1;
+			}
+			else
+			{
+				FreeTxDesc();
+			};
+
+			break;
+
+		case 1:
+
+			if ((dsc = GetTxDesc()) != 0)
+			{
+				if ((buf->len & TD_LENGTH_MASK) == 0)
+				{
+					__breakpoint(0);
+				};
+
+				dsc->addr = (u32)&buf->eth;
+				dsc->stat &= TD_TRANSMIT_OK|TD_TRANSMIT_WRAP;
+				dsc->stat |= TD_LAST_BUF | (buf->len & TD_LENGTH_MASK);
+				dsc->stat &= ~TD_TRANSMIT_OK;
+
+				HW::GMAC->TSR = 0x17F;
+				HW::GMAC->NCR |= GMAC_TXEN|GMAC_TSTART;
+
+				i = 0;
+			}
+			else
+			{
+				FreeTxDesc();
+			};
+
+			break;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 /*--------------------------- init_ethernet ---------------------------------*/
@@ -940,6 +1032,8 @@ static bool CheckLink() // Если нет связи, то результат false
 
 void UpdateEMAC()
 {
+	static byte i = 0;
+
 	switch(stateEMAC)
 	{
 		case LINKING:
@@ -964,12 +1058,16 @@ void UpdateEMAC()
 			}
 			else
 			{
-				RecieveFrame();
+				switch(i++)
+				{
+					case 0:	RecieveFrame();		break;
+					case 1: UpdateTransmit();	break;
+				};
+
+				i &= 1;
 			};
 
-
 			break;
-
 	};
 }
 

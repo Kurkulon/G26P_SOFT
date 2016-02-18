@@ -10,7 +10,7 @@
 #define ETH_RX_BUF_SIZE     (ETH_RX_DRBS * 64)       /* EMAC Receive buffer size.         */
 
 
-#define NUM_TX_DSC          16         /* 0x0600 for Tx                     */
+#define NUM_TX_DSC          4         /* 0x0600 for Tx                     */
 #define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
 
 #define AT91C_PHY_ADDR      0

@@ -1,3 +1,5 @@
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "common.h"
@@ -139,7 +141,7 @@ bool TRAP_INFO_SendInfo()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool TRAP_CLOCK_SendMain(const RTC_type &rtc)
+bool TRAP_CLOCK_SendMain(/*const RTC_type &rtc*/)
 {
 	SmallTx* buf = GetSmallTxBuffer();
 
@@ -150,13 +152,14 @@ bool TRAP_CLOCK_SendMain(const RTC_type &rtc)
 	MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_CLOCK_DEVICE);
 
 	trap.hdr.cmd = TRAP_CLOCK_COMMAND_MAIN;
-	trap.rtc = rtc;	
+	
+	GetTime(&trap.rtc);	
 
 	buf->len = sizeof(EthUdp) + sizeof(TrapClock);
 
 	SendTrap(buf);
 
-	if (__trace) { TRAP_TRACE_PrintString(__func__); };
+//	if (__trace) { TRAP_TRACE_PrintString(__func__); };
 
 	return true;
 }
@@ -193,7 +196,7 @@ bool TRAP_TRACE_SendData(const char *pData, u32 size)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool TRAP_TRACE_PrintString(const char *data)
+bool TRAP_TRACE_PrintString(const char *data, ...)
 {
 	SmallTx* buf = GetSmallTxBuffer();
 
@@ -205,16 +208,30 @@ bool TRAP_TRACE_PrintString(const char *data)
 
 	buf->th.cmd = TRAP_TRACE_COMMAND_MAIN;
 
-	u16 i = sizeof(buf->data);
+	va_list arglist;
 
-	byte *dst = buf->data;
+    va_start(arglist, data);
+    
+	int i = vsnprintf((char*)buf->data, sizeof(buf->data) - 2, data, arglist);
 
-	while((i > 0) && (*data != 0))
-	{
-		*dst++ = *data++; i--;
-	};
+//	u16 i = sizeof(buf->data) - 2;
+
+
+	if (i < 0) i = 0;
 	
-	buf->len = sizeof(EthUdp) + sizeof(TrapHdr) + sizeof(buf->data) - i;
+	byte *dst = buf->data + i;
+
+	//while((i > 0) && (*data != 0))
+	//{
+	//	*dst++ = *data++; i--;
+	//};
+
+	*dst++ = '\r';
+	*dst++ = '\n';
+
+	i += 2;
+
+	buf->len = sizeof(EthUdp) + sizeof(TrapHdr) + i;
 
 	SendTrap(buf);
 
@@ -622,7 +639,7 @@ static bool TRAP_SendAsknowlege(byte device, u32 on_packet)
 	
 	SendTrap(buf);
 
-	if (__trace) { TRAP_TRACE_PrintString(__func__); };
+	if (__trace) { TRAP_TRACE_PrintString("%s('%c', 0x%08X)", __func__, device, on_packet); };
 
 	return true;
 }
@@ -715,7 +732,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 					case TRAP_CLOCK_COMMAND_GET:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_CLOCK_DEVICE, TrapRxCounter);					
-						TRAP_CLOCK_SendMain(RTC_Get());
+						TRAP_CLOCK_SendMain(/*RTC_Get()*/);
 						break;
 
 					case TRAP_CLOCK_COMMAND_SET:

@@ -10,9 +10,43 @@
 
 //typedef dword time_utc;
 
+#define RTC_type RTC
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct RTC
+{
+	__packed union
+	{
+		__packed struct
+		{
+			u32 msec:10;     // mili second value - [0,999] 
+			u32 sec:6;     // Second value - [0,59] 
+			u32 min:6;     // Minute value - [0,59] 
+			u32 hour:5;    // Hour value - [0,23] 
+		};
+
+		u32 time;
+	};
+	__packed union
+	{
+		__packed struct
+		{
+			u32 day:5;    // Day of the month value - [1,31] 
+			u32 mon:4;     // Month value - [1,12] 
+			u32 year:12;    // Year value - [0,4095] 
+		};
+
+		u32 date;
+	};
+
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 //struct time_bdc 
 //{ 
-//	byte hsecond; byte second; byte minute; byte hour; byte day; byte month; word year; 
+//	byte hsecond; byte second; byte minute; byte hour; byte day; byte month; byte dayofweek; word year; time_utc t; 
 //
 //	//time_bdc(const time_bdc& t) 
 //	//{
@@ -29,7 +63,7 @@
 //	//	*((word*)this+6) = *((word*)&t+6);
 //	//}
 //};
-
+//
 //extern time_bdc timeBDC;
 
 //extern time_utc mktime_utc(const time_bdc &t);
@@ -42,9 +76,9 @@ extern void InitTimer();
 
 
 //extern bool SetTime(time_utc t);
-//extern bool SetTime(const time_bdc &t);
+extern bool SetTime(const RTC &t);
 //extern time_utc GetTime();
-//extern void GetTime(time_bdc *t);
+extern void GetTime(RTC *t);
 //extern bool CheckTime(const time_bdc &t);
 //extern int CompareTime(const time_bdc &t1, const time_bdc &t2);
 //extern void NextDay(time_bdc *t);

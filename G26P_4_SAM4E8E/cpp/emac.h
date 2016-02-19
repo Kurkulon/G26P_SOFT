@@ -7,6 +7,15 @@ extern bool	InitEMAC();
 extern void	UpdateEMAC();
 extern bool EMAC_SendData(void *pData, u16 length);
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline bool EmacIsConnected()
+{
+	extern bool emacConnected;
+	return emacConnected;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct MAC
 {
@@ -18,12 +27,15 @@ __packed struct MAC
 	inline bool operator!=(const MAC &v) { return (B != v.B) || (T != v.T); }
 };
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 struct Buf_Desc
 {
 	u32		addr;
 	u32		stat;
 };
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct EthHdr
 {
@@ -188,12 +200,16 @@ union EthPtr
 
 __packed struct EthBuf
 {
+//	typedef	void (*CB)(EthBuf *b);
+
 	EthBuf*		next;
+
+//	CB			CallBack;
 
 	u32			len;
 	EthHdr		eth;
 
-	EthBuf() : next(0), len(0) {}
+	EthBuf() : next(0), /*CallBack(0),*/ len(0) {}
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

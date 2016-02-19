@@ -18,7 +18,7 @@ void Mode_Ethernet_Clock_Idle()
 	if(temp >= MODE_ETHERNET_CLOCK_SEND_MAIN_PERIOD_MS)
 	{	
 		mode_ethernet_clock_main_period = ms;
-	       	TRAP_CLOCK_SendMain(RTC_Get());
+	       	TRAP_CLOCK_SendMain(/*RTC_Get()*/);
 	}
 }
 

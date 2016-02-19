@@ -31,6 +31,8 @@ template <class T> T* List<T>::Get()
 	{
 		first = (T*)r->next;
 
+//		r->next = 0;
+
 		if (first == 0)
 		{
 			last = 0;
@@ -53,13 +55,14 @@ template <class T> void List<T>::Add(T* r)
 	if (last == 0)
 	{
 		first = last = r;
-		r->next = 0;
 	}
 	else
 	{
 		last->next = r;
 		last = r;
 	};
+
+	r->next = 0;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

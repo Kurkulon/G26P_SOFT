@@ -39,12 +39,12 @@ bool RTC_Check(RTC_type d_t)
 	return rtc.msec;	
 }
 
-void RTC_Set(RTC_type x)
-{
-	rtc_set = x;
-	rtc_set_need = true;
-	rtc_event = 0; // миллисекунды сбрасывать нет смысла, т.к DS32C35 работает с секундами
-}
+//void RTC_Set(RTC_type x)
+//{
+//	rtc_set = x;
+//	rtc_set_need = true;
+//	rtc_event = 0; // миллисекунды сбрасывать нет смысла, т.к DS32C35 работает с секундами
+//}
 
 short RTC_Get_Temperature()
 {

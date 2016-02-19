@@ -19,7 +19,7 @@ static const u32 ipMask = IP32(255, 255, 255, 0);
 static const u16 udpInPort = SWAP16(66);
 static const u16 udpOutPort = SWAP16(66);
 
-static bool EmacIsConnected = false;
+bool emacConnected = false;
 
 /* Local variables */
 
@@ -42,6 +42,8 @@ u32 countBNA = 0;
 u32 countREC = 0;
 u32 countRXOVR = 0;
 u32 countHNO = 0;
+
+u32 trp[4] = {-1};
 
 
 
@@ -177,7 +179,18 @@ static void FreeTxDesc()
 	{
 		td.stat &= TD_TRANSMIT_OK|TD_TRANSMIT_WRAP;
 
-		*((u32*)(td.addr-4)) = 0;
+		EthBuf* b = (EthBuf*)(td.addr - 8);
+
+		//if (b->next != 0)
+		//{
+		//	__breakpoint(0);
+		//};
+
+		b->len = 0;
+
+//		*((u32*)(td.addr-4)) = 0;
+
+//		td.addr = (u32)(trp+1);
 
 		TxFreeIndex = (td.stat & TD_TRANSMIT_WRAP) ? 0 : TxFreeIndex + 1;
 	};
@@ -306,7 +319,7 @@ bool EMAC_SendData(void *pData, u16 length)
 	const u16 BLOK_LEN = 1480;	// Split to max IPlen=1500
 	const u16 MAX_TIME_TO_TRANSMIT_MS = 10;	// ms, do not write zero!
 
-	//if(!EmacIsConnected) return false; 
+	//if(!emacConnected) return false; 
 	//if(!ComputerFind)  return false;
 	//length += sizeof(AT91S_UDPHdr);
 	//unsigned int blok = 0;
@@ -1042,7 +1055,7 @@ void UpdateEMAC()
 			{
 				stateEMAC = CONNECTED;
 				HW::GMAC->NCR |= GMAC_RXEN;
-				EmacIsConnected = true;
+				emacConnected = true;
 			};
 			
 			break;
@@ -1054,7 +1067,7 @@ void UpdateEMAC()
 				HW::GMAC->NCR &= ~GMAC_RXEN;
 				StartLink();
 				stateEMAC = LINKING;
-				EmacIsConnected = false;
+				emacConnected = false;
 			}
 			else
 			{

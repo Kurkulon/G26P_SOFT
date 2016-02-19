@@ -26,6 +26,7 @@ static List<TrapReq> freeTrapList;
 static List<TrapReq> reqTrapList;
 
 static List<SmallTx> txList;
+//static List<SmallTx> txFree;
 
 static MAC ComputerEmacAddr = {0,0};	// Our Ethernet MAC address and IP address
 static u32 ComputerIpAddr	= 0;
@@ -35,10 +36,10 @@ static u16 ComputerOldUDPPort	= 0;
 static bool ComputerFind = false;
 
 static SmallTx	smallTxBuf[8];
-static HugeTx	hugeTxBuf[4];
+//static HugeTx	hugeTxBuf[4];
 
 static byte indSmallTx = 0;
-static byte indHugeTx = 0;
+//static byte indHugeTx = 0;
 
 static u16  txIpID = 0;
 
@@ -120,6 +121,20 @@ void RequestTrap(EthUdp *h, u32 stat)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void FreeSmallTxBuffer(EthBuf* b)
+{
+//	txFree.Add(b);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void FreeHugeTxBuffer(EthBuf* b)
+{
+//	txFree.Add(b);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void SendTrap(SmallTx *p)
 {
 	txList.Add(p);
@@ -145,20 +160,20 @@ SmallTx* GetSmallTxBuffer()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-HugeTx* GetHugeTxBuffer()
-{
-	HugeTx *p = &hugeTxBuf[indHugeTx];
-
-	if (p->len == 0)
-	{
-		indHugeTx = (indHugeTx + 1) & 3;
-		return p;
-	}
-	else
-	{
-		return 0;
-	};
-}
+//HugeTx* GetHugeTxBuffer()
+//{
+//	HugeTx *p = &hugeTxBuf[indHugeTx];
+//
+//	if (p->len == 0)
+//	{
+//		indHugeTx = (indHugeTx + 1) & 3;
+//		return p;
+//	}
+//	else
+//	{
+//		return 0;
+//	};
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -252,6 +267,13 @@ static void UpdateRequestTraps()
 
 static void UpdateSendTraps()
 {
+	static TM32 tm;
+
+	if (!EmacIsConnected())
+	{
+		return;
+	};
+
 	SmallTx *t = txList.Get();
 
 	if (t != 0)
@@ -265,6 +287,11 @@ static void UpdateSendTraps()
 		t->udp.dst = ComputerUDPPort;
 
 		TransmitUdp(t);
+	};
+	
+	if (ComputerFind/* && tm.Check(200)*/)
+	{ 
+		TRAP_CLOCK_SendMain();
 	};
 }
 

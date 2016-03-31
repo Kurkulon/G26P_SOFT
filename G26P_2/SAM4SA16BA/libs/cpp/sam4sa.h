@@ -597,6 +597,23 @@ namespace T_HW
 	};
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	struct S_CMCC
+	{
+		AT91_REG		TYPE;
+		AT91_REG		CFG;
+		AT91_REG		CTRL;
+		AT91_REG		SR;
+		AT91_REG		z__rsrvd[4];
+		AT91_REG		MAINT0;
+		AT91_REG		MAINT1;
+		AT91_REG		MCFG;
+		AT91_REG		MEN;
+		AT91_REG		MCTRL;
+		AT91_REG		MSR;
+	};
+
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 };
 
 
@@ -640,6 +657,8 @@ namespace HW
 	MK_PTR(USART1,	0x40028000);
 
 	MK_PTR(ADC,		0X40038000);
+
+	MK_PTR(CMCC,	0X4007C000);
 
 
 //	MK_PTR(UDP,		0x400A4000);

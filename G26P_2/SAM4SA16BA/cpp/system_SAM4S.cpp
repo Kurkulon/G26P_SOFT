@@ -58,11 +58,20 @@ extern "C" void SystemInit (void)
 	ADC->MR = 0x2F3FFF80;
 	ADC->ACR = 0x00;
 	ADC->CHER = 0x0008;
-	ADC->CR = 2;
+	ADC->CR = 10;
 
 
 	PIOA->PUDR = 1<<20;
 	PIOA->PPDDR = 1<<20;
+
+	__asm { DSB };
+	__asm { ISB };
+
+	CMCC->CTRL = 1; // cache enable
+	CMCC->MAINT0 = 1; // invalidate all cache entries
+
+	__asm { DSB };
+	__asm { ISB };
 
 }
 

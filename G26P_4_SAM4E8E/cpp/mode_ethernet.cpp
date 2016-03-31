@@ -22,7 +22,8 @@ void Mode_Ethernet_Clock_Idle()
 	}
 }
 
-/*************************************************************************************************/
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 short mode_ethernet_power_main_period;
 short mode_ethernet_power_status_period;
 
@@ -45,7 +46,8 @@ void Mode_Ethernet_Power_Idle()
 	}
 }
 
-/*************************************************************************************************/
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 short mode_ethernet_sensors_main_period;
 
 void Mode_Ethernet_Sensors_Idle()
@@ -60,7 +62,8 @@ void Mode_Ethernet_Sensors_Idle()
 	}
 }
 
-/*************************************************************************************************/
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 short 		mode_ethernet_flash_status_period;
 
 bool 			mode_ethernet_flash_read_vector_ready = false;
@@ -86,12 +89,16 @@ mode_ethernet_flash_status_type mode_ethernet_flash_status_pre = MODE_ETHERNET_F
 mode_ethernet_flash_command_type mode_ethernet_flash_command = MODE_ETHERNET_FLASH_COMMAND_NONE;
 
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 bool Mode_Ethernet_Flash_Read_Session_Start()
 {
 	if(mode_ethernet_flash_command != MODE_ETHERNET_FLASH_COMMAND_NONE) return false;
 	mode_ethernet_flash_command = MODE_ETHERNET_FLASH_COMMAND_READ_SESSION;
 	return true;
 }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool Mode_Ethernet_Flash_Read_Vector_Start(unsigned short session, long long last_adress)
 {
@@ -102,12 +109,16 @@ bool Mode_Ethernet_Flash_Read_Vector_Start(unsigned short session, long long las
 	return true;
 }
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 bool Mode_Ethernet_Flash_Stop()
 {
 	if(mode_ethernet_flash_command != MODE_ETHERNET_FLASH_COMMAND_NONE) return false;
 	mode_ethernet_flash_command = MODE_ETHERNET_FLASH_COMMAND_STOP;
 	return true;
 }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool Mode_Ethernet_Flash_Pause()
 {
@@ -116,12 +127,16 @@ bool Mode_Ethernet_Flash_Pause()
 	return true;
 }
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 bool Mode_Ethernet_Flash_Resume()
 {
 	if(mode_ethernet_flash_command != MODE_ETHERNET_FLASH_COMMAND_NONE) return false;
 	mode_ethernet_flash_command = MODE_ETHERNET_FLASH_COMMAND_RESUME;
 	return true;
 }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool Mode_Ethernet_Flash_Erase()
 {
@@ -130,12 +145,16 @@ bool Mode_Ethernet_Flash_Erase()
 	return true;
 }
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 bool Mode_Ethernet_Flash_UnErase()
 {
 	if(mode_ethernet_flash_command != MODE_ETHERNET_FLASH_COMMAND_NONE) return false;
 	mode_ethernet_flash_command = MODE_ETHERNET_FLASH_COMMAND_UNERASE;
 	return true;
 }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool Mode_Ethernet_Flash_Idle()
 {
@@ -431,8 +450,8 @@ bool Mode_Ethernet_Flash_Idle()
 	if((mode_ethernet_flash_progress == 0) || (mode_ethernet_flash_progress == 0xFFFFFFFF)) return false;
 	return true;
 }
-/*************************************************************************************************/
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool Mode_Ethernet_Idle()
 {
@@ -446,10 +465,14 @@ bool Mode_Ethernet_Idle()
 	return true;
 }
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void Mode_Ethernet_Init()
 {
 
 }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool Mode_Ethernet_Reset()
 {
@@ -459,4 +482,6 @@ bool Mode_Ethernet_Reset()
 	if(mode_ethernet_flash_command != MODE_ETHERNET_FLASH_COMMAND_NONE) return false;
 	return true;
 }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

@@ -40,6 +40,11 @@ static u16 verDevice = 1;
 
 static u32 manCounter = 0;
 
+static u16 adcValue = 0;
+static U32u filtrValue;
+static u16 resistValue = 0;
+static byte numStations = 0;
+
 //static u32 rcvCRCOK = 0;
 //static u32 rcvCRCER = 0;
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -746,6 +751,19 @@ void UpdateCom1()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateADC()
+{
+	if (HW::ADC->ISR & 8)
+	{
+		filtrValue.d += ((i32)(HW::ADC->CDR[3]) - (i32)filtrValue.w[1])*256;
+		adcValue = filtrValue.w[1] + (filtrValue.w[0]>>15);
+		resistValue = ((u32)adcValue * (u16)(3.3 / 4096 / 0.000321 * 512))>>9;
+		numStations = resistValue / 1000;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateMisc()
 {
 	static byte i = 0;
@@ -758,6 +776,7 @@ static void UpdateMisc()
 		CALL( UpdateBlackFin()		);
 		CALL( UpdateRcvTrm()		);
 		CALL( UpdateCom1()			);
+		CALL( UpdateADC()			);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -767,12 +786,31 @@ static void UpdateMisc()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void InitNumStations()
+{
+	//U32u f;
+	//
+	//f.w[1] = ReadADC();
 
+	//u32 t = GetRTT();
 
+	//while ((GetRTT()-t) < 1000000)
+	//{
+	//	f.d += (i32)ReadADC() - (i32)f.w[1];
+	//};
 
+	//netAdr = (f.w[1] / 398) + 1;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void MainMode()
+{
+
+
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 int main()
 {

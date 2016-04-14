@@ -5,6 +5,7 @@
 #include "core.h"
 #include "list.h"
 #include <CRC16.h>
+#include "ComPort.h"
 
 #pragma diag_suppress 546
 
@@ -180,6 +181,172 @@ static byte*cur_data;
 static u16	cur_verify_errors;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static ComPort com1;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct VecData
+{
+	vector_type	vec;
+
+	byte		data[FLWB_LEN - sizeof(vector_type)];
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct Req
+{
+	byte	adr;
+	byte	func;
+	
+	__packed union
+	{
+		__packed struct  { word crc; } f1;  // Старт новой сессии
+		__packed struct  { byte n; byte chnl; byte count[4]; byte time; byte gain; byte delay; byte filtr; u16 data[500]; word crc; } f2;  // Запись вектора
+//		struct  { word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
+	};
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestFunc01(FLWB *fwb, ComPort::WriteBuffer *wb)
+{
+	freeFlWrBuf.Add(fwb);
+
+	return false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
+{
+	return false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestFunc03(FLWB *fwb, ComPort::WriteBuffer *wb)
+{
+	freeFlWrBuf.Add(fwb);
+
+	return false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
+{
+	bool result = false;
+
+	//if (req == 0 || req->len < 2)
+	//{
+	//	freeReqList.Add(req);
+	//}
+	//else
+	//{
+	//	switch(req->func)
+	//	{
+	//		case 1: result = RequestFunc01 (req, wb); break;
+	//		case 2: result = RequestFunc02 (req, wb); break;
+	//		case 3: result = RequestFunc03 (req, wb); break;
+	//	};
+
+	//};
+
+	return result;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateCom()
+{
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+
+	static byte state = 0;
+
+	static FLWB *fwb;
+	static Req *req;
+	static VecData *vd;
+
+
+	switch (state)
+	{
+		case 0:
+
+			fwb = freeFlWrBuf.Get();
+
+			if (fwb != 0)
+			{
+				state++;
+			};
+
+			break;
+
+		case 1:
+
+			vd = (VecData*)fwb->data;
+			req = (Req*)vd->data;
+
+			rb.data = req;
+			rb.maxLen = sizeof(*req);
+
+			com1.Read(&rb, -1, MS2RT(1));
+
+			state++;
+
+			break;
+
+		case 2:
+
+			if (!com1.Update())
+			{
+				if (rb.recieved)
+				{
+					fwb->dataLen = rb.len;
+
+					if (RequestFunc(fwb, &wb))
+					{
+						state++;
+					}
+					else
+					{
+						state = 0;
+					};
+				}
+				else
+				{
+					state = 1;
+				};
+			};
+
+			break;
+
+		case 3:
+
+			if (!freeFlWrBuf.Empty())
+			{
+				com1.Write(&wb);
+
+				state++;
+			};
+
+			break;
+
+		case 4:
+			
+			if (!com1.Update())
+			{
+				state = 0;
+			};
+
+			break;
+	};
+
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void InitFlashBuffer()
 {

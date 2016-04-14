@@ -25,7 +25,7 @@ static bool startFire = false;
 static RequestQuery qrcv(&comrcv);
 static RequestQuery qtrm(&comtr);
 
-static R02 r02[8][3][2];
+static R02 r02[8][3][4];
 
 static byte fireType = 0;
 
@@ -44,6 +44,8 @@ static u16 adcValue = 0;
 static U32u filtrValue;
 static u16 resistValue = 0;
 static byte numStations = 0;
+
+static byte mainModeState = 0;
 
 //static u32 rcvCRCOK = 0;
 //static u32 rcvCRCER = 0;
@@ -74,6 +76,7 @@ REQ* CreateRcvReqFire(byte adr, byte n)
 	q.CallBack = CallBackRcvReqFire;
 	q.rb = 0;
 	q.wb = &wb;
+	q.ready = false;
 	
 	wb.data = &req;
 	wb.len = sizeof(req)-sizeof(req.crc);
@@ -97,7 +100,8 @@ void CallBackRcvReq02(REQ *q)
 
 REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 {
-	adr = (adr-1)&7; //chnl &= 1; n = (n+1)&3 - 1;
+	adr = (adr-1)&7; 
+	chnl &= 3; n %= 3;
 
 	Req02 &req = r02[adr][n][chnl].req;
 	Rsp02 &rsp = r02[adr][n][chnl].rsp;
@@ -113,6 +117,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 	q.wb = &wb;
 	q.preTimeOut = MS2RT(1);
 	q.postTimeOut = 1;
+	q.ready = false;
 	
 	wb.data = &req;
 	wb.len = sizeof(req)-sizeof(req.crc);
@@ -121,7 +126,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 	rb.maxLen = sizeof(rsp);
 	rb.recieved = false;
 	
-	req.adr = 1;//adr;
+	req.adr = 8;//adr;
 	req.func = 2;
 	req.n = n;
 	req.chnl = chnl;
@@ -154,6 +159,7 @@ REQ* CreateRcvReq03(byte adr, byte dt[], byte ka[])
 	q.postTimeOut = 1;
 	q.rb = &rb;
 	q.wb = &wb;
+	q.ready = false;
 	
 	wb.data = &req;
 	wb.len = sizeof(req)-sizeof(req.crc);
@@ -582,11 +588,11 @@ static void UpdateRcvTrm()
 
 		case 8:
 
-			for (byte j = 1; j < 9; j++)
-			{
-				qrcv.Add(CreateRcvReq02(j, n, 0));
-				qrcv.Add(CreateRcvReq02(j, n, 1));
-			};
+			//for (byte j = 1; j < 9; j++)
+			//{
+			//	qrcv.Add(CreateRcvReq02(j, n, 0));
+			//	qrcv.Add(CreateRcvReq02(j, n, 1));
+			//};
 
 			startFire = false;
 
@@ -755,7 +761,7 @@ static void UpdateADC()
 {
 	if (HW::ADC->ISR & 8)
 	{
-		filtrValue.d += ((i32)(HW::ADC->CDR[3]) - (i32)filtrValue.w[1])*256;
+		filtrValue.d += ((i32)(HW::ADC->CDR[3]) - (i32)filtrValue.w[1])*1024;
 		adcValue = filtrValue.w[1] + (filtrValue.w[0]>>15);
 		resistValue = ((u32)adcValue * (u16)(3.3 / 4096 / 0.000321 * 512))>>9;
 	};
@@ -767,7 +773,7 @@ static void InitNumStations()
 {
 	u32 t = GetRTT();
 
-	while ((GetRTT()-t) < MS2RT(10))
+	while ((GetRTT()-t) < MS2RT(100))
 	{
 		UpdateADC();
 	};
@@ -779,8 +785,87 @@ static void InitNumStations()
 
 static void MainMode()
 {
+	//fireType
 
+	static byte rcv = 0;
+	static byte chnl = 0;
+	static REQ *req = 0;
+	static RTM32 rt;
 
+	switch (mainModeState)
+	{
+		case 0:
+
+			startFire = true;
+			
+			mainModeState++;
+
+			break;
+
+		case 1:
+
+			if (!startFire)
+			{
+				rcv = 1; chnl = 0;
+
+				mainModeState++;
+			};
+
+			break;
+
+		case 2:
+
+			qrcv.Add(req = CreateRcvReq02(rcv, fireType, chnl));
+
+			mainModeState++;
+
+			break;
+
+		case 3:
+
+			if (req->ready)
+			{
+				if (chnl < 3)
+				{
+					chnl += 1;
+
+					mainModeState = 2;
+				}
+				else if (rcv < numStations)
+				{
+					rcv += 1;
+					chnl = 0;
+
+					mainModeState = 2;
+				}
+				else
+				{
+					mainModeState++;
+				};
+			};
+
+			break;
+
+		case 4:
+
+			if (rt.Check(MS2RT(1)))
+			{
+				fireType = (fireType+1) % 3; 
+
+				mainModeState = 0;
+			};
+
+			break;
+
+		case 5:
+
+			break;
+
+		case 6:
+
+			break;
+
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

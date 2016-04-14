@@ -9,6 +9,8 @@ static ComPort com;
 //static byte data[256*48];
 
 static u16 spd[3][2][512*2];
+static byte spTime[3];
+static byte spGain[3];
 
 //static u16 spd2[512*2];
 //
@@ -52,7 +54,7 @@ struct Response
 	union
 	{
 		struct  { word crc; } f1;  // старт оцифровки
-		struct  { byte n; byte chnl; u16 data1[500]; u16 data2[500]; word crc; } f2;  // чтение вектора
+		struct  { byte n; byte chnl; byte count[4]; byte time; byte gain; byte delay; byte filtr; u16 data[500]; word crc; } f2;  // чтение вектора
 		struct  { word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
 	};
 };
@@ -69,8 +71,11 @@ bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 	byte n = req->f1.n;
 	if (n > 2) n = 2;
 
-	SetGain(gain[n]);
-	SyncReadSPORT(spd[n][0], spd[n][1], 2000, 2000, sampleTime[n], &ready1, &ready2);
+	spTime[n] = sampleTime[n];
+	spGain[n] = gain[n];
+
+	SetGain(spGain[n]);
+	SyncReadSPORT(spd[n][0], spd[n][1], 2000, 2000, spTime[n], &ready1, &ready2);
 
 	return false;
 }
@@ -83,24 +88,27 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 	static Response rsp;
 
-	if (req->adr == 0 || req->adr != netAdr) return false;
+	if (req->adr == 0 || req->adr != netAdr || req->f2.n > 2) return false;
 
 	byte n = req->f2.n;
-	byte ch = (req->f2.chnl)&1;
-//	byte cl = req->f2.chnl&1;
+	byte ch = (req->f2.chnl>>1)&1;
+	byte cl = req->f2.chnl&1;
 
 	rsp.adr = req->adr;
 	rsp.func = req->func;
 	rsp.f2.n = n;
 	rsp.f2.chnl = req->f2.chnl;
+	rsp.f2.time = spTime[n];
+	rsp.f2.gain = spGain[n];
+	rsp.f2.delay = 0;
+	rsp.f2.filtr = 0;
 
 	for (u16 i = 0; i < 500; i++)
 	{
-		rsp.f2.data1[i] = spd[n][ch][i*2+0];
-		rsp.f2.data2[i] = spd[n][ch][i*2+1];
+		rsp.f2.data[i] = spd[n][ch][i*2+cl];
 	};
 
-	//rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp.f2));
+	rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp.f2));
 
 	wb->data = &rsp;
 	wb->len = sizeof(rsp.f2)+2;
@@ -235,7 +243,7 @@ static void InitNetAdress()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-int main( void )
+void main( void )
 {
 	static byte s = 0;
 
@@ -257,5 +265,5 @@ int main( void )
 
 	};
 
-	return 0;
+//	return 0;
 }

@@ -9,6 +9,8 @@ void RequestQuery::Add(REQ* req)
 {
 	if (req != 0)
 	{
+		req->ready = false;
+
 		if (_first == 0)
 		{
 			_first = _last = req;
@@ -104,6 +106,8 @@ void RequestQuery::Update()
 				{
 					_req->CallBack(_req);
 				};
+
+				_req->ready = true;
 
 				_state = 0;
 

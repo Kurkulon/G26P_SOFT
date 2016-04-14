@@ -51,13 +51,17 @@ __packed struct Req02	// чтение вектора
 
 __packed struct Rsp02	// чтение вектора
 {
-	byte adr;
-	byte func;
-	byte n; 
-	byte chnl; 
-	u16 data1[500]; 
-	u16 data2[500]; 
-	word crc; 
+	byte 	adr;
+	byte 	func;
+	byte 	n; 
+	byte 	chnl; 
+	u32		count;
+	byte 	time; 
+	byte 	gain; 
+	byte 	delay; 
+	byte 	filtr;
+	u16		data[500]; 
+	word	crc; 
 };  
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -99,6 +103,7 @@ struct Response
 
 struct REQ
 {
+	bool	ready;
 	bool	crcOK;
 	typedef void tRsp(REQ*);
 	

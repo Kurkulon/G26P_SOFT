@@ -210,27 +210,121 @@ __packed struct Req
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestFunc01(FLWB *fwb, ComPort::WriteBuffer *wb)
+__packed struct Rsp
 {
-	freeFlWrBuf.Add(fwb);
+	byte	adr;
+	byte	func;
+	
+	__packed union
+	{
+		__packed struct  { word crc; } f1;  // Старт новой сессии
+		__packed struct  { word crc; } f2;  // Запись вектора
+		__packed struct  { word crc; } f3;  // 
+		__packed struct  { word crc; } fFE;  // Ошибка CRC
+		__packed struct  { word crc; } fFF;  // Неправильный запрос
+	};
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static Rsp rspData;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRsp01(ComPort::WriteBuffer *wb)
+{
 
 	return false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRsp02(ComPort::WriteBuffer *wb)
+{
+
+	return false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRsp03(ComPort::WriteBuffer *wb)
+{
+
+	return false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRspErrCRC(ComPort::WriteBuffer *wb)
+{
+
+	return false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRspErrReq(ComPort::WriteBuffer *wb)
+{
+
+	return false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestFunc01(FLWB *fwb, ComPort::WriteBuffer *wb)
+{
+	VecData &vd = *((VecData*)fwb->data);
+
+	Req &req = *((Req*)vd.data);
+
+
+
+
+
+
+
+
+
+	freeFlWrBuf.Add(fwb);
+
+	return CreateRsp01(wb);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
 {
-	return false;
+	VecData &vd = *((VecData*)fwb->data);
+
+	Req &req = *((Req*)vd.data);
+
+
+
+
+
+
+	freeFlWrBuf.Add(fwb);
+
+
+	return CreateRsp02(wb);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool RequestFunc03(FLWB *fwb, ComPort::WriteBuffer *wb)
 {
+	VecData &vd = *((VecData*)fwb->data);
+
+	Req &req = *((Req*)vd.data);
+
+
+
+
+
+
 	freeFlWrBuf.Add(fwb);
 
-	return false;
+	return CreateRsp03(wb);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -239,22 +333,37 @@ static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
 {
 	bool result = false;
 
-	//if (req == 0 || req->len < 2)
-	//{
-	//	freeReqList.Add(req);
-	//}
-	//else
-	//{
-	//	switch(req->func)
-	//	{
-	//		case 1: result = RequestFunc01 (req, wb); break;
-	//		case 2: result = RequestFunc02 (req, wb); break;
-	//		case 3: result = RequestFunc03 (req, wb); break;
-	//	};
+	VecData &vd = *((VecData*)fwb->data);
 
-	//};
+	Req &req = *((Req*)vd.data);
+
+	if (fwb == 0)
+	{
+//		freeReqList.Add(req);
+	}
+	else if (fwb->dataLen < 2)
+	{
+		result = CreateRspErrReq(wb);
+	}
+	else
+	{
+		switch(req.func)
+		{
+			case 1: result = RequestFunc01 (fwb, wb); break;
+			case 2: result = RequestFunc02 (fwb, wb); break;
+			case 3: result = RequestFunc03 (fwb, wb); break;
+		};
+
+	};
 
 	return result;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitCom()
+{
+	com1.Connect(1, 6250000, 0);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1775,6 +1884,8 @@ bool NAND_Idle()
 			break;
 	};
 
+	UpdateCom();
+
 	return true;
 }
 
@@ -2130,6 +2241,8 @@ void FLASH_Init()
 	InitFlashBuffer();
 	NAND_Init();
 	FLASH_Reset();
+
+	InitCom();
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

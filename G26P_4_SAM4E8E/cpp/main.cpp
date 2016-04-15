@@ -100,8 +100,9 @@ int main()
 		enum C { S = (__LINE__+3) };
 		switch(i++)
 		{
-			CALL( UpdateEMAC();	);
+			CALL( UpdateEMAC();		);
 			CALL( UpdateTraps();	);
+			CALL( NAND_Idle();		);
 		};
 
 		i = (i > (__LINE__-S-3)) ? 0 : i;

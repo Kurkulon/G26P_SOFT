@@ -16,9 +16,9 @@ extern dword millisecondsCount;
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ComPort::ComBase	ComPort::_bases[4] = { 
-	{false, HW::UART0,	 HW::PIOA, 1U<<31 }, 
-	{false, HW::UART1,	 HW::PIOB, 1<<13 },
-	{false, HW::USART0,	 HW::PIOA, 1<<4	 }, 
+	{false, HW::UART0,	 HW::PIOA, 1<<4 }, 
+	{false, HW::UART1,	 HW::PIOA, 1<<27 },
+	{false, HW::USART0,	 HW::PIOA, 0	 }, 
 	{false, HW::USART1,	 HW::PIOA, 0	 }
 };
 

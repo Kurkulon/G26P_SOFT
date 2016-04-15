@@ -3,7 +3,9 @@
 #include "CRC16.h"
 #include "req.h"
 
-ComPort com1;
+#include "list.h"
+
+ComPort commem;
 ComPort comtr;
 ComPort combf;
 ComPort comrcv;
@@ -24,6 +26,7 @@ static bool startFire = false;
 
 static RequestQuery qrcv(&comrcv);
 static RequestQuery qtrm(&comtr);
+static RequestQuery qmem(&commem);
 
 static R02 r02[8][3][4];
 
@@ -704,56 +707,56 @@ bool RequestTestCom(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void UpdateCom1()
-{
-	static byte i = 0;
-
-	static ComPort::WriteBuffer wb;
-	static ComPort::ReadBuffer rb; // = r02[0][0][1].rb;
-	static byte buf[32];
-
-	static RTM32 rtm;
-
-
-	switch(i)
-	{
-		case 0:
-	
-			rb.data = buf;
-			rb.maxLen = sizeof(buf);
-			com1.Read(&rb, -1, 2);
-
-			i++;
-
-			break;
-
-		case 1:
-
-			if (!com1.Update())
-			{
-				i = (RequestTestCom(&rb, &wb)) ? i+1 : 0;
-			};
-
-			break;
-
-		case 2:
-
-			com1.Write(&wb);
-
-			i++;
-
-			break;
-
-		case 3: 
-
-			if (!com1.Update())
-			{
-				i = 0;
-			};
-
-			break;
-	};
-}
+//void UpdateCom1()
+//{
+//	static byte i = 0;
+//
+//	static ComPort::WriteBuffer wb;
+//	static ComPort::ReadBuffer rb; // = r02[0][0][1].rb;
+//	static byte buf[32];
+//
+//	static RTM32 rtm;
+//
+//
+//	switch(i)
+//	{
+//		case 0:
+//	
+//			rb.data = buf;
+//			rb.maxLen = sizeof(buf);
+//			com1.Read(&rb, -1, 2);
+//
+//			i++;
+//
+//			break;
+//
+//		case 1:
+//
+//			if (!com1.Update())
+//			{
+//				i = (RequestTestCom(&rb, &wb)) ? i+1 : 0;
+//			};
+//
+//			break;
+//
+//		case 2:
+//
+//			com1.Write(&wb);
+//
+//			i++;
+//
+//			break;
+//
+//		case 3: 
+//
+//			if (!com1.Update())
+//			{
+//				i = 0;
+//			};
+//
+//			break;
+//	};
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -881,7 +884,7 @@ static void UpdateMisc()
 	{
 		CALL( UpdateBlackFin()		);
 		CALL( UpdateRcvTrm()		);
-		CALL( UpdateCom1()			);
+//		CALL( UpdateCom1()			);
 		CALL( UpdateADC()			);
 		CALL( MainMode()			);
 	};
@@ -901,7 +904,7 @@ int main()
 
 	InitNumStations();
 
-	com1.Connect(0, 921600, 0);
+	commem.Connect(0, 6250000, 0);
 	comtr.Connect(1, 1562500, 0);
 	combf.Connect(3, 6250000, 0);
 	comrcv.Connect(2, 6250000, 0);

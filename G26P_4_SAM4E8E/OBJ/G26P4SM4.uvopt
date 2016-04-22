@@ -161,40 +161,7 @@
           <Name>-O207 -S9 -C0 -FO7 -FD20000000 -FC800 -FN1 -FF0ATSAM4E_512 -FS0400000 -FL080000)</Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint>
-        <Bp>
-          <Number>0</Number>
-          <Type>0</Type>
-          <LineNumber>889</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>4197338</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\emac.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\G26P4SM4\cpp/emac.cpp\889</Expression>
-        </Bp>
-        <Bp>
-          <Number>1</Number>
-          <Type>0</Type>
-          <LineNumber>713</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>4196558</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\emac.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\G26P4SM4\cpp/emac.cpp\713</Expression>
-        </Bp>
-      </Breakpoint>
+      <Breakpoint/>
       <WatchWindow1>
         <Ww>
           <count>0</count>
@@ -209,49 +176,29 @@
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>sysTxBuf</ItemText>
+          <ItemText>freeFlWrBuf.counter,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>TxFreeIndex</ItemText>
+          <ItemText>Write::spare,0x10</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>TxBufIndex</ItemText>
+          <ItemText>wr,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>1</WinNumber>
-          <ItemText>indSysTx</ItemText>
-        </Ww>
-        <Ww>
-          <count>6</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>rxCount</ItemText>
-        </Ww>
-        <Ww>
-          <count>7</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>reqIpCount</ItemText>
-        </Ww>
-        <Ww>
-          <count>8</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>timeBDC,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>9</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>countRXOVR</ItemText>
+          <ItemText>Write::wr_cur_col</ItemText>
         </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>Rx_Desc</ItemText>
+          <ItemText>fwb</ItemText>
         </Mm>
       </MemoryWindow1>
       <Tracepoint>
@@ -287,7 +234,11 @@
       <LintConfigFile></LintConfigFile>
       <SystemViewers>
         <Entry>
-          <Name>System Viewer\GMAC</Name>
+          <Name>System Viewer\PIOA</Name>
+          <WinId>35904</WinId>
+        </Entry>
+        <Entry>
+          <Name>System Viewer\USART1</Name>
           <WinId>35905</WinId>
         </Entry>
       </SystemViewers>

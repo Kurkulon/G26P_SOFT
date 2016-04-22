@@ -1,6 +1,71 @@
 #include "core.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void IntDummyHandler()
+{
+	__breakpoint(0);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void HardFaultHandler()
+{
+	__breakpoint(0);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void MemFaultHandler()
+{
+	__breakpoint(0);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void BusFaultHandler()
+{
+	__breakpoint(0);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void UsageFaultHandler()
+{
+	__breakpoint(0);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void ExtDummyHandler()
+{
+	__breakpoint(0);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitVectorTable()
+{
+	for (u32 i = 0; i < ArraySize(VectorTableInt); i++)
+	{
+		VectorTableInt[i] = IntDummyHandler;
+	};
+
+	for (u32 i = 0; i < ArraySize(VectorTableExt); i++)
+	{
+		VectorTableExt[i] = ExtDummyHandler;
+	};
+
+	VectorTableInt[3] = HardFaultHandler;
+	VectorTableInt[4] = MemFaultHandler;
+	VectorTableInt[5] = BusFaultHandler;
+	VectorTableInt[6] = UsageFaultHandler;
+
+	CM4::SCB->VTOR = (u32)VectorTableInt;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 extern "C" void SystemInit (void)
 {
@@ -9,6 +74,8 @@ extern "C" void SystemInit (void)
 	//MATRIX->SCFG[0] |= 0x00060000;
 	//MATRIX->SCFG[1] |= 0x00060000;
 
+	InitVectorTable();
+
 	EFC0->FMR = 0x0500;
 	EFC1->FMR = 0x0500;
 
@@ -16,11 +83,11 @@ extern "C" void SystemInit (void)
 	//PMC->PCER1 = PID::ADC_M|PID::PWM_M|PID::DMAC_M;
 
 								// 1  8 7  4 3  0 9  6 5  2 1  8 7  4 3  0								
-	PIOA->PDR =		0x00620660;	// 0000 0000 0110 0010 0000 0110 0110 0000
-	PIOA->ABCDSR1 =	0x00020000;	// 0000 0000 0000 0010 0000 0000 0000 0000		
+	PIOA->PDR =		0x00600460;	// 0000 0000 0110 0000 0000 0100 0110 0000
+	PIOA->ABCDSR1 =	0x00020000;	// 0000 0000 0000 0000 0000 0000 0000 0000		
 	PIOA->ABCDSR2 =	0x00000000;	// 0000 0000 0000 0000 0000 0000 0000 0000		
-	PIOA->PER = 	0x80100010;	// 1000 0000 0001 0000 0000 0000 0001 0000		
-	PIOA->OER = 	0x80000010;	// 1000 0000 0000 0000 0000 0000 0001 0000		
+	PIOA->PER = 	0xFF9FFB9F;	// 1111 1111 1001 1111 1111 1011 1001 1111		
+	PIOA->OER = 	0xFF8FF99F;	// 1111 1111 1000 1111 1111 1001 1001 1111		
 	//PIOA->MDDR =	0x00000000;	// 0000 0000 0000 0000 0000 0000 0000 0000		
 	//PIOA->OWER =	0x00000000;	// 0000 0000 0000 0000 0000 0000 0000 0000		
 
@@ -28,8 +95,8 @@ extern "C" void SystemInit (void)
 	PIOB->PDR =		0x0000000C;	// 0000 0000 0000 0000 0000 0000 0000 1100
 	PIOB->ABCDSR1 =	0x00000000;	// 0000 0000 0000 0000 0000 0000 0000 0000		
 	PIOB->ABCDSR2 =	0x00000000;	// 0000 0000 0000 0000 0000 0000 0000 0000		
-	PIOB->PER = 	0x00002000;	// 0000 0000 0000 0000 0010 0000 0000 0000		
-	PIOB->OER = 	0x00002000;	// 0000 0000 0000 0000 0010 0000 0000 0000		
+	PIOB->PER = 	0x00006D33;	// 0000 0000 0000 0000 0110 1101 0011 0011		
+	PIOB->OER = 	0x00006D33;	// 0000 0000 0000 0000 0110 1101 0011 0011		
 	//PIOB->MDDR =	0x00000000;	// 0000 0000 0000 0000 0000 0000 0000 0000		
 	//PIOB->OWER =	0x00000000;	// 0000 0000 0000 0000 0000 0000 0000 0000		
 
@@ -67,8 +134,8 @@ extern "C" void SystemInit (void)
 	__asm { DSB };
 	__asm { ISB };
 
-	CMCC->CTRL = 1; // cache enable
-	CMCC->MAINT0 = 1; // invalidate all cache entries
+	CMCC->CTRL = 1;		// cache enable
+	CMCC->MAINT0 = 1;	// invalidate all cache entries
 
 	__asm { DSB };
 	__asm { ISB };

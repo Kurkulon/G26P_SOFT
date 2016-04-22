@@ -49,14 +49,14 @@ Heap_Mem        SPACE   Heap_Size
 __heap_limit
 
 
-;VecTableIntSize	EQU		16*4	
-;VecTableExtSize	EQU		35*4	
+VecTableIntSize	EQU		16*4	
+VecTableExtSize	EQU		35*4	
 
-;				AREA	VTBL, NOINIT, READWRITE, ALIGN=7
-;                EXPORT  VectorTableInt
-;                EXPORT  VectorTableExt
-;VectorTableInt	SPACE	VecTableIntSize				
-;VectorTableExt	SPACE	VecTableExtSize				
+				AREA	VTBL, NOINIT, READWRITE, ALIGN=7
+                EXPORT  VectorTableInt
+                EXPORT  VectorTableExt
+VectorTableInt	SPACE	VecTableIntSize				
+VectorTableExt	SPACE	VecTableExtSize				
 
                 PRESERVE8
                 THUMB

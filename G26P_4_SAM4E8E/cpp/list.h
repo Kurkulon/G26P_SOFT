@@ -13,9 +13,11 @@ protected:
 	T *first;
 	T *last;
 
+	u32 counter;
+
   public:
 
-	List() : first(0), last(0) {}
+	List() : first(0), last(0), counter(0) {}
 
 	T*		Get();
 	void	Add(T* r);
@@ -40,6 +42,7 @@ template <class T> T* List<T>::Get()
 			last = 0;
 		};
 
+		counter--;
 	};
 
 	return r;
@@ -63,6 +66,8 @@ template <class T> void List<T>::Add(T* r)
 		last->next = r;
 		last = r;
 	};
+
+	counter++;
 
 	r->next = 0;
 }

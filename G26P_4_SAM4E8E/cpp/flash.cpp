@@ -233,40 +233,105 @@ static Rsp rspData;
 
 static bool CreateRsp01(ComPort::WriteBuffer *wb)
 {
+	static Rsp rsp;
 
-	return false;
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 1;
+	rsp.f1.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool CreateRsp02(ComPort::WriteBuffer *wb)
 {
+	static Rsp rsp;
 
-	return false;
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 2;
+	rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool CreateRsp03(ComPort::WriteBuffer *wb)
 {
+	static Rsp rsp;
 
-	return false;
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 3;
+	rsp.f3.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool CreateRspErrCRC(ComPort::WriteBuffer *wb)
 {
+	static Rsp rsp;
 
-	return false;
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 0xFE;
+	rsp.fFE.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool CreateRspErrReq(ComPort::WriteBuffer *wb)
 {
+	static Rsp rsp;
 
-	return false;
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 0xFF;
+	rsp.fFF.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -298,12 +363,16 @@ static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
 
 	Req &req = *((Req*)vd.data);
 
+//	Vector_Make(session, device, rtc, flags, data, flash_save_buffer, size);
 
+	fwb->dataLen += sizeof(vd.vec);
+	fwb->hdrLen = 0;
 
-
-
-
-	freeFlWrBuf.Add(fwb);
+	if (!RequestFlashWrite(fwb))
+	{
+		freeFlWrBuf.Add(fwb);
+//		return false;
+	};
 
 
 	return CreateRsp02(wb);
@@ -344,6 +413,8 @@ static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
 	else if (fwb->dataLen < 2)
 	{
 		result = CreateRspErrReq(wb);
+		
+		freeFlWrBuf.Add(fwb);
 	}
 	else
 	{
@@ -352,6 +423,8 @@ static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
 			case 1: result = RequestFunc01 (fwb, wb); break;
 			case 2: result = RequestFunc02 (fwb, wb); break;
 			case 3: result = RequestFunc03 (fwb, wb); break;
+			
+			default: freeFlWrBuf.Add(fwb); result = CreateRspErrReq(wb);
 		};
 
 	};
@@ -379,6 +452,18 @@ static void UpdateCom()
 	static Req *req;
 	static VecData *vd;
 
+	//static byte buf[100];
+
+	//wb.data = buf;
+	//wb.len = sizeof(buf);
+
+	//HW::PIOA->SODR = 1<<27;
+
+	//if (!com1.Update())
+	//{
+	//	com1.Write(&wb);
+	//};
+
 
 	switch (state)
 	{
@@ -399,9 +484,9 @@ static void UpdateCom()
 			req = (Req*)vd->data;
 
 			rb.data = req;
-			rb.maxLen = sizeof(*req);
+			rb.maxLen = sizeof(vd->data);
 
-			com1.Read(&rb, -1, MS2RT(1));
+			com1.Read(&rb, -1, 2);
 
 			state++;
 
@@ -2072,11 +2157,11 @@ bool inline FLASH_Verify_Is_Error()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool /*inline*/ FLASH_Busy()
-{
-	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return true;
-	return false;
-}
+//bool /*inline*/ FLASH_Busy()
+//{
+//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return true;
+//	return false;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2247,211 +2332,211 @@ void FLASH_Init()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void FLASH_Idle()
-{
-	switch (GetNandState())	// сделано так, чтобы можно было отсюда дублировать запись в случае неудачи
-	{
-		//case NAND_STATE_WAIT:	// для скорости
-		//	break;
-		//case NAND_STATE_READ_READY: 
-		//	flash_read_status = FLASH_STATUS_READY;
-		//	ResetNandState();	
-		//	break;
-		//case NAND_STATE_READ_ERROR: 
-		//	flash_read_status = FLASH_STATUS_ERROR;
-		//	ResetNandState();	
-		//	break;
-		//case NAND_STATE_WRITE_READY: 
-		//	flash_write_status = FLASH_STATUS_READY;
-		//	ResetNandState();
-		//	break;
-		//case NAND_STATE_WRITE_ERROR: 
-		//	flash_write_status = FLASH_STATUS_ERROR;
-		//	ResetNandState();	
-		//	break;
-		//case NAND_STATE_VERIFY_READY: 
-		//	flash_verify_status = FLASH_STATUS_READY;
-		//	ResetNandState();
-		//	break;
-		//case NAND_STATE_VERIFY_ERROR: 
-		//	flash_verify_status = FLASH_STATUS_ERROR;
-		//	ResetNandState();	
-		//	break;
-	}
-
-	if(GetNandState() == NAND_STATE_WAIT) flash_current_adress = GetNandAdr();	
-
-	// операция записи вектора
-	i64 current_adress_old = FRAM_Memory_Current_Adress_Get();
-	if(flash_status_operation == FLASH_STATUS_OPERATION_SAVE_WRITE)
-	{
-		if(FLASH_Write_Is_Ready()) 
-		{
-			flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-			u64 adr = FRAM_Memory_Current_Adress_Get();
-			if(FLASH_Verify(&adr, flash_save_buffer, flash_save_size))
-			{
-				flash_status_operation = FLASH_STATUS_OPERATION_SAVE_VERIFY;
-			}
-			else
-			{	
-				FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());
-				flash_vectors_errors ++;
-				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-			}
-		}
-		if(FLASH_Write_Is_Error())
-		{
-			FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());
-			flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WAIT;		
-		}
-	}
-	else
-		if(flash_status_operation == FLASH_STATUS_OPERATION_SAVE_VERIFY)
-		{
-			if(FLASH_Verify_Is_Ready()) 
-			{
-				FRAM_Memory_Current_Vector_Adress_Set(FRAM_Memory_Current_Adress_Get());
-				FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());	
-				flash_vectors_saved ++;
-				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-			}
-			if(FLASH_Verify_Is_Error())
-			{
-				FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());
-				flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WAIT;		
-			}
-		}
-
-		if(flash_status_operation == FLASH_STATUS_OPERATION_SAVE_WAIT)
-		{
-			if(flash_save_repeat_counter <= 1)	// певичный, повтор по сл.адресу
-			{
-				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-				u64 adr = FRAM_Memory_Current_Adress_Get();
-				if(FLASH_Write(&adr, flash_save_buffer, flash_save_size))
-				{
-					FRAM_Memory_Current_Adress_Set(adr);
-					flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WRITE;		
-				} 
-				else
-				{
-					flash_vectors_errors ++;
-					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-				}
-			}
-			else
-				if(flash_save_repeat_counter <= flash_save_repeat)
-				{
-					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-					u64 adr = FRAM_Memory_Current_Adress_Get();
-					if(FLASH_Write_Next(&adr, flash_save_buffer, flash_save_size))
-					{
-						FRAM_Memory_Current_Adress_Set(adr);
-						flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WRITE;		
-					} 
-					else
-					{
-						flash_vectors_errors ++;
-						flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-					}
-				}
-				else
-				{
-					flash_vectors_errors ++;
-					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-				}
-				flash_save_repeat_counter ++;
-		}	
-		if(FRAM_Memory_Start_Adress_Get() != -1) 	//check full size
-		{
-			u64 current_adress_new = FRAM_Memory_Current_Adress_Get();
-			if(current_adress_old != current_adress_new) // чтобы не считать за зря
-			{
-				i64 size_old = current_adress_old - FRAM_Memory_Start_Adress_Get();
-				if(size_old < 0) size_old += FLASH_Full_Size_Get();
-				i64 size_new = current_adress_new - FRAM_Memory_Start_Adress_Get();
-				if(size_new < 0) size_new += FLASH_Full_Size_Get();
-				if(size_new < size_old) FRAM_Memory_Start_Adress_Set(-1);
-			}
-		}
-
-		// операция чтения вектора
-		if(flash_status_operation == FLASH_STATUS_OPERATION_READ_HEADER)
-		{
-			if(FLASH_Read_Is_Ready()) 
-			{
-				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-				u16 size_vector;
-				if(Vector_Check_Header(flash_read_buffer, &size_vector))
-				{
-					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;
-					
-					if((size_vector <= FLASH_READ_BUFFER_SIZE) && (FLASH_Read(&flash_read_vector_adress, flash_read_buffer, size_vector)))
-					{
-						*flash_read_vector_size_p = size_vector;
-						flash_status_operation = FLASH_STATUS_OPERATION_READ_DATA;		
-					}      	
-					else
-					{
-						*flash_read_vector_size_p = 0;
-						*flash_read_vector_ready_p = true;
-						flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-					}
-				}
-				else
-				{	
-					*flash_read_vector_size_p = 0;
-					*flash_read_vector_ready_p = true;
-					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-				}
-			}
-			if(FLASH_Read_Is_Error())
-			{
-				*flash_read_vector_size_p = 0;
-				*flash_read_vector_ready_p = true;
-				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-			}
-		}
-		else if(flash_status_operation == FLASH_STATUS_OPERATION_READ_DATA)
-		{
-			if(FLASH_Read_Is_Ready()) 
-			{
-				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-				if(Vector_Check_Data(flash_read_buffer))
-				{
-					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;
-					*flash_read_vector_ready_p = true;
-				}
-				else
-				{	
-					*flash_read_vector_size_p = 0;
-					*flash_read_vector_ready_p = true;
-					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-				}
-			}
-			if(FLASH_Read_Is_Error())
-			{
-				*flash_read_vector_size_p = 0;
-				*flash_read_vector_ready_p = true;
-				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-			}
-		}
-
-		if(flash_status_operation == FLASH_STATUS_OPERATION_READ_WAIT)
-		{
-			flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-			if(FLASH_Read(&flash_read_vector_adress, flash_read_buffer, sizeof(vector_header_type)))
-			{
-				*flash_read_vector_size_p = 0;
-				*flash_read_vector_ready_p = false;
-				flash_status_operation = FLASH_STATUS_OPERATION_READ_HEADER;		
-			} 
-			else
-			{
-				*flash_read_vector_size_p = 0;
-				*flash_read_vector_ready_p = true;
-				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-			}
-		}	
-}
+//void FLASH_Idle()
+//{
+//	switch (GetNandState())	// сделано так, чтобы можно было отсюда дублировать запись в случае неудачи
+//	{
+//		//case NAND_STATE_WAIT:	// для скорости
+//		//	break;
+//		//case NAND_STATE_READ_READY: 
+//		//	flash_read_status = FLASH_STATUS_READY;
+//		//	ResetNandState();	
+//		//	break;
+//		//case NAND_STATE_READ_ERROR: 
+//		//	flash_read_status = FLASH_STATUS_ERROR;
+//		//	ResetNandState();	
+//		//	break;
+//		//case NAND_STATE_WRITE_READY: 
+//		//	flash_write_status = FLASH_STATUS_READY;
+//		//	ResetNandState();
+//		//	break;
+//		//case NAND_STATE_WRITE_ERROR: 
+//		//	flash_write_status = FLASH_STATUS_ERROR;
+//		//	ResetNandState();	
+//		//	break;
+//		//case NAND_STATE_VERIFY_READY: 
+//		//	flash_verify_status = FLASH_STATUS_READY;
+//		//	ResetNandState();
+//		//	break;
+//		//case NAND_STATE_VERIFY_ERROR: 
+//		//	flash_verify_status = FLASH_STATUS_ERROR;
+//		//	ResetNandState();	
+//		//	break;
+//	}
+//
+//	if(GetNandState() == NAND_STATE_WAIT) flash_current_adress = GetNandAdr();	
+//
+//	// операция записи вектора
+//	i64 current_adress_old = FRAM_Memory_Current_Adress_Get();
+//	if(flash_status_operation == FLASH_STATUS_OPERATION_SAVE_WRITE)
+//	{
+//		if(FLASH_Write_Is_Ready()) 
+//		{
+//			flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//			u64 adr = FRAM_Memory_Current_Adress_Get();
+//			if(FLASH_Verify(&adr, flash_save_buffer, flash_save_size))
+//			{
+//				flash_status_operation = FLASH_STATUS_OPERATION_SAVE_VERIFY;
+//			}
+//			else
+//			{	
+//				FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());
+//				flash_vectors_errors ++;
+//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//			}
+//		}
+//		if(FLASH_Write_Is_Error())
+//		{
+//			FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());
+//			flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WAIT;		
+//		}
+//	}
+//	else
+//		if(flash_status_operation == FLASH_STATUS_OPERATION_SAVE_VERIFY)
+//		{
+//			if(FLASH_Verify_Is_Ready()) 
+//			{
+//				FRAM_Memory_Current_Vector_Adress_Set(FRAM_Memory_Current_Adress_Get());
+//				FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());	
+//				flash_vectors_saved ++;
+//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//			}
+//			if(FLASH_Verify_Is_Error())
+//			{
+//				FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());
+//				flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WAIT;		
+//			}
+//		}
+//
+//		if(flash_status_operation == FLASH_STATUS_OPERATION_SAVE_WAIT)
+//		{
+//			if(flash_save_repeat_counter <= 1)	// певичный, повтор по сл.адресу
+//			{
+//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//				u64 adr = FRAM_Memory_Current_Adress_Get();
+//				if(FLASH_Write(&adr, flash_save_buffer, flash_save_size))
+//				{
+//					FRAM_Memory_Current_Adress_Set(adr);
+//					flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WRITE;		
+//				} 
+//				else
+//				{
+//					flash_vectors_errors ++;
+//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//				}
+//			}
+//			else
+//				if(flash_save_repeat_counter <= flash_save_repeat)
+//				{
+//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//					u64 adr = FRAM_Memory_Current_Adress_Get();
+//					if(FLASH_Write_Next(&adr, flash_save_buffer, flash_save_size))
+//					{
+//						FRAM_Memory_Current_Adress_Set(adr);
+//						flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WRITE;		
+//					} 
+//					else
+//					{
+//						flash_vectors_errors ++;
+//						flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//					}
+//				}
+//				else
+//				{
+//					flash_vectors_errors ++;
+//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//				}
+//				flash_save_repeat_counter ++;
+//		}	
+//		if(FRAM_Memory_Start_Adress_Get() != -1) 	//check full size
+//		{
+//			u64 current_adress_new = FRAM_Memory_Current_Adress_Get();
+//			if(current_adress_old != current_adress_new) // чтобы не считать за зря
+//			{
+//				i64 size_old = current_adress_old - FRAM_Memory_Start_Adress_Get();
+//				if(size_old < 0) size_old += FLASH_Full_Size_Get();
+//				i64 size_new = current_adress_new - FRAM_Memory_Start_Adress_Get();
+//				if(size_new < 0) size_new += FLASH_Full_Size_Get();
+//				if(size_new < size_old) FRAM_Memory_Start_Adress_Set(-1);
+//			}
+//		}
+//
+//		// операция чтения вектора
+//		if(flash_status_operation == FLASH_STATUS_OPERATION_READ_HEADER)
+//		{
+//			if(FLASH_Read_Is_Ready()) 
+//			{
+//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//				u16 size_vector;
+//				if(Vector_Check_Header(flash_read_buffer, &size_vector))
+//				{
+//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;
+//					
+//					if((size_vector <= FLASH_READ_BUFFER_SIZE) && (FLASH_Read(&flash_read_vector_adress, flash_read_buffer, size_vector)))
+//					{
+//						*flash_read_vector_size_p = size_vector;
+//						flash_status_operation = FLASH_STATUS_OPERATION_READ_DATA;		
+//					}      	
+//					else
+//					{
+//						*flash_read_vector_size_p = 0;
+//						*flash_read_vector_ready_p = true;
+//						flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//					}
+//				}
+//				else
+//				{	
+//					*flash_read_vector_size_p = 0;
+//					*flash_read_vector_ready_p = true;
+//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//				}
+//			}
+//			if(FLASH_Read_Is_Error())
+//			{
+//				*flash_read_vector_size_p = 0;
+//				*flash_read_vector_ready_p = true;
+//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//			}
+//		}
+//		else if(flash_status_operation == FLASH_STATUS_OPERATION_READ_DATA)
+//		{
+//			if(FLASH_Read_Is_Ready()) 
+//			{
+//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//				if(Vector_Check_Data(flash_read_buffer))
+//				{
+//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;
+//					*flash_read_vector_ready_p = true;
+//				}
+//				else
+//				{	
+//					*flash_read_vector_size_p = 0;
+//					*flash_read_vector_ready_p = true;
+//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//				}
+//			}
+//			if(FLASH_Read_Is_Error())
+//			{
+//				*flash_read_vector_size_p = 0;
+//				*flash_read_vector_ready_p = true;
+//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//			}
+//		}
+//
+//		if(flash_status_operation == FLASH_STATUS_OPERATION_READ_WAIT)
+//		{
+//			flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//			if(FLASH_Read(&flash_read_vector_adress, flash_read_buffer, sizeof(vector_header_type)))
+//			{
+//				*flash_read_vector_size_p = 0;
+//				*flash_read_vector_ready_p = false;
+//				flash_status_operation = FLASH_STATUS_OPERATION_READ_HEADER;		
+//			} 
+//			else
+//			{
+//				*flash_read_vector_size_p = 0;
+//				*flash_read_vector_ready_p = true;
+//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
+//			}
+//		}	
+//}

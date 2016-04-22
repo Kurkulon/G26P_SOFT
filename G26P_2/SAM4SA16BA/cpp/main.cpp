@@ -29,6 +29,9 @@ static RequestQuery qtrm(&comtr);
 static RequestQuery qmem(&commem);
 
 static R02 r02[8][3][4];
+static RMEM rmem[96];
+static List<RMEM> lstRmem;
+static List<RMEM> freeRmem;
 
 static byte fireType = 0;
 
@@ -55,7 +58,7 @@ static byte mainModeState = 0;
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-Response rsp;
+//Response rsp;
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -82,11 +85,12 @@ REQ* CreateRcvReqFire(byte adr, byte n)
 	q.ready = false;
 	
 	wb.data = &req;
-	wb.len = sizeof(req)-sizeof(req.crc);
+	wb.len = sizeof(req);
 	
 	req.adr = adr;
 	req.func = 1;
 	req.n = n;
+	req.crc = GetCRC16(&req, sizeof(req)-2);
 
 	return &q;
 }
@@ -106,8 +110,15 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 	adr = (adr-1)&7; 
 	chnl &= 3; n %= 3;
 
-	Req02 &req = r02[adr][n][chnl].req;
-	Rsp02 &rsp = r02[adr][n][chnl].rsp;
+	R02 &r = r02[adr][n][chnl];
+
+	if (r.memNeedSend)
+	{
+		return 0;
+	};
+
+	Req02 &req = r.req;
+	Rsp02 &rsp = r.rsp;
 	
 	ComPort::WriteBuffer &wb = r02[adr][n][chnl].wb;
 	ComPort::ReadBuffer	 &rb = r02[adr][n][chnl].rb;
@@ -123,7 +134,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 	q.ready = false;
 	
 	wb.data = &req;
-	wb.len = sizeof(req)-sizeof(req.crc);
+	wb.len = sizeof(req);
 
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
@@ -133,6 +144,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 	req.func = 2;
 	req.n = n;
 	req.chnl = chnl;
+	req.crc = GetCRC16(&req, sizeof(req)-2);
 
 	return &q;
 }
@@ -165,7 +177,7 @@ REQ* CreateRcvReq03(byte adr, byte dt[], byte ka[])
 	q.ready = false;
 	
 	wb.data = &req;
-	wb.len = sizeof(req)-sizeof(req.crc);
+	wb.len = sizeof(req);
 	
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
@@ -178,6 +190,7 @@ REQ* CreateRcvReq03(byte adr, byte dt[], byte ka[])
 	req.ka[0] = ka[0];
 	req.ka[1] = ka[1];
 	req.ka[2] = ka[2];
+	req.crc = GetCRC16(&req, sizeof(req)-2);
 	
 	return &q;
 }
@@ -204,10 +217,155 @@ REQ* CreateTrmReqFire(byte n)
 	q.wb = &wb;
 	
 	wb.data = &req;
-	wb.len = sizeof(req)-sizeof(req.crc);
+	wb.len = sizeof(req);
 	
 	req.func = 1;
 	req.n = n+1;
+	req.crc = GetCRC16(&req, sizeof(req)-2);
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitRmemList()
+{
+	for (u16 i = 0; i < ArraySize(rmem); i++)
+	{
+		freeRmem.Add(&rmem[i]);
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackMemReq01(REQ *q)
+{
+	if (q != 0)
+	{
+		RMEM* rm = (RMEM*)q->ptr;
+	
+		if (rm != 0)
+		{
+			if (!HW::RamCheck(rm))
+			{
+				__breakpoint(0);
+			};
+
+			freeRmem.Add(rm); 
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//u32 countMemReq = 0;
+
+//RMEM reqMem;
+
+REQ* CreateMemReq01()
+{
+	RMEM* rm = freeRmem.Get();
+
+	if (rm == 0) return 0;
+
+	ReqMem &req = rm->req;
+//	RspMem &rsp = rm->rsp;
+	
+	ComPort::WriteBuffer &wb = rm->wb;
+//	ComPort::ReadBuffer	 &rb = rm->rb;
+	
+	REQ &q = rm->q;
+
+
+	q.CallBack = CallBackMemReq01;
+	q.rb = 0;//&rb;
+	q.wb = &wb;
+	q.preTimeOut = MS2RT(1);
+	q.postTimeOut = 1;
+	q.ready = false;
+	q.ptr = rm;
+	
+	wb.data = &req;
+	wb.len = 4;//sizeof(req);
+
+	//rb.data = &rsp;
+	//rb.maxLen = sizeof(rsp);
+	//rb.recieved = false;
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackMemReq02(REQ *q)
+{
+//	memBusy = false;
+
+	if (q != 0)
+	{
+		RMEM* rm = (RMEM*)q->ptr;
+	
+		if (rm != 0)
+		{
+			if (rm->r02 != 0)
+			{
+				rm->r02->memNeedSend = false;
+			};
+
+			if (!HW::RamCheck(rm))
+			{
+				__breakpoint(0);
+			};
+
+			freeRmem.Add(rm); 
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//u32 countMemReq = 0;
+
+//RMEM reqMem;
+
+REQ* CreateMemReq02(byte adr, byte n, byte chnl)
+{
+	adr = (adr-1)&7; 
+	chnl &= 3; n %= 3;
+
+	RMEM* rm = freeRmem.Get();
+
+	if (rm == 0) return 0;
+
+	R02 &r = r02[adr][n][chnl];
+
+	rm->r02 = &r;
+
+	r.memNeedSend = true;
+
+//	ReqMem &req = rm->req;
+	RspMem &rsp = rm->rsp;
+	
+	ComPort::WriteBuffer &wb = rm->wb;
+	ComPort::ReadBuffer	 &rb = rm->rb;
+	
+	REQ &q = rm->q;
+
+
+	q.CallBack = CallBackMemReq02;
+	q.rb = &rb;
+	q.wb = &wb;
+	q.preTimeOut = MS2RT(1);
+	q.postTimeOut = 1;
+	q.ready = false;
+	q.ptr = rm;
+	
+	wb.data = &r.rsp;
+	wb.len = sizeof(r.rsp);
+
+	rb.data = &rsp;
+	rb.maxLen = sizeof(rsp);
+	rb.recieved = false;
 
 	return &q;
 }
@@ -795,6 +953,8 @@ static void MainMode()
 	static REQ *req = 0;
 	static RTM32 rt;
 
+	REQ *rm = 0;
+
 	switch (mainModeState)
 	{
 		case 0:
@@ -818,9 +978,14 @@ static void MainMode()
 
 		case 2:
 
-			qrcv.Add(req = CreateRcvReq02(rcv, fireType, chnl));
+			req = CreateRcvReq02(rcv, fireType, chnl);
 
-			mainModeState++;
+			if (req != 0)
+			{
+				qrcv.Add(req);
+
+				mainModeState++;
+			};
 
 			break;
 
@@ -828,6 +993,12 @@ static void MainMode()
 
 			if (req->ready)
 			{
+				rm = CreateMemReq02(rcv, fireType, chnl);
+
+				if (rm == 0) break;
+
+				qmem.Add(rm);
+
 				if (chnl < 3)
 				{
 					chnl += 1;
@@ -884,7 +1055,7 @@ static void UpdateMisc()
 	{
 		CALL( UpdateBlackFin()		);
 		CALL( UpdateRcvTrm()		);
-//		CALL( UpdateCom1()			);
+		CALL( qmem.Update()			);
 		CALL( UpdateADC()			);
 		CALL( MainMode()			);
 	};
@@ -892,6 +1063,31 @@ static void UpdateMisc()
 	i = (i > (__LINE__-S-3)) ? 0 : i;
 
 	#undef CALL
+
+	//REQ* req = CreateMemReq02(1,1,1);
+
+	//if (req != 0)
+	//{
+	//	qmem.Add(req);
+	//};
+
+	//ComPort::WriteBuffer wb;
+
+	//wb.data = &r02[0][0][0];
+	//wb.len = 1000;
+
+	////if (!commem.Update())
+	////{
+	////	commem.Write(&wb);
+	////};
+
+	//HW::PIOA->SODR = 1UL<<31;
+	//HW::UART0->CR = 0x40;
+
+	//if (HW::UART0->SR & 2)
+	//{
+	//	HW::UART0->THR = 0x55;
+	//};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -904,6 +1100,8 @@ int main()
 
 	InitNumStations();
 
+	InitRmemList();
+
 	commem.Connect(0, 6250000, 0);
 	comtr.Connect(1, 1562500, 0);
 	combf.Connect(3, 6250000, 0);
@@ -915,11 +1113,18 @@ int main()
 
 	RTM32 rtm;
 
+//	__breakpoint(0);
+
 	while(1)
 	{
+//		HW::PIOA->SODR = 1UL<<31;
+
 		UpdateMisc();
 
+//		HW::PIOA->CODR = 1UL<<31;
+
 		fps++;
+
 
 		if (rtm.Check(MS2RT(500)))
 		{ 
@@ -927,6 +1132,7 @@ int main()
 //			startFire = true;
 //			com1.TransmitByte(0);
 		};
+
 	};
 
 }

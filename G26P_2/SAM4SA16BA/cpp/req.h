@@ -86,16 +86,32 @@ __packed struct  Rsp03	// установка периода дискретизации вектора и коэффициента
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct Response
+__packed struct ReqMem
 {
 	byte adr;
 	byte func;
 	
-	union
+	__packed union
 	{
-		struct  { word crc; } f1;  // старт оцифровки
-		struct  { byte n; byte chnl; u16 data[500]; word crc; } f2;  // чтение вектора
-		struct  { word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
+		__packed struct  { word crc; } f1;  // Старт новой сессии
+		__packed struct  { word crc; } f3;  
+	};
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct RspMem
+{
+	byte	adr;
+	byte	func;
+	
+	__packed union
+	{
+		__packed struct  { word crc; } f1;  // Старт новой сессии
+		__packed struct  { word crc; } f2;  // Запись вектора
+		__packed struct  { word crc; } f3;  // 
+		__packed struct  { word crc; } fFE;  // Ошибка CRC
+		__packed struct  { word crc; } fFF;  // Неправильный запрос
 	};
 };
 
@@ -110,6 +126,7 @@ struct REQ
 	REQ *next;
 
 	tRsp*	CallBack;
+	void*	ptr;
 
 	ComPort::WriteBuffer *wb;
 	ComPort::ReadBuffer *rb;
@@ -132,11 +149,13 @@ class RequestQuery
 
 	ComPort *com;
 
+	u32		count;
+
 	bool _run;
 
 public:
 
-	RequestQuery(ComPort *p) : _first(0), _last(0), _run(true), _state(0), com(p) {}
+	RequestQuery(ComPort *p) : _first(0), _last(0), _run(true), _state(0), com(p), count(0) {}
 	void Add(REQ* req);
 	REQ* Get();
 	bool Empty() { return _first == 0; }
@@ -151,6 +170,7 @@ public:
 
 struct R02
 {
+	bool memNeedSend;
 	ComPort::WriteBuffer	wb;
 	ComPort::ReadBuffer		rb;
 	REQ		q;
@@ -160,6 +180,21 @@ struct R02
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+
+struct RMEM
+{
+	RMEM* next;
+
+	R02*	r02;
+
+	ComPort::WriteBuffer	wb;
+	ComPort::ReadBuffer		rb;
+	REQ		q;
+	ReqMem	req;
+	RspMem	rsp;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 

@@ -22,6 +22,8 @@ void RequestQuery::Add(REQ* req)
 		};
 
 		req->next = 0;
+
+		count++;
 	};
 }
 
@@ -35,6 +37,8 @@ REQ* RequestQuery::Get()
 	{
 		_first = _first->next;
 		r->next = 0;
+
+		count--;
 	};
 
 	return r;
@@ -58,11 +62,11 @@ void RequestQuery::Update()
 
 				if (_req->wb != 0)
 				{
-					DataPointer p(_req->wb->data);
-					p.b += _req->wb->len;
+					//DataPointer p(_req->wb->data);
+					//p.b += _req->wb->len;
 
-					*p.w = GetCRC16(_req->wb->data, _req->wb->len);
-					_req->wb->len += 2;
+					//*p.w = GetCRC16(_req->wb->data, _req->wb->len);
+					//_req->wb->len += 2;
 					com->Write(_req->wb);
 					_state++;
 				}
@@ -104,6 +108,11 @@ void RequestQuery::Update()
 
 				if (_req->CallBack != 0)
 				{
+					if (!HW::RomCheck((void*)_req->CallBack))
+					{
+						__breakpoint(0);
+					};
+
 					_req->CallBack(_req);
 				};
 

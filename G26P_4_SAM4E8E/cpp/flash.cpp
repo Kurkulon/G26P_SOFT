@@ -1182,6 +1182,15 @@ static bool Erase::Update()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+	static u16	wr_cur_col = 0;
+	static u32 	wr_cur_pg = -1;
+	static u16	wr_prev_col = 0;
+	static u32 	wr_prev_pg = -1;
+	static byte	wr_pg_error = 0;
+	static u16		wr_count = 0;
+	static byte*	wr_data = 0;
+	static byte*	wr_ptr = 0;
+
 namespace Write
 {
 	enum {	WAIT = 0,				WRITE_START,			WRITE_BUFFER,			WRITE_PAGE,				WRITE_PAGE_0,	WRITE_PAGE_1,
@@ -1194,15 +1203,7 @@ namespace Write
 
 	static bool createFile = false;
 
-	static u16	wr_cur_col = 0;
-	static u32 	wr_cur_pg = -1;
-	static u16	wr_prev_col = 0;
-	static u32 	wr_prev_pg = -1;
-	static byte	wr_pg_error = 0;
 
-	static u16		wr_count = 0;
-	static byte*	wr_data = 0;
-	static byte*	wr_ptr = 0;
 
 	static bool Start();
 	static bool Update();
@@ -1308,6 +1309,9 @@ static bool Write::Update()
 					freeFlWrBuf.Add(curWrBuf);
 
 					curWrBuf = 0;
+
+					wr_prev_col = wr_cur_col;
+					wr_prev_pg = wr_cur_pg;
 
 					state = WAIT;
 

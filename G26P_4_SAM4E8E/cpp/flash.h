@@ -41,6 +41,16 @@ struct FLRB
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+struct FileDsc
+{
+	u16		num;		// file number
+	u32		start;		// start page of file
+	u32		prev;		// start page of previos file
+	u32		vecCount;	// vectors count
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 __packed struct SpareArea
 {
 	u16		validPage;	// 0xFFFF - good page

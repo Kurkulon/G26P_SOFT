@@ -101,6 +101,7 @@ struct FLADR
 	void	NextPage();
 	void	NextBlock();
 	u32		GetRawPage() { return (((block << NAND_CHIP_BITS) | chip) << sz.bitPage) | page; };
+	void	SetRawPage(u32 p) { page = p & sz.maskPage; chip = (p >> sz.bitPage) & NAND_CHIP_BITS; block = p >> (sz.bitPage + NAND_CHIP_BITS) };
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1741,10 +1742,21 @@ namespace BuildFileTable
 	enum {	WAIT = 0,START,READ_1, READ_2, READ_PAGE,READ_PAGE_1};
 
 	static FLADR rd(nandSize, 0, 0, 0, 0);
+	static FLADR rs(nandSize, 0, 0, 0, 0);
+	static FLADR re(nandSize, 0, 0, 0, 0);
+
+	static u32 ps = 0;
+	static u32 pe = 0;
+	static u32 pm = 0;
 
 	static SpareArea spare;
 
 	static byte state;
+
+	static FileDsc curf;
+	static FileDsc prf;
+	static FileDsc lastf;
+
 
 	static bool Start();
 	static bool Update();
@@ -1755,9 +1767,15 @@ namespace BuildFileTable
 
 static bool BuildFileTable::Start()
 {
-	rd.block = 1 << (nandSize.bitBlock-1);
-	rd.page = 0;
-	rd.chip = 0;
+	//rd.block = 1 << (nandSize.bitBlock-1);
+	//rd.page = 0;
+	//rd.chip = 0;
+
+	ps = 0;
+	pe = (rd.sz.ch << NAND_CHIP_BITS) >> rd.sz.shPg;
+	pm = (pe+ps)/2;
+
+	rd.SetRawPage(pm);
 
 	state = START;
 
@@ -1774,6 +1792,7 @@ static bool BuildFileTable::Update()
 
 		case START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+		
 			ReadPage::Start(&spare, sizeof(spare), rd.chip, rd.block, rd.page, rd.sz.pg);
 
 			state = READ_1;
@@ -1784,6 +1803,44 @@ static bool BuildFileTable::Update()
 
 			if(!ReadPage::Update())
 			{
+				if (spare.validBlock != 0xFFFF)
+				{
+					rd.NextBlock();
+
+					pm = rd.GetRawPage();
+
+					state = START;
+				}				
+				else if (spare.validPage != 0xFFFF)
+				{
+					rd.NextPage();
+
+					pm = rd.GetRawPage();
+
+					state = START;
+				}
+				else if (GetCRC16((void*)&spare.file, sizeof(spare) - spare.CRC_SKIP) != 0)
+				{
+					rd.block >>= 1;
+
+					state = START;
+				}
+				else
+				{
+					curf.num = spare.file;
+					curf.start = spare.start;
+					curf.prev = spare.prev;
+					curf.vecCount = 0;
+
+					spareRd_block = rd.block;
+					spareRd_chip = rd.chip;
+					spareRd_page = rd.page;
+
+					CmdRandomRead(rd.col);
+
+					state = READ_PAGE;
+				};
+
 				state = READ_2;
 			};
 
@@ -1793,34 +1850,6 @@ static bool BuildFileTable::Update()
 
 			if (CheckDataComplete())
 			{
-				if (spare.validBlock != 0xFFFF)
-				{
-					rd.NextBlock();
-
-					NAND_Chip_Select(rd.chip);
-					
-					CmdReadPage(nandSize.pg, rd.block, rd.page);
-
-					state = READ_1;
-				}				
-				else if (spare.validPage != 0xFFFF)
-				{
-					rd.NextPage();
-
-					CmdReadPage(nandSize.pg, rd.block, rd.page);
-
-					state = READ_1;
-				}
-				else
-				{
-					spareRd_block = rd.block;
-					spareRd_chip = rd.chip;
-					spareRd_page = rd.page;
-
-					CmdRandomRead(rd.col);
-
-					state = READ_PAGE;
-				};
 			};
 
 			break;

@@ -14,6 +14,8 @@ u16 reqHV = 800;
 bool	syncActive = false;
 u32		syncTime = 0;
 
+bool	charge = false;
+
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -68,8 +70,9 @@ extern "C" void SystemInit()
 
 	SYSCON->SYSAHBCLKCTRL |= CLK::SWM_M | CLK::IOCON_M | CLK::GPIO_M | HW::CLK::MRT_M | HW::CLK::UART0_M | HW::CLK::CRC_M;
 
-	GPIO->DIR0 |= (1<<11)|(1<<17)|(1<<0)|(1<<7);
+	GPIO->DIR0 |= (1<<11)|(1<<17)|(1<<0)|(1<<7)|(1<<8);
 	GPIO->CLR0 = 1<<11;
+	GPIO->SET0 = 1<<8;
 
 
 	IOCON->PIO0_1.B.MODE = 0;// &= ~(0x3 << 3);
@@ -107,7 +110,7 @@ static void UpdateADC()
 
 	t += (i32)((SPI0->RXDAT & 0xFFF) << 6) - (i32)(t>>10);
 
-	curHV = ((t>>16) * 18871) >> 16; // HV * 3.3 / 4095 / 56 * 20000
+	curHV = ((t>>16) * 19600) >> 16; // HV * 3.3 / 4095 / 56 * 20000
 
 	SPI0->TXDATCTL = 0x0F100000; //SPI_TXDATCTL_FLEN(7) | SPI_TXDATCTL_EOT | SPI_TXDATCTL_SSEL_N(0xe);
 
@@ -123,12 +126,64 @@ static void UpdateADC()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateCharge()
+{
+	using namespace HW;
+
+	static byte i = 0;
+
+	static TM32 tm;
+
+	//GPIO->DIR0 |= (1<<8);
+	//GPIO->CLR0 = 1<<8;
+
+	if (charge)
+	{
+		switch (i)
+		{
+			case 0:
+
+				if (tm.Check(1))
+				{
+					GPIO->CLR0 = 1<<8;
+
+					i++;
+				};
+
+				break;
+
+			case 1:
+
+				if (tm.Check(100))
+				{
+					GPIO->SET0 = 1<<8;
+				
+					charge = false;
+				};
+
+				break;
+		};
+	}
+	else
+	{
+		GPIO->SET0 = 1<<8;
+		GPIO->DIR0 |= (1<<8);
+		i = 0;
+
+		tm.Reset();
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void FireM()
 {
 	HW::SWM->CTOUT_0 = 7;
 	HW::SWM->CTOUT_1 = -1;
 
 	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
+
+	charge = true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -204,8 +259,8 @@ static void InitFire()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*10;
-	SCT->MATCH_L[2] = 25*105; //335
-	SCT->MATCH_L[3] = 25*115; //345
+	SCT->MATCH_L[2] = 25*200; //335
+	SCT->MATCH_L[3] = 25*210; //345
 	SCT->MATCH_L[4] = 0;
 
 	SCT->OUT[0].SET = 0x0002;
@@ -298,6 +353,7 @@ void InitHardware()
 void UpdateHardware()
 {
 	UpdateADC();
+	UpdateCharge();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -101,7 +101,7 @@ struct FLADR
 	void	NextPage();
 	void	NextBlock();
 	u32		GetRawPage() { return (((block << NAND_CHIP_BITS) | chip) << sz.bitPage) | page; };
-	void	SetRawPage(u32 p) { page = p & sz.maskPage; chip = (p >> sz.bitPage) & NAND_CHIP_BITS; block = p >> (sz.bitPage + NAND_CHIP_BITS) };
+	void	SetRawPage(u32 p) { page = p & sz.maskPage; chip = (p >> sz.bitPage) & NAND_CHIP_BITS; block = p >> (sz.bitPage + NAND_CHIP_BITS); };
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1671,29 +1671,25 @@ static bool Read::Update()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-namespace ReadPage
+namespace ReadSpare
 {
-	enum {	WAIT = 0,START,READ_1};
+	enum {	WAIT = 0,START,READ_1,READ_2,READ_3};
 
 	static byte state;
-	static void *dst;
-	static u16 len;
+	static SpareArea *spare;
+	static FLADR *rd;
 
-	static bool Start(void *d, u16 l, byte chip, u32 block, u16 page, u16 col);
+	static bool Start(SpareArea *sp, FLADR *rd);
 	static bool Update();
 
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool ReadPage::Start(void *d, u16 l, byte chip, u32 block, u16 page, u16 col)
+static bool ReadSpare::Start(SpareArea *sp, FLADR *frd)
 {
-	dst = d;
-	len = l;
-
-	NAND_Chip_Select(chip);
-
-	CmdReadPage(col, block, page);
+	spare = sp;
+	rd = frd;
 
 	state = START;
 
@@ -1702,7 +1698,7 @@ static bool ReadPage::Start(void *d, u16 l, byte chip, u32 block, u16 page, u16 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool ReadPage::Update()
+static bool ReadSpare::Update()
 {
 	switch(state)
 	{
@@ -1710,22 +1706,50 @@ static bool ReadPage::Update()
 
 		case START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-			if(!NAND_BUSY())
-			{
-				NandReadData(dst, len);
+			NAND_Chip_Select(rd->chip);
 
-				state = READ_1;
-			};
+			CmdReadPage(rd->sz.pg, rd->block, rd->page);
+
+			state = READ_1;
 
 			break;
 
 		case READ_1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
+			if(!NAND_BUSY())
+			{
+				NandReadData(spare, sizeof(*spare));
+
+				state = READ_2;
+			};
+
+			break;
+
+		case READ_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
 			if (CheckDataComplete())
 			{
-				state = WAIT;
+				if (spare->validBlock != 0xFFFF)
+				{
+					rd->NextBlock();
 
-				return false;
+					state = START;
+				}				
+				else if (spare->validPage != 0xFFFF)
+				{
+					rd->NextPage();
+
+					state = START;
+				}
+				else
+				{
+					spare->crc = GetCRC16((void*)&spare->file, sizeof(spare) - spare->CRC_SKIP);
+				
+					state = WAIT;
+
+					return false;
+
+				};
 			};
 
 			break;
@@ -1739,7 +1763,7 @@ static bool ReadPage::Update()
 
 namespace BuildFileTable
 {
-	enum {	WAIT = 0,START,READ_1, READ_2, READ_PAGE,READ_PAGE_1};
+	enum {	WAIT = 0,START,READ_1, READ_2, READ_3,READ_4,NO_FILE};
 
 	static FLADR rd(nandSize, 0, 0, 0, 0);
 	static FLADR rs(nandSize, 0, 0, 0, 0);
@@ -1792,8 +1816,7 @@ static bool BuildFileTable::Update()
 
 		case START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-		
-			ReadPage::Start(&spare, sizeof(spare), rd.chip, rd.block, rd.page, rd.sz.pg);
+			ReadSpare::Start(&spare, &rd);
 
 			state = READ_1;
 
@@ -1801,29 +1824,25 @@ static bool BuildFileTable::Update()
 
 		case READ_1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			if(!ReadPage::Update())
+			if(!ReadSpare::Update())
 			{
-				if (spare.validBlock != 0xFFFF)
+				pm = rd.GetRawPage();
+
+				if (spare.crc != 0)
 				{
-					rd.NextBlock();
+					if (pe == ps)
+					{
+						state = NO_FILE;
+					}
+					else
+					{
+						pe = pm;
+						pm = (ps + pe) / 2;
 
-					pm = rd.GetRawPage();
+						rd.SetRawPage(pm);
 
-					state = START;
-				}				
-				else if (spare.validPage != 0xFFFF)
-				{
-					rd.NextPage();
-
-					pm = rd.GetRawPage();
-
-					state = START;
-				}
-				else if (GetCRC16((void*)&spare.file, sizeof(spare) - spare.CRC_SKIP) != 0)
-				{
-					rd.block >>= 1;
-
-					state = START;
+						state = START;
+					};
 				}
 				else
 				{
@@ -1832,49 +1851,52 @@ static bool BuildFileTable::Update()
 					curf.prev = spare.prev;
 					curf.vecCount = 0;
 
-					spareRd_block = rd.block;
-					spareRd_chip = rd.chip;
-					spareRd_page = rd.page;
+					rd.SetRawPage(curf.start);
 
-					CmdRandomRead(rd.col);
-
-					state = READ_PAGE;
+					state = READ_2;
 				};
-
-				state = READ_2;
 			};
 
 			break;
 
 		case READ_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			if (CheckDataComplete())
+			ReadSpare::Start(&spare, &rd);
+
+			state = READ_3;
+
+			break;
+
+		case READ_3:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			if(!ReadSpare::Update())
 			{
+				if (spare.crc != 0)
+				{
+					state = START;
+				}
+				else
+				{
+					if (spare.file == curf.num)
+					{
+						rd.SetRawPage(curf.prev);
+
+						state = READ_2;
+					}
+					else
+					{
+						lastf.num = spare.file;
+						lastf.prev = spare.prev;
+						lastf.start = spare.start;
+
+						state = READ_4;
+					};
+				};
 			};
 
 			break;
 
-		case READ_PAGE:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
-
-			if(!NAND_BUSY())
-			{
-				register u16 c = rd.sz.pg - rd.col;
-
-				if (rd_count < c) c = rd_count;
-
-				NandReadData(rd_data, c);
-
-				rd_count -= c;
-				rd.col += c;
-				rd_data += c;
-				curRdBuf->len += c;
-
-				state = READ_PAGE_1;
-			};
-
-			break;
-
-		case READ_PAGE_1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+		case READ_4:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
 			if (CheckDataComplete())
 			{
@@ -1895,6 +1917,10 @@ static bool BuildFileTable::Update()
 					return false;
 				};
 			};
+
+			break;
+
+		case NO_FILE:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
 			break;
 	};

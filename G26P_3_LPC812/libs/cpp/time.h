@@ -47,6 +47,7 @@ struct TM32
 
 	TM32() : pt(0) {}
 	bool Check(u32 v) { if ((GetMilliseconds() - pt) >= v) { pt = GetMilliseconds(); return true; } else { return false; }; }
+	void Reset() { pt = GetMilliseconds(); }
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

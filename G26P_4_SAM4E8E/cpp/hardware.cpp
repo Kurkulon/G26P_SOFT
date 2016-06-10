@@ -71,18 +71,18 @@ static void InitVectorTable()
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline void ManDisable()	{ HW::PIOB->ODSR = 0x06;} // 0110  
-inline void ManOne()		{ HW::PIOB->ODSR = 0x08;} // 1000
-inline void ManZero()		{ HW::PIOB->ODSR = 0x0D;} // 1101
+inline void ManOne()		{ HW::PIOB->ODSR = 0x0C;} // 1100
+inline void ManZero()		{ HW::PIOB->ODSR = 0x03;} // 0011
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define BOUD2CLK(x) ((u32)((MCK/2.0)/x+0.5))
+#define BOUD2CLK(x) ((u32)((MCK/4.0)/x+0.5))
 #define ManTmr HW::TC0->C1
 
 static const u16 manboud[4] = { BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
 
 
-u16 trmHalfPeriod = BOUD2CLK(41666);
+u16 trmHalfPeriod = BOUD2CLK(20833);
 byte stateManTrans = 0;
 static MTB *manTB = 0;
 static bool trmBusy = false;
@@ -262,18 +262,15 @@ static void InitManTransmit()
 {
 	using namespace HW;
 
-	PMC->PCER0 = PID::TC0_M;
+	PMC->PCER0 = PID::TC1_M;
 
 	PIOB->OWER = 0xF;
-
 
 	ManTmr.RC = trmHalfPeriod;
 	ManTmr.CMR = CPCTRG;
 	ManTmr.CCR = CLKDIS;
 
-	//register_handler(ik_ivg9, SPORT_ISR);
-
-
+	ManDisable();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -9,17 +9,17 @@
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline void ManDisable() { *pPORTFIO = 0x50; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; }
-inline void ManOne() { /**pPORTFIO = 0x50;*/ *pPORTFIO = 0xC0; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0xC0; *pPORTFIO_SET = 0x30; }
-inline void ManZero() { /**pPORTFIO = 0x50;*/ *pPORTFIO = 0x30; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0x30; *pPORTFIO_SET = 0xC0; }
+inline void ManOne() { *pPORTFIO = 0x50; *pPORTFIO = 0xC0; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0xC0; *pPORTFIO_SET = 0x30; }
+inline void ManZero() { *pPORTFIO = 0x50; *pPORTFIO = 0x30; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0x30; *pPORTFIO_SET = 0xC0; }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #define BOUD2CLK(x) ((u32)((SCLK/2.0)/x+0.5))
 
-static const u16 manboud[4] = { BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
+static const u16 manboud[8] = { BOUD2CLK(20833), BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333), BOUD2CLK(83333), BOUD2CLK(83333), BOUD2CLK(83333) };
 
 
-u16 trmHalfPeriod = BOUD2CLK(41666);
+u16 trmHalfPeriod = BOUD2CLK(20833);
 byte stateManTrans = 0;
 static MTB *manTB = 0;
 static bool trmBusy = false;
@@ -28,7 +28,7 @@ static bool trmBusy = false;
 
 void SetTrmBoudRate(byte i)
 {
-	trmHalfPeriod = manboud[i&3];
+	trmHalfPeriod = manboud[i&7];
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

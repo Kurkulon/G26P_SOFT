@@ -796,124 +796,90 @@ extern T_HW::AT91_IHP VectorTableExt[47];
 #define CLKDIS	(0x1u << 1)	/**< \brief (TC_CCR) Counter Clock Disable Command */
 #define SWTRG	(0x1u << 2)	/**< \brief (TC_CCR) Software Trigger Command */
 
-#define TC_CMR_TCCLKS_Pos 0
-#define TC_CMR_TCCLKS_Msk (0x7u << TC_CMR_TCCLKS_Pos) /**< \brief (TC_CMR) Clock Selection */
-#define   TC_CMR_TCCLKS_TIMER_CLOCK1 (0x0u << 0) /**< \brief (TC_CMR) Clock selected: TCLK1 */
-#define   TC_CMR_TCCLKS_TIMER_CLOCK2 (0x1u << 0) /**< \brief (TC_CMR) Clock selected: TCLK2 */
-#define   TC_CMR_TCCLKS_TIMER_CLOCK3 (0x2u << 0) /**< \brief (TC_CMR) Clock selected: TCLK3 */
-#define   TC_CMR_TCCLKS_TIMER_CLOCK4 (0x3u << 0) /**< \brief (TC_CMR) Clock selected: TCLK4 */
-#define   TC_CMR_TCCLKS_TIMER_CLOCK5 (0x4u << 0) /**< \brief (TC_CMR) Clock selected: TCLK5 */
-#define   TC_CMR_TCCLKS_XC0 (0x5u << 0) /**< \brief (TC_CMR) Clock selected: XC0 */
-#define   TC_CMR_TCCLKS_XC1 (0x6u << 0) /**< \brief (TC_CMR) Clock selected: XC1 */
-#define   TC_CMR_TCCLKS_XC2 (0x7u << 0) /**< \brief (TC_CMR) Clock selected: XC2 */
-#define TC_CMR_CLKI (0x1u << 3) /**< \brief (TC_CMR) Clock Invert */
-#define TC_CMR_BURST_Pos 4
-#define TC_CMR_BURST_Msk (0x3u << TC_CMR_BURST_Pos) /**< \brief (TC_CMR) Burst Signal Selection */
-#define   TC_CMR_BURST_NONE (0x0u << 4) /**< \brief (TC_CMR) The clock is not gated by an external signal. */
-#define   TC_CMR_BURST_XC0 (0x1u << 4) /**< \brief (TC_CMR) XC0 is ANDed with the selected clock. */
-#define   TC_CMR_BURST_XC1 (0x2u << 4) /**< \brief (TC_CMR) XC1 is ANDed with the selected clock. */
-#define   TC_CMR_BURST_XC2 (0x3u << 4) /**< \brief (TC_CMR) XC2 is ANDed with the selected clock. */
-#define TC_CMR_LDBSTOP (0x1u << 6) /**< \brief (TC_CMR) Counter Clock Stopped with RB Loading */
-#define TC_CMR_LDBDIS (0x1u << 7) /**< \brief (TC_CMR) Counter Clock Disable with RB Loading */
-#define TC_CMR_ETRGEDG_Pos 8
-#define TC_CMR_ETRGEDG_Msk (0x3u << TC_CMR_ETRGEDG_Pos) /**< \brief (TC_CMR) External Trigger Edge Selection */
-#define   TC_CMR_ETRGEDG_NONE (0x0u << 8) /**< \brief (TC_CMR) The clock is not gated by an external signal. */
-#define   TC_CMR_ETRGEDG_RISING (0x1u << 8) /**< \brief (TC_CMR) Rising edge */
-#define   TC_CMR_ETRGEDG_FALLING (0x2u << 8) /**< \brief (TC_CMR) Falling edge */
-#define   TC_CMR_ETRGEDG_EDGE (0x3u << 8) /**< \brief (TC_CMR) Each edge */
-#define TC_CMR_ABETRG (0x1u << 10) /**< \brief (TC_CMR) TIOA or TIOB External Trigger Selection */
+#define TIMER_CLOCK1 (0x0u << 0) /**< \brief (TC_CMR) Clock selected: TCLK1 */
+#define TIMER_CLOCK2 (0x1u << 0) /**< \brief (TC_CMR) Clock selected: TCLK2 */
+#define TIMER_CLOCK3 (0x2u << 0) /**< \brief (TC_CMR) Clock selected: TCLK3 */
+#define TIMER_CLOCK4 (0x3u << 0) /**< \brief (TC_CMR) Clock selected: TCLK4 */
+#define TIMER_CLOCK5 (0x4u << 0) /**< \brief (TC_CMR) Clock selected: TCLK5 */
+#define XC0 (0x5u << 0) /**< \brief (TC_CMR) Clock selected: XC0 */
+#define XC1 (0x6u << 0) /**< \brief (TC_CMR) Clock selected: XC1 */
+#define XC2 (0x7u << 0) /**< \brief (TC_CMR) Clock selected: XC2 */
+#define	CLKI (0x1u << 3) /**< \brief (TC_CMR) Clock Invert */
+#define BURST_NONE (0x0u << 4) /**< \brief (TC_CMR) The clock is not gated by an external signal. */
+#define BURST_XC0 (0x1u << 4) /**< \brief (TC_CMR) XC0 is ANDed with the selected clock. */
+#define BURST_XC1 (0x2u << 4) /**< \brief (TC_CMR) XC1 is ANDed with the selected clock. */
+#define BURST_XC2 (0x3u << 4) /**< \brief (TC_CMR) XC2 is ANDed with the selected clock. */
+#define LDBSTOP (0x1u << 6) /**< \brief (TC_CMR) Counter Clock Stopped with RB Loading */
+#define LDBDIS (0x1u << 7) /**< \brief (TC_CMR) Counter Clock Disable with RB Loading */
+#define ETRGEDG_NONE (0x0u << 8) /**< \brief (TC_CMR) The clock is not gated by an external signal. */
+#define ETRGEDG_RISING (0x1u << 8) /**< \brief (TC_CMR) Rising edge */
+#define ETRGEDG_FALLING (0x2u << 8) /**< \brief (TC_CMR) Falling edge */
+#define ETRGEDG_EDGE (0x3u << 8) /**< \brief (TC_CMR) Each edge */
+#define ABETRG (0x1u << 10) /**< \brief (TC_CMR) TIOA or TIOB External Trigger Selection */
 
 #define CPCTRG (0x1u << 14) /**< \brief (TC_CMR) RC Compare Trigger Enable */
 
-#define TC_CMR_WAVE (0x1u << 15) /**< \brief (TC_CMR) Waveform Mode */
-#define TC_CMR_LDRA_Pos 16
-#define TC_CMR_LDRA_Msk (0x3u << TC_CMR_LDRA_Pos) /**< \brief (TC_CMR) RA Loading Edge Selection */
-#define   TC_CMR_LDRA_NONE (0x0u << 16) /**< \brief (TC_CMR) None */
-#define   TC_CMR_LDRA_RISING (0x1u << 16) /**< \brief (TC_CMR) Rising edge of TIOA */
-#define   TC_CMR_LDRA_FALLING (0x2u << 16) /**< \brief (TC_CMR) Falling edge of TIOA */
-#define   TC_CMR_LDRA_EDGE (0x3u << 16) /**< \brief (TC_CMR) Each edge of TIOA */
-#define TC_CMR_LDRB_Pos 18
-#define TC_CMR_LDRB_Msk (0x3u << TC_CMR_LDRB_Pos) /**< \brief (TC_CMR) RB Loading Edge Selection */
-#define   TC_CMR_LDRB_NONE (0x0u << 18) /**< \brief (TC_CMR) None */
-#define   TC_CMR_LDRB_RISING (0x1u << 18) /**< \brief (TC_CMR) Rising edge of TIOA */
-#define   TC_CMR_LDRB_FALLING (0x2u << 18) /**< \brief (TC_CMR) Falling edge of TIOA */
-#define   TC_CMR_LDRB_EDGE (0x3u << 18) /**< \brief (TC_CMR) Each edge of TIOA */
-#define TC_CMR_SBSMPLR_Pos 20
-#define TC_CMR_SBSMPLR_Msk (0x7u << TC_CMR_SBSMPLR_Pos) /**< \brief (TC_CMR) Loading Edge Subsampling Ratio */
-#define   TC_CMR_SBSMPLR_ONE (0x0u << 20) /**< \brief (TC_CMR) Load a Capture Register each selected edge */
-#define   TC_CMR_SBSMPLR_HALF (0x1u << 20) /**< \brief (TC_CMR) Load a Capture Register every 2 selected edges */
-#define   TC_CMR_SBSMPLR_FOURTH (0x2u << 20) /**< \brief (TC_CMR) Load a Capture Register every 4 selected edges */
-#define   TC_CMR_SBSMPLR_EIGHTH (0x3u << 20) /**< \brief (TC_CMR) Load a Capture Register every 8 selected edges */
-#define   TC_CMR_SBSMPLR_SIXTEENTH (0x4u << 20) /**< \brief (TC_CMR) Load a Capture Register every 16 selected edges */
-#define TC_CMR_CPCSTOP (0x1u << 6) /**< \brief (TC_CMR) Counter Clock Stopped with RC Compare */
-#define TC_CMR_CPCDIS (0x1u << 7) /**< \brief (TC_CMR) Counter Clock Disable with RC Compare */
-#define TC_CMR_EEVTEDG_Pos 8
-#define TC_CMR_EEVTEDG_Msk (0x3u << TC_CMR_EEVTEDG_Pos) /**< \brief (TC_CMR) External Event Edge Selection */
-#define   TC_CMR_EEVTEDG_NONE (0x0u << 8) /**< \brief (TC_CMR) None */
-#define   TC_CMR_EEVTEDG_RISING (0x1u << 8) /**< \brief (TC_CMR) Rising edge */
-#define   TC_CMR_EEVTEDG_FALLING (0x2u << 8) /**< \brief (TC_CMR) Falling edge */
-#define   TC_CMR_EEVTEDG_EDGE (0x3u << 8) /**< \brief (TC_CMR) Each edge */
-#define TC_CMR_EEVT_Pos 10
-#define TC_CMR_EEVT_Msk (0x3u << TC_CMR_EEVT_Pos) /**< \brief (TC_CMR) External Event Selection */
-#define   TC_CMR_EEVT_TIOB (0x0u << 10) /**< \brief (TC_CMR) TIOB */
-#define   TC_CMR_EEVT_XC0 (0x1u << 10) /**< \brief (TC_CMR) XC0 */
-#define   TC_CMR_EEVT_XC1 (0x2u << 10) /**< \brief (TC_CMR) XC1 */
-#define   TC_CMR_EEVT_XC2 (0x3u << 10) /**< \brief (TC_CMR) XC2 */
-#define TC_CMR_ENETRG (0x1u << 12) /**< \brief (TC_CMR) External Event Trigger Enable */
-#define TC_CMR_WAVSEL_Pos 13
-#define TC_CMR_WAVSEL_Msk (0x3u << TC_CMR_WAVSEL_Pos) /**< \brief (TC_CMR) Waveform Selection */
-#define   TC_CMR_WAVSEL_UP (0x0u << 13) /**< \brief (TC_CMR) UP mode without automatic trigger on RC Compare */
-#define   TC_CMR_WAVSEL_UPDOWN (0x1u << 13) /**< \brief (TC_CMR) UPDOWN mode without automatic trigger on RC Compare */
-#define   TC_CMR_WAVSEL_UP_RC (0x2u << 13) /**< \brief (TC_CMR) UP mode with automatic trigger on RC Compare */
-#define   TC_CMR_WAVSEL_UPDOWN_RC (0x3u << 13) /**< \brief (TC_CMR) UPDOWN mode with automatic trigger on RC Compare */
-#define TC_CMR_ACPA_Pos 16
-#define TC_CMR_ACPA_Msk (0x3u << TC_CMR_ACPA_Pos) /**< \brief (TC_CMR) RA Compare Effect on TIOA */
-#define   TC_CMR_ACPA_NONE (0x0u << 16) /**< \brief (TC_CMR) None */
-#define   TC_CMR_ACPA_SET (0x1u << 16) /**< \brief (TC_CMR) Set */
-#define   TC_CMR_ACPA_CLEAR (0x2u << 16) /**< \brief (TC_CMR) Clear */
-#define   TC_CMR_ACPA_TOGGLE (0x3u << 16) /**< \brief (TC_CMR) Toggle */
-#define TC_CMR_ACPC_Pos 18
-#define TC_CMR_ACPC_Msk (0x3u << TC_CMR_ACPC_Pos) /**< \brief (TC_CMR) RC Compare Effect on TIOA */
-#define   TC_CMR_ACPC_NONE (0x0u << 18) /**< \brief (TC_CMR) None */
-#define   TC_CMR_ACPC_SET (0x1u << 18) /**< \brief (TC_CMR) Set */
-#define   TC_CMR_ACPC_CLEAR (0x2u << 18) /**< \brief (TC_CMR) Clear */
-#define   TC_CMR_ACPC_TOGGLE (0x3u << 18) /**< \brief (TC_CMR) Toggle */
-#define TC_CMR_AEEVT_Pos 20
-#define TC_CMR_AEEVT_Msk (0x3u << TC_CMR_AEEVT_Pos) /**< \brief (TC_CMR) External Event Effect on TIOA */
-#define   TC_CMR_AEEVT_NONE (0x0u << 20) /**< \brief (TC_CMR) None */
-#define   TC_CMR_AEEVT_SET (0x1u << 20) /**< \brief (TC_CMR) Set */
-#define   TC_CMR_AEEVT_CLEAR (0x2u << 20) /**< \brief (TC_CMR) Clear */
-#define   TC_CMR_AEEVT_TOGGLE (0x3u << 20) /**< \brief (TC_CMR) Toggle */
-#define TC_CMR_ASWTRG_Pos 22
-#define TC_CMR_ASWTRG_Msk (0x3u << TC_CMR_ASWTRG_Pos) /**< \brief (TC_CMR) Software Trigger Effect on TIOA */
-#define   TC_CMR_ASWTRG_NONE (0x0u << 22) /**< \brief (TC_CMR) None */
-#define   TC_CMR_ASWTRG_SET (0x1u << 22) /**< \brief (TC_CMR) Set */
-#define   TC_CMR_ASWTRG_CLEAR (0x2u << 22) /**< \brief (TC_CMR) Clear */
-#define   TC_CMR_ASWTRG_TOGGLE (0x3u << 22) /**< \brief (TC_CMR) Toggle */
-#define TC_CMR_BCPB_Pos 24
-#define TC_CMR_BCPB_Msk (0x3u << TC_CMR_BCPB_Pos) /**< \brief (TC_CMR) RB Compare Effect on TIOB */
-#define   TC_CMR_BCPB_NONE (0x0u << 24) /**< \brief (TC_CMR) None */
-#define   TC_CMR_BCPB_SET (0x1u << 24) /**< \brief (TC_CMR) Set */
-#define   TC_CMR_BCPB_CLEAR (0x2u << 24) /**< \brief (TC_CMR) Clear */
-#define   TC_CMR_BCPB_TOGGLE (0x3u << 24) /**< \brief (TC_CMR) Toggle */
-#define TC_CMR_BCPC_Pos 26
-#define TC_CMR_BCPC_Msk (0x3u << TC_CMR_BCPC_Pos) /**< \brief (TC_CMR) RC Compare Effect on TIOB */
-#define   TC_CMR_BCPC_NONE (0x0u << 26) /**< \brief (TC_CMR) None */
-#define   TC_CMR_BCPC_SET (0x1u << 26) /**< \brief (TC_CMR) Set */
-#define   TC_CMR_BCPC_CLEAR (0x2u << 26) /**< \brief (TC_CMR) Clear */
-#define   TC_CMR_BCPC_TOGGLE (0x3u << 26) /**< \brief (TC_CMR) Toggle */
-#define TC_CMR_BEEVT_Pos 28
-#define TC_CMR_BEEVT_Msk (0x3u << TC_CMR_BEEVT_Pos) /**< \brief (TC_CMR) External Event Effect on TIOB */
-#define   TC_CMR_BEEVT_NONE (0x0u << 28) /**< \brief (TC_CMR) None */
-#define   TC_CMR_BEEVT_SET (0x1u << 28) /**< \brief (TC_CMR) Set */
-#define   TC_CMR_BEEVT_CLEAR (0x2u << 28) /**< \brief (TC_CMR) Clear */
-#define   TC_CMR_BEEVT_TOGGLE (0x3u << 28) /**< \brief (TC_CMR) Toggle */
-#define TC_CMR_BSWTRG_Pos 30
-#define TC_CMR_BSWTRG_Msk (0x3u << TC_CMR_BSWTRG_Pos) /**< \brief (TC_CMR) Software Trigger Effect on TIOB */
-#define   TC_CMR_BSWTRG_NONE (0x0u << 30) /**< \brief (TC_CMR) None */
-#define   TC_CMR_BSWTRG_SET (0x1u << 30) /**< \brief (TC_CMR) Set */
-#define   TC_CMR_BSWTRG_CLEAR (0x2u << 30) /**< \brief (TC_CMR) Clear */
-#define   TC_CMR_BSWTRG_TOGGLE (0x3u << 30) /**< \brief (TC_CMR) Toggle */
+#define WAVE (0x1u << 15) /**< \brief (TC_CMR) Waveform Mode */
+#define LDRA_NONE (0x0u << 16) /**< \brief (TC_CMR) None */
+#define LDRA_RISING (0x1u << 16) /**< \brief (TC_CMR) Rising edge of TIOA */
+#define LDRA_FALLING (0x2u << 16) /**< \brief (TC_CMR) Falling edge of TIOA */
+#define LDRA_EDGE (0x3u << 16) /**< \brief (TC_CMR) Each edge of TIOA */
+#define LDRB_NONE (0x0u << 18) /**< \brief (TC_CMR) None */
+#define LDRB_RISING (0x1u << 18) /**< \brief (TC_CMR) Rising edge of TIOA */
+#define LDRB_FALLING (0x2u << 18) /**< \brief (TC_CMR) Falling edge of TIOA */
+#define LDRB_EDGE (0x3u << 18) /**< \brief (TC_CMR) Each edge of TIOA */
+#define SBSMPLR_ONE (0x0u << 20) /**< \brief (TC_CMR) Load a Capture Register each selected edge */
+#define SBSMPLR_HALF (0x1u << 20) /**< \brief (TC_CMR) Load a Capture Register every 2 selected edges */
+#define SBSMPLR_FOURTH (0x2u << 20) /**< \brief (TC_CMR) Load a Capture Register every 4 selected edges */
+#define SBSMPLR_EIGHTH (0x3u << 20) /**< \brief (TC_CMR) Load a Capture Register every 8 selected edges */
+#define SBSMPLR_SIXTEENTH (0x4u << 20) /**< \brief (TC_CMR) Load a Capture Register every 16 selected edges */
+#define CPCSTOP (0x1u << 6) /**< \brief (TC_CMR) Counter Clock Stopped with RC Compare */
+#define CPCDIS (0x1u << 7) /**< \brief (TC_CMR) Counter Clock Disable with RC Compare */
+#define EEVTEDG_NONE (0x0u << 8) /**< \brief (TC_CMR) None */
+#define EEVTEDG_RISING (0x1u << 8) /**< \brief (TC_CMR) Rising edge */
+#define EEVTEDG_FALLING (0x2u << 8) /**< \brief (TC_CMR) Falling edge */
+#define EEVTEDG_EDGE (0x3u << 8) /**< \brief (TC_CMR) Each edge */
+#define EEVT_TIOB (0x0u << 10) /**< \brief (TC_CMR) TIOB */
+#define EEVT_XC0 (0x1u << 10) /**< \brief (TC_CMR) XC0 */
+#define EEVT_XC1 (0x2u << 10) /**< \brief (TC_CMR) XC1 */
+#define EEVT_XC2 (0x3u << 10) /**< \brief (TC_CMR) XC2 */
+#define ENETRG (0x1u << 12) /**< \brief (TC_CMR) External Event Trigger Enable */
+#define WAVSEL_UP (0x0u << 13) /**< \brief (TC_CMR) UP mode without automatic trigger on RC Compare */
+#define WAVSEL_UPDOWN (0x1u << 13) /**< \brief (TC_CMR) UPDOWN mode without automatic trigger on RC Compare */
+#define WAVSEL_UP_RC (0x2u << 13) /**< \brief (TC_CMR) UP mode with automatic trigger on RC Compare */
+#define WAVSEL_UPDOWN_RC (0x3u << 13) /**< \brief (TC_CMR) UPDOWN mode with automatic trigger on RC Compare */
+#define ACPA_NONE (0x0u << 16) /**< \brief (TC_CMR) None */
+#define ACPA_SET (0x1u << 16) /**< \brief (TC_CMR) Set */
+#define ACPA_CLEAR (0x2u << 16) /**< \brief (TC_CMR) Clear */
+#define ACPA_TOGGLE (0x3u << 16) /**< \brief (TC_CMR) Toggle */
+#define   ACPC_NONE (0x0u << 18) /**< \brief (TC_CMR) None */
+#define   ACPC_SET (0x1u << 18) /**< \brief (TC_CMR) Set */
+#define   ACPC_CLEAR (0x2u << 18) /**< \brief (TC_CMR) Clear */
+#define   ACPC_TOGGLE (0x3u << 18) /**< \brief (TC_CMR) Toggle */
+#define   AEEVT_NONE (0x0u << 20) /**< \brief (TC_CMR) None */
+#define   AEEVT_SET (0x1u << 20) /**< \brief (TC_CMR) Set */
+#define   AEEVT_CLEAR (0x2u << 20) /**< \brief (TC_CMR) Clear */
+#define   AEEVT_TOGGLE (0x3u << 20) /**< \brief (TC_CMR) Toggle */
+#define   ASWTRG_NONE (0x0u << 22) /**< \brief (TC_CMR) None */
+#define   ASWTRG_SET (0x1u << 22) /**< \brief (TC_CMR) Set */
+#define   ASWTRG_CLEAR (0x2u << 22) /**< \brief (TC_CMR) Clear */
+#define   ASWTRG_TOGGLE (0x3u << 22) /**< \brief (TC_CMR) Toggle */
+#define   BCPB_NONE (0x0u << 24) /**< \brief (TC_CMR) None */
+#define   BCPB_SET (0x1u << 24) /**< \brief (TC_CMR) Set */
+#define   BCPB_CLEAR (0x2u << 24) /**< \brief (TC_CMR) Clear */
+#define   BCPB_TOGGLE (0x3u << 24) /**< \brief (TC_CMR) Toggle */
+#define   BCPC_NONE (0x0u << 26) /**< \brief (TC_CMR) None */
+#define   BCPC_SET (0x1u << 26) /**< \brief (TC_CMR) Set */
+#define   BCPC_CLEAR (0x2u << 26) /**< \brief (TC_CMR) Clear */
+#define   BCPC_TOGGLE (0x3u << 26) /**< \brief (TC_CMR) Toggle */
+#define   BEEVT_NONE (0x0u << 28) /**< \brief (TC_CMR) None */
+#define   BEEVT_SET (0x1u << 28) /**< \brief (TC_CMR) Set */
+#define   BEEVT_CLEAR (0x2u << 28) /**< \brief (TC_CMR) Clear */
+#define   BEEVT_TOGGLE (0x3u << 28) /**< \brief (TC_CMR) Toggle */
+#define   BSWTRG_NONE (0x0u << 30) /**< \brief (TC_CMR) None */
+#define   BSWTRG_SET (0x1u << 30) /**< \brief (TC_CMR) Set */
+#define   BSWTRG_CLEAR (0x2u << 30) /**< \brief (TC_CMR) Clear */
+#define   BSWTRG_TOGGLE (0x3u << 30) /**< \brief (TC_CMR) Toggle */
 /* -------- TC_SMMR : (TC Offset: N/A) Stepper Motor Mode Register -------- */
 #define TC_SMMR_GCEN (0x1u << 0) /**< \brief (TC_SMMR) Gray Count Enable */
 #define TC_SMMR_DOWN (0x1u << 1) /**< \brief (TC_SMMR) DOWN Count */

@@ -30,6 +30,8 @@ static RequestQuery qcom(&com1);
 
 static byte stateMan = 0;
 
+static u32 pt = 0;
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void CallBackReqMan(REQ *q)
@@ -38,7 +40,8 @@ void CallBackReqMan(REQ *q)
 	{
 		mtb.data = rspManData+1;
 		mtb.len = (q->rb.len-2) >> 1;
-		stateMan = (SendManData(&mtb)) ? 3 : 0;
+		pt = GetRTT();
+		stateMan = 3;
 	}
 	else
 	{
@@ -118,14 +121,15 @@ static void UpdateMan()
 
 				if (!parityErr && (reqManData[1] & manReqMask) == manReqWord)
 				{
-					if ((reqManData[1] & 0xFF) == 0x80 && reqManData[2] == 2 && reqManData[3] < 4)
+					if ((reqManData[1] & 0xFF) == 0x80 && reqManData[2] == 2 && reqManData[3] < 5)
 					{
 						SetTrmBoudRate(reqManData[3]);
 
 						rspManData[1] = manReqWord|0x80;
 						mtb.data = rspManData+1;
 						mtb.len = 1;
-						stateMan = (SendManData(&mtb)) ? 3 : 0;
+						pt = GetRTT();
+						stateMan = 3;
 					}
 					else
 					{
@@ -146,6 +150,15 @@ static void UpdateMan()
 			break;
 
 		case 3:
+
+			if ((GetRTT() - pt) >= US2CLK(500))
+			{
+				stateMan = (SendManData(&mtb)) ? 4 : 0;
+			};
+
+			break;
+
+		case 4:
 
 			if (mtb.ready)
 			{

@@ -12,7 +12,7 @@ u32 fps = 0;
 
 extern byte Heap_Mem[10];
 
-//byte data[1500];
+u16 manData[10];
 
 u32 readsFlash = 0;
 
@@ -88,11 +88,23 @@ int main()
 	static RTM32 rtm;
 	static RTM32 rtm2;
 
+	static MTB mtb;
+
+
+	mtb.data = manData;
+	mtb.len = 5;
+//	SendManData(&mtb);
+
 
 //	__breakpoint(0);
 
+	HW::PIOB->PER = 1<<13;
+	HW::PIOB->OER = 1<<13;
+
 	while(1)
 	{
+		HW::PIOB->SODR = 1<<13;
+
 		static byte i = 0;
 
 		#define CALL(p) case (__LINE__-S): p; break;
@@ -109,12 +121,23 @@ int main()
 
 		#undef CALL
 
+	
+		HW::PIOB->CODR = 1<<13;
+		
 		f++;
+
+			//if (mtb.ready)
+			//{
+			//	mtb.data = manData;
+			//	mtb.len = 5;
+			//	SendManData(&mtb);
+			//};
 
 		if (rtm.Check(MS2RT(1000)))
 		{
 			fps = f;
 			f = 0;
+
 		};
 
 //		__asm { WFE };

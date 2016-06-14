@@ -12,13 +12,81 @@ u32 fps = 0;
 
 extern byte Heap_Mem[10];
 
-u16 manData[10];
+u32 manRcvData[10];
+u16 manTrmData[50];
 
 u32 readsFlash = 0;
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateMan()
+{
+	static MTB mtb;
+	static MRB mrb;
+
+	static byte i = 0;
+
+	static RTM32 tm;
+
+	switch (i)
+	{
+		case 0:
+
+			mrb.data = manRcvData;
+			mrb.maxLen = 1;
+			RcvManData(&mrb);
+
+			i++;
+
+			break;
+
+		case 1:
+
+			if (mrb.ready)
+			{
+				if (mrb.OK && mrb.len > 0)
+				{
+					tm.Reset();
+
+					i++;
+				}
+				else
+				{
+					i = 0;
+				};
+			};
+
+			break;
+
+		case 2:
+
+			if (tm.Check(US2RT(100)))
+			{
+				manTrmData[0] = 0x3A00;
+
+				mtb.data = manTrmData;
+				mtb.len = 22;
+				SendManData(&mtb);
+
+				i++;
+			};
+
+			break;
+
+		case 3:
+
+			if (mtb.ready)
+			{
+				i = 0;
+			};
+
+			break;
+
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 static void UpdateWriteFlash()
 {
 	static FLWB *fb = 0;
@@ -88,12 +156,6 @@ int main()
 	static RTM32 rtm;
 	static RTM32 rtm2;
 
-	static MTB mtb;
-
-
-	mtb.data = manData;
-	mtb.len = 5;
-//	SendManData(&mtb);
 
 
 //	__breakpoint(0);
@@ -115,6 +177,7 @@ int main()
 			CALL( UpdateEMAC();		);
 			CALL( UpdateTraps();	);
 			CALL( NAND_Idle();		);
+			CALL( UpdateMan();		);
 		};
 
 		i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -125,13 +188,6 @@ int main()
 		HW::PIOB->CODR = 1<<13;
 		
 		f++;
-
-			//if (mtb.ready)
-			//{
-			//	mtb.data = manData;
-			//	mtb.len = 5;
-			//	SendManData(&mtb);
-			//};
 
 		if (rtm.Check(MS2RT(1000)))
 		{

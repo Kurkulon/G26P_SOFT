@@ -15,8 +15,115 @@ extern byte Heap_Mem[10];
 u32 manRcvData[10];
 u16 manTrmData[50];
 
+u16 rcvBuf[10];
+
 u32 readsFlash = 0;
 
+static const u16 manReqWord = 0x3A00;
+static const u16 manReqMask = 0xFF00;
+
+
+static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
+
+static bool ReqMan00(u16 *buf, u16 len, MTB* mtb);
+static bool ReqMan01(u16 *buf, u16 len, MTB* mtb);
+static bool ReqMan02(u16 *buf, u16 len, MTB* mtb);
+static bool ReqMan03(u16 *buf, u16 len, MTB* mtb);
+static bool ReqMan04(u16 *buf, u16 len, MTB* mtb);
+
+typedef bool (*RMF)(u16 *buf, u16 len, MTB* mtb);
+
+static const RMF ReqManTbl[5] = {ReqMan00, ReqMan01, ReqMan02, ReqMan03, ReqMan04};
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 0;
+	manTrmData[1] = 0xEC00;
+
+	mtb->data = manTrmData;
+	mtb->len = 22;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan01(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 1;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan02(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 2;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan03(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 3;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan04(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len < 5 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 4;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	bool res = false;
+
+	byte i = buf[0]&0xFF;
+
+	if (i < 5)
+	{
+		res = ReqManTbl[i](buf, len, mtb);
+	};
+
+	return res;
+}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -29,12 +136,18 @@ static void UpdateMan()
 
 	static RTM32 tm;
 
+	bool parityErr;
+	u32 *s;
+	u16 *d;
+
+	u16 c;
+
 	switch (i)
 	{
 		case 0:
 
 			mrb.data = manRcvData;
-			mrb.maxLen = 1;
+			mrb.maxLen = 5;
 			RcvManData(&mrb);
 
 			i++;
@@ -47,9 +160,37 @@ static void UpdateMan()
 			{
 				if (mrb.OK && mrb.len > 0)
 				{
-					tm.Reset();
+					parityErr = false;
+					s = mrb.data;
+					d = rcvBuf;
+					c = mrb.len;
 
-					i++;
+					while (c > 0)
+					{
+						parityErr |= (*s ^ CheckParity(*s >> 1))&1 != 0;
+
+						*d++ = *s++ >> 1;
+						c--;
+					};
+
+					if (!parityErr && (rcvBuf[0] & manReqMask) == manReqWord)
+					{
+						if (RequestMan(rcvBuf, mrb.len, &mtb))
+						{
+							tm.Reset();
+
+							i++;
+						}
+						else
+						{
+							i = 0;
+						};
+					}
+					else
+					{
+						i = 0;
+					};
+
 				}
 				else
 				{
@@ -63,10 +204,6 @@ static void UpdateMan()
 
 			if (tm.Check(US2RT(100)))
 			{
-				manTrmData[0] = 0x3A00;
-
-				mtb.data = manTrmData;
-				mtb.len = 22;
 				SendManData(&mtb);
 
 				i++;

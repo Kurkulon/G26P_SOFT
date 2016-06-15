@@ -71,8 +71,8 @@ static void InitVectorTable()
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline void ManDisable()	{ HW::PIOB->ODSR = 0x06;} // 0110  
-inline void ManOne()		{ HW::PIOB->ODSR = 0x0C;} // 1100
-inline void ManZero()		{ HW::PIOB->ODSR = 0x03;} // 0011
+inline void ManOne()		{ HW::PIOB->ODSR = 0x06; __nop(); __nop(); __nop(); HW::PIOB->ODSR = 0x03;} // 1100
+inline void ManZero()		{ HW::PIOB->ODSR = 0x06; __nop(); __nop(); __nop(); HW::PIOB->ODSR = 0x0C;} // 0011
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -102,15 +102,16 @@ static bool rcvBusy = false;
 byte stateManRcvr = 0;
 
 const u16 rcvPeriod = BOUD2CLK(20833);
+const u16 rcvHalfPeriod = rcvPeriod/2;
 const u16 rcvQuartPeriod = rcvPeriod/4;
 const u16 rcvSyncPulseMin = rcvPeriod * 1.4;
 const u16 rcvSyncPulseMax = rcvPeriod * 1.6;
-const u16 rcvSyncHalf = rcvSyncPulseMax + rcvPeriod/2;
+const u16 rcvSyncHalf = rcvSyncPulseMax + rcvHalfPeriod;
 const u16 rcvPeriodMin = rcvPeriod * 0.9;
 const u16 rcvPeriodMax = rcvPeriod * 1.2;
 
 static byte rcvSyncState = 0;
-static bool rcvData = false;
+static byte rcvDataState = 0;
 
 static u32* rcvManPtr = 0;
 static u16 rcvManCount = 0;
@@ -126,10 +127,10 @@ static __irq void ManRcvSync();
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //bool trmStartCmd = false;
-bool trmStartData = false;
+//bool trmStartData = false;
 
-u32 icount = 0;
-static byte ib;
+//u32 icount = 0;
+//static byte ib;
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -144,7 +145,6 @@ static __irq void ManTrmIRQ()
 	static u16 *data = 0;
 	static u16 len = 0;
 
-//	*pPORTFIO_SET = 1<<2;
 
 	switch (stateManTrans)
 	{
@@ -201,6 +201,8 @@ static __irq void ManTrmIRQ()
 
 		case 4: // 1-st half bit wait
 
+//			HW::PIOE->SODR = 1;
+
 			if (tw & 0x10000) ManOne(); else ManZero();
 
 			count--;
@@ -245,7 +247,7 @@ static __irq void ManTrmIRQ()
 
 	u32 tmp = ManTmr.SR;
 
-//	*pPORTFIO_CLEAR = 1<<2;
+//	HW::PIOE->CODR = 1;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -262,6 +264,8 @@ bool SendManData(MTB *mtb)
 	manTB = mtb;
 
 	stateManTrans = 0;
+
+	HW::PIOE->IDR = 1<<3;
 
 	VectorTableExt[HW::PID::TC1_I] = ManTrmIRQ;
 	CM4::NVIC->ICPR[0] = HW::PID::TC1_M;
@@ -331,6 +335,8 @@ static __irq void ManRcvIRQ()
 
 			stateManRcvr++;
 
+			ManTmr.IDR = CPCS;
+
 			break;
 
 		case 1:
@@ -350,16 +356,26 @@ static __irq void ManRcvIRQ()
 				}
 				else
 				{
-					stateManRcvr = 0;
+					stateManRcvr++;
 
 					VectorTableExt[HW::PID::PIOE_I] = WaitManDataSync;
+
+					ManTmr.CCR = CLKEN|SWTRG;
+					ManTmr.RC = rcvSyncHalf;
+					rcvDataState = 0;
 				};
 			};
 
 			break;
+
+		case 2:
+
+			ManRcvEnd(true);
+
+			break;
+
 	};
 
-	ManTmr.IDR = CPCS;
 
 	u32 tmp = ManTmr.SR;
 
@@ -416,28 +432,61 @@ static __irq void WaitManCmdSync()
 
 static __irq void WaitManDataSync()
 {
-//	HW::PIOE->SODR = 4;
+	HW::PIOE->SODR = 1;
 
 	u32 t = ManTmr.CV;
 
-	switch (rcvSyncState)
+	switch (rcvDataState)
 	{
 		case 0:
 
 			if (HW::PIOE->PDSR & 8)
 			{
-				ManTmr.CCR = CLKEN|SWTRG;
-				rcvSyncState++;
+				if (t < rcvHalfPeriod)
+				{
+					ManTmr.CCR = CLKEN|SWTRG;
+					rcvDataState++;
+				}
+				else
+				{
+					ManRcvEnd(true);
+				};
+			}
+			else
+			{
+				if (t > rcvSyncPulseMin && t < rcvSyncHalf)
+				{
+					ManTmr.CCR = CLKEN|SWTRG;
+					rcvDataState += 2;
+				}
+				else
+				{
+					ManRcvEnd(true);
+				};
+
 			};
 
 			break;
 
 		case 1:
 
+			if (t > rcvSyncPulseMin && t < rcvSyncPulseMax)
+			{
+				ManTmr.CCR = CLKEN|SWTRG;
+				rcvDataState++;
+			}
+			else
+			{
+				ManRcvEnd(true);
+			};
+
+			break;
+
+		case 2:
+
 			if (t < rcvSyncPulseMin || t > rcvSyncHalf)
 			{
-				rcvSyncState = 0;
-				ManTmr.CCR = CLKDIS|SWTRG;
+				ManRcvEnd(true);
 			}
 			else if (t > rcvSyncPulseMax)
 			{
@@ -445,9 +494,13 @@ static __irq void WaitManDataSync()
 
 				t = ManTmr.SR;
 
+				stateManRcvr = 0;
+
 				ManTmr.CCR = CLKEN|SWTRG;
 				ManTmr.IER = CPCS;
-				rcvSyncState = 0;
+				ManTmr.RC = rcvQuartPeriod;
+
+				rcvDataState = 0;
 			};
 
 			break;
@@ -455,7 +508,7 @@ static __irq void WaitManDataSync()
 
 	t = HW::PIOE->ISR;
 
-//	HW::PIOE->CODR = 4;
+	HW::PIOE->CODR = 1;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

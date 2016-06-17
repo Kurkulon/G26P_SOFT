@@ -233,7 +233,7 @@ static void InitNetAdress()
 
 	u32 t = GetRTT();
 
-	while ((GetRTT()-t) < 1000000)
+	while ((GetRTT()-t) < 10000000)
 	{
 		f.d += (i32)ReadADC() - (i32)f.w[1];
 	};

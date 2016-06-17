@@ -140,7 +140,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 	rb.maxLen = sizeof(rsp);
 	rb.recieved = false;
 	
-	req.adr = 8;//adr;
+	req.adr = 1;//adr;
 	req.func = 2;
 	req.n = n;
 	req.chnl = chnl;
@@ -939,7 +939,7 @@ static void InitNumStations()
 		UpdateADC();
 	};
 
-	numStations = resistValue / 1000;
+	numStations = 8;//resistValue / 1000;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

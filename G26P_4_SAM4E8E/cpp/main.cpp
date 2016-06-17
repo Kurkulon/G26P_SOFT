@@ -100,6 +100,7 @@ static bool ReqMan04(u16 *buf, u16 len, MTB* mtb)
 	if (buf == 0 || len < 5 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 4;
+	manTrmData[1] = 0;
 
 	mtb->data = manTrmData;
 	mtb->len = 1;
@@ -202,7 +203,7 @@ static void UpdateMan()
 
 		case 2:
 
-			if (tm.Check(US2RT(100)))
+			if (tm.Check(US2RT(500)))
 			{
 				SendManData(&mtb);
 

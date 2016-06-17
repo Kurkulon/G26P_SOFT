@@ -228,6 +228,13 @@ static __irq void ManTrmIRQ()
 
 		case 6:
 
+//			ManOne();
+			stateManTrans++;
+
+			break;
+
+		case 7:
+
 			ManDisable();
 			stateManTrans = 0;
 

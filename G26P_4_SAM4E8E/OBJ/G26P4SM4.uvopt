@@ -165,9 +165,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>48</LineNumber>
+          <LineNumber>202</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>4204786</Address>
+          <Address>4205466</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -176,14 +176,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\main.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26P4SM4\cpp/main.cpp\48</Expression>
+          <Expression>\\G26P4SM4\cpp/main.cpp\202</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>81</LineNumber>
+          <LineNumber>207</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>4204886</Address>
+          <Address>4205474</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -192,30 +192,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\main.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26P4SM4\cpp/main.cpp\81</Expression>
+          <Expression>\\G26P4SM4\cpp/main.cpp\207</Expression>
         </Bp>
         <Bp>
           <Number>2</Number>
           <Type>0</Type>
-          <LineNumber>149</LineNumber>
+          <LineNumber>213</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>4203208</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\hardware.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\G26P4SM4\cpp/hardware.cpp\149</Expression>
-        </Bp>
-        <Bp>
-          <Number>3</Number>
-          <Type>0</Type>
-          <LineNumber>40</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>4204768</Address>
+          <Address>4205482</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -224,7 +208,7 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\main.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26P4SM4\cpp/main.cpp\40</Expression>
+          <Expression>\\G26P4SM4\cpp/main.cpp\213</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>

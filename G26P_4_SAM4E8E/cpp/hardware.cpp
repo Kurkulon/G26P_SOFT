@@ -104,10 +104,11 @@ byte stateManRcvr = 0;
 const u16 rcvPeriod = BOUD2CLK(20833);
 const u16 rcvHalfPeriod = rcvPeriod/2;
 const u16 rcvQuartPeriod = rcvPeriod/4;
-const u16 rcvSyncPulseMin = rcvPeriod * 1.4;
-const u16 rcvSyncPulseMax = rcvPeriod * 1.6;
+const u16 rcvSyncPulse = rcvPeriod * 1.5;
+const u16 rcvSyncPulseMin = rcvSyncPulse * 0.9;
+const u16 rcvSyncPulseMax = rcvSyncPulse * 1.2;
 const u16 rcvSyncHalf = rcvSyncPulseMax + rcvHalfPeriod;
-const u16 rcvPeriodMin = rcvPeriod * 0.9;
+const u16 rcvPeriodMin = rcvPeriod * 0.8;
 const u16 rcvPeriodMax = rcvPeriod * 1.2;
 
 static byte rcvSyncState = 0;
@@ -393,6 +394,7 @@ static __irq void ManRcvIRQ()
 
 static __irq void WaitManCmdSync()
 {
+	
 	u32 t = ManTmr.CV;
 
 	switch (rcvSyncState)
@@ -409,14 +411,17 @@ static __irq void WaitManCmdSync()
 
 		case 1:
 
+	HW::PIOE->SODR = 1;
+
 			if (t < rcvSyncPulseMin || t > rcvSyncHalf)
 			{
+	HW::PIOE->SODR = 2;
+
 				rcvSyncState = 0;
 				ManTmr.CCR = CLKDIS|SWTRG;
 			}
 			else if (t > rcvSyncPulseMax)
 			{
-				HW::PIOE->SODR = 1;
 
 				VectorTableExt[HW::PID::PIOE_I] = ManRcvSync;
 
@@ -432,14 +437,14 @@ static __irq void WaitManCmdSync()
 
 	t = HW::PIOE->ISR;
 
-	HW::PIOE->CODR = 1;
+	HW::PIOE->CODR = 3;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static __irq void WaitManDataSync()
 {
-	HW::PIOE->SODR = 1;
+//	HW::PIOE->SODR = 1;
 
 	u32 t = ManTmr.CV;
 
@@ -515,7 +520,7 @@ static __irq void WaitManDataSync()
 
 	t = HW::PIOE->ISR;
 
-	HW::PIOE->CODR = 1;
+//	HW::PIOE->CODR = 1;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -531,7 +536,7 @@ static __irq void ManRcvSync()
 	}
 	else if (t > rcvPeriodMin)
 	{
-		HW::PIOE->SODR = 2;
+//		HW::PIOE->SODR = 2;
 
 		t = ManTmr.SR;
 
@@ -541,7 +546,7 @@ static __irq void ManRcvSync()
 
 	t = HW::PIOE->ISR;
 
-	HW::PIOE->CODR = 2;
+//	HW::PIOE->CODR = 2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -572,10 +577,14 @@ static void InitManRecieve()
 
 bool RcvManData(MRB *mrb)
 {
+//	HW::PIOE->SODR = 1;
+
 	if (rcvBusy || trmBusy || mrb == 0 || mrb->data == 0 || mrb->maxLen == 0)
 	{
 		return false;
 	};
+
+//	HW::PIOE->SODR = 2;
 
 	ManDisable();
 
@@ -597,6 +606,8 @@ bool RcvManData(MRB *mrb)
 
 	HW::PIOE->IER = 1<<3;
 	HW::PIOE->IFER = 1<<3;
+
+//	tmp = HW::PIOE->ISR;
 
 	ManTmr.CCR = CLKDIS|SWTRG;
 	ManTmr.IDR = CPCS;

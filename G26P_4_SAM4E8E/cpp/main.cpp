@@ -45,6 +45,8 @@ static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
 	manTrmData[0] = (manReqWord & manReqMask) | 0;
 	manTrmData[1] = 0xEC00;
 
+	GetTime((RTC*)(&manTrmData[18]));
+
 	mtb->data = manTrmData;
 	mtb->len = 22;
 
@@ -58,9 +60,12 @@ static bool ReqMan01(u16 *buf, u16 len, MTB* mtb)
 	if (buf == 0 || len == 0 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 1;
+	manTrmData[1] = 0xEC00;
+
+	GetTime((RTC*)(&manTrmData[18]));
 
 	mtb->data = manTrmData;
-	mtb->len = 1;
+	mtb->len = 22;
 
 	return true;
 }
@@ -72,9 +77,12 @@ static bool ReqMan02(u16 *buf, u16 len, MTB* mtb)
 	if (buf == 0 || len == 0 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 2;
+	manTrmData[1] = 0xEC00;
+
+	GetTime((RTC*)(&manTrmData[18]));
 
 	mtb->data = manTrmData;
-	mtb->len = 1;
+	mtb->len = 22;
 
 	return true;
 }
@@ -86,9 +94,12 @@ static bool ReqMan03(u16 *buf, u16 len, MTB* mtb)
 	if (buf == 0 || len == 0 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 3;
+	manTrmData[1] = 0xEC00;
+
+	GetTime((RTC*)(&manTrmData[18]));
 
 	mtb->data = manTrmData;
-	mtb->len = 1;
+	mtb->len = 22;
 
 	return true;
 }
@@ -100,10 +111,14 @@ static bool ReqMan04(u16 *buf, u16 len, MTB* mtb)
 	if (buf == 0 || len < 5 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 4;
-	manTrmData[1] = 0;
+	manTrmData[1] = 0xEC00;
+
+	SetTime(*(RTC*)(&buf[1]));
+
+	GetTime((RTC*)(&manTrmData[18]));
 
 	mtb->data = manTrmData;
-	mtb->len = 1;
+	mtb->len = 22;
 
 	return true;
 }
@@ -159,6 +174,8 @@ static void UpdateMan()
 
 			if (mrb.ready)
 			{
+				HW::PIOE->CODR = 3;
+
 				if (mrb.OK && mrb.len > 0)
 				{
 					parityErr = false;

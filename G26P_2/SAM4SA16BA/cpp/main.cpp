@@ -1022,7 +1022,7 @@ static void MainMode()
 
 		case 4:
 
-			if (rt.Check(MS2RT(1)))
+			if (rt.Check(MS2RT(1000)))
 			{
 				fireType = (fireType+1) % 3; 
 

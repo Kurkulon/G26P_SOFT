@@ -70,9 +70,12 @@ extern "C" void SystemInit()
 
 	SYSCON->SYSAHBCLKCTRL |= CLK::SWM_M | CLK::IOCON_M | CLK::GPIO_M | HW::CLK::MRT_M | HW::CLK::UART0_M | HW::CLK::CRC_M;
 
-	GPIO->DIR0 |= (1<<11)|(1<<17)|(1<<0)|(1<<7)|(1<<8);
-	GPIO->CLR0 = 1<<11;
-	GPIO->SET0 = 1<<8;
+	GPIO->CLR0 = (1<<17)|(1<<4);
+	GPIO->SET0 = (1<<13)|(1<<12);
+
+	GPIO->DIR0 |= (1<<11)|(1<<17)|(1<<0)|(1<<7)|(1<<8)|(1<<13)|(1<<12)|(1<<4);
+	GPIO->CLR0 = (1<<11)|(1<<17)|(1<<4);
+	GPIO->SET0 = (1<<8)|(1<<13)|(1<<12);
 
 
 	IOCON->PIO0_1.B.MODE = 0;// &= ~(0x3 << 3);
@@ -200,8 +203,8 @@ static void FireXX()
 
 static void FireYY()
 {
-	HW::SWM->CTOUT_0 = 12;
-	HW::SWM->CTOUT_1 = 4;
+	HW::SWM->CTOUT_0 = 4;
+	HW::SWM->CTOUT_1 = 12;
 
 	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 }
@@ -250,8 +253,8 @@ static void InitFire()
 
 	SYSCON->SYSAHBCLKCTRL |= CLK::SCT_M;
 	GPIO->DIR0 |= (1<<13)|(1<<17)|(1<<12)|(1<<4);
-	GPIO->CLR0 = (1<<17)|(1<<12);
-	GPIO->SET0 = (1<<13)|(1<<4);
+	GPIO->CLR0 = (1<<17)|(1<<4);
+	GPIO->SET0 = (1<<13)|(1<<12);
 //	SWM->PINASSIGN.U0_TXD = 0;
 
 	SCT->STATE_L = 0;

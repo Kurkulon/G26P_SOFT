@@ -140,7 +140,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 	rb.maxLen = sizeof(rsp);
 	rb.recieved = false;
 	
-	req.adr = 1;//adr;
+	req.adr = adr+1;
 	req.func = 2;
 	req.n = n;
 	req.chnl = chnl;
@@ -939,7 +939,7 @@ static void InitNumStations()
 		UpdateADC();
 	};
 
-	numStations = 8;//resistValue / 1000;
+	numStations = resistValue / 1000;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -999,7 +999,7 @@ static void MainMode()
 
 				qmem.Add(rm);
 
-				if (chnl < 3)
+				if (chnl < 0)
 				{
 					chnl += 1;
 
@@ -1010,17 +1010,28 @@ static void MainMode()
 					rcv += 1;
 					chnl = 0;
 
-					mainModeState = 2;
+					mainModeState++;
 				}
 				else
 				{
-					mainModeState++;
+					mainModeState = 5;
 				};
+
+				rt.Reset();
 			};
 
 			break;
 
 		case 4:
+
+			if (rt.Check(US2RT(1)))
+			{
+				mainModeState = 2;
+			};
+
+			break;
+
+		case 5:
 
 			if (rt.Check(MS2RT(1000)))
 			{
@@ -1028,10 +1039,6 @@ static void MainMode()
 
 				mainModeState = 0;
 			};
-
-			break;
-
-		case 5:
 
 			break;
 

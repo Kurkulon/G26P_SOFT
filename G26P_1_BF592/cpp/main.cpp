@@ -41,6 +41,7 @@ struct Request
 		struct  { byte n; word crc; } f1;  // старт оцифровки
 		struct  { byte n; byte chnl; word crc; } f2;  // чтение вектора
 		struct  { byte dt[3]; byte ka[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
+		struct  { byte n; byte dt; byte ka; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
 	};
 };
 
@@ -56,6 +57,7 @@ struct Response
 		struct  { word crc; } f1;  // старт оцифровки
 		struct  { byte n; byte chnl; byte count[4]; byte time; byte gain; byte delay; byte filtr; u16 data[500]; word crc; } f2;  // чтение вектора
 		struct  { word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
+		struct  { word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
 	};
 };
 
@@ -65,8 +67,6 @@ bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 {
 	const Request *req = (Request*)rb->data;
 	static Response rsp;
-
-	if (req->adr != 0 && req->adr != netAdr) return false;
 
 	byte n = req->f1.n;
 	if (n > 2) n = 2;
@@ -88,7 +88,10 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 	static Response rsp;
 
-	if (req->adr == 0 || req->adr != netAdr || req->f2.n > 2) return false;
+	if (req->f2.n > 2)
+	{
+		return false;
+	};
 
 	byte n = req->f2.n;
 	byte ch = (req->f2.chnl>>1)&1;
@@ -123,8 +126,6 @@ bool RequestFunc03(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 	const Request *req = (Request*)rb->data;
 	static Response rsp;
 
-	if (req->adr != 0 && req->adr != netAdr) return false;
-
 	sampleTime[0] = req->f3.dt[0];
 	sampleTime[1] = req->f3.dt[1];
 	sampleTime[2] = req->f3.dt[2];
@@ -149,14 +150,19 @@ bool RequestFunc03(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 bool RequestFunc(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
 {
-	if (rb == 0 || rb->len < 2) return false;
+	if (rb == 0 || rb->len < 2 || rb->len > sizeof(Request)) return false;
+
+	const Request *req = (Request*)rb->data;
+
+	if (req->adr != 0 && req->adr != netAdr) return false;
 
 	bool crcok = (GetCRC16(rb->data, rb->len) == 0);
 	bool result = false;
 
-	const Request *req = (Request*)rb->data;
-
-	if (!crcok && req->func != 1) return false;
+	if (!crcok && req->func != 1)
+	{
+		return false;
+	};
 
 	switch(req->func)
 	{

@@ -92,7 +92,7 @@ static bool trmBusy = false;
 
 void SetTrmBoudRate(byte i)
 {
-	trmHalfPeriod = manboud[i&3];
+	trmHalfPeriod = manboud[i&3]/2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -444,7 +444,7 @@ static __irq void WaitManCmdSync()
 
 static __irq void WaitManDataSync()
 {
-//	HW::PIOE->SODR = 1;
+	HW::PIOE->SODR = 1;
 
 	u32 t = ManTmr.CV;
 
@@ -482,6 +482,7 @@ static __irq void WaitManDataSync()
 
 		case 1:
 
+
 			if (t > rcvSyncPulseMin && t < rcvSyncPulseMax)
 			{
 				ManTmr.CCR = CLKEN|SWTRG;
@@ -489,6 +490,7 @@ static __irq void WaitManDataSync()
 			}
 			else
 			{
+			HW::PIOE->SODR = 2;
 				ManRcvEnd(true);
 			};
 
@@ -520,7 +522,7 @@ static __irq void WaitManDataSync()
 
 	t = HW::PIOE->ISR;
 
-//	HW::PIOE->CODR = 1;
+	HW::PIOE->CODR = 3;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -8,9 +8,10 @@ static ComPort com;
 //
 //static byte data[256*48];
 
-static u16 spd[3][2][512*2];
+static u16 spd[2][512*2];
 static byte spTime[3];
 static byte spGain[3];
+
 
 //static u16 spd2[512*2];
 //
@@ -27,6 +28,11 @@ static bool ready1 = false, ready2 = false;
 static byte sampleTime[3] = { 19, 19, 9};
 static byte gain[3] = { 3, 3, 3 };
 static byte netAdr = 1;
+
+static U32u fadc = 0;
+
+static byte sportState = 0;
+static byte fireN = 0;
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -63,6 +69,10 @@ struct Response
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static Response rsp02[3][4];
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
 {
 	const Request *req = (Request*)rb->data;
@@ -75,7 +85,10 @@ bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 	spGain[n] = gain[n];
 
 	SetGain(spGain[n]);
-	SyncReadSPORT(spd[n][0], spd[n][1], 2000, 2000, spTime[n], &ready1, &ready2);
+	SyncReadSPORT(spd[0], spd[1], 2000, 2000, spTime[n], &ready1, &ready2);
+
+	fireN = n;
+	sportState = 0;
 
 	return false;
 }
@@ -86,8 +99,6 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 {
 	const Request *req = (Request*)rb->data;
 
-	static Response rsp;
-
 	if (req->f2.n > 2)
 	{
 		return false;
@@ -95,23 +106,24 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 	byte n = req->f2.n;
 	byte ch = (req->f2.chnl>>1)&1;
-	byte cl = req->f2.chnl&1;
 
-	rsp.adr = req->adr;
-	rsp.func = req->func;
-	rsp.f2.n = n;
-	rsp.f2.chnl = req->f2.chnl;
-	rsp.f2.time = spTime[n];
-	rsp.f2.gain = spGain[n];
-	rsp.f2.delay = 0;
-	rsp.f2.filtr = 0;
+	Response &rsp = rsp02[n][ch];
 
-	for (u16 i = 0; i < 500; i++)
-	{
-		rsp.f2.data[i] = spd[n][ch][i*2+cl];
-	};
+	//rsp.adr = req->adr;
+	//rsp.func = req->func;
+	//rsp.f2.n = n;
+	//rsp.f2.chnl = req->f2.chnl;
+	//rsp.f2.time = spTime[n];
+	//rsp.f2.gain = spGain[n];
+	//rsp.f2.delay = 0;
+	//rsp.f2.filtr = 0;
 
-	rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp.f2));
+	//for (u16 i = 0; i < 500; i++)
+	//{
+	//	rsp.f2.data[i] = spd[ch][i*2+cl];
+	//};
+
+	//rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp.f2));
 
 	wb->data = &rsp;
 	wb->len = sizeof(rsp.f2)+2;
@@ -231,44 +243,132 @@ static void UpdateBlackFin()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void InitNetAdress()
+static void UpdateSport()
 {
-	U32u f;
-	
-	f.w[1] = ReadADC();
+	static byte n = 0;
+	static byte chnl = 0;
 
+	byte ch = 0;
+	byte cl = 0;
+
+
+	switch(sportState)
+	{
+		case 0:
+			
+			if (ready1 && ready2)
+			{
+				n = fireN;
+				chnl = 0;
+
+				sportState++;
+			};
+
+			break;
+
+		case 1:
+
+			rsp02[n][chnl].adr = netAdr;
+			rsp02[n][chnl].func = 2;
+			rsp02[n][chnl].f2.n = n;
+			rsp02[n][chnl].f2.chnl = chnl;
+			rsp02[n][chnl].f2.time = spTime[n];
+			rsp02[n][chnl].f2.gain = spGain[n];
+			rsp02[n][chnl].f2.delay = 0;
+			rsp02[n][chnl].f2.filtr = 0;
+
+			ch = chnl>>1;
+			cl = chnl&1;
+
+			for (u16 i = 0; i < 500; i++)
+			{
+				rsp02[n][chnl].f2.data[i] = spd[ch][i*2+cl];
+			};
+
+			sportState++;
+
+			break;
+
+		case 2:
+
+			rsp02[n][chnl].f2.crc = GetCRC16(&rsp02[n][chnl], sizeof(rsp02[n][chnl].f2));
+
+			if (chnl < 3)
+			{
+				chnl += 1;
+				sportState = 1;
+			}
+			else
+			{
+				sportState++;
+			};
+
+			break;
+
+		case 3:
+
+			break;
+
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateNetAdr()
+{
+	netAdr = (GetADC() / 398) + 1;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitNetAdr()
+{
 	u32 t = GetRTT();
 
 	while ((GetRTT()-t) < 10000000)
 	{
-		f.d += (i32)ReadADC() - (i32)f.w[1];
+		UpdateHardware();
 	};
 
-	netAdr = (f.w[1] / 398) + 1;
+	UpdateNetAdr();
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void main( void )
 {
-	static byte s = 0;
+//	static byte s = 0;
 
-	static u32 pt = 0;
+//	static u32 pt = 0;
 
 	InitHardware();
 
 	com.Connect(6250000, 0);
 
-	InitNetAdress();
+	InitNetAdr();
 
 	while (1)
 	{
 		*pPORTFIO_TOGGLE = 1<<5;
 
-		UpdateBlackFin();
+		static byte i = 0;
+
+		#define CALL(p) case (__LINE__-S): p; break;
+
+		enum C { S = (__LINE__+3) };
+		switch(i++)
+		{
+			CALL( UpdateBlackFin()	);
+			CALL( UpdateHardware()	);
+			CALL( UpdateNetAdr()	);
+			CALL( UpdateSport()		);
+		};
+
+		i = (i > (__LINE__-S-3)) ? 0 : i;
+
+		#undef CALL
 
 		*pPORTFIO_TOGGLE = 1<<5;
-
 	};
 
 //	return 0;

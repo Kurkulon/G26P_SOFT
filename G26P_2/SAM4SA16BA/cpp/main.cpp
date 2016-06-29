@@ -999,7 +999,7 @@ static void MainMode()
 
 				qmem.Add(rm);
 
-				if (chnl < 0)
+				if (chnl < 3)
 				{
 					chnl += 1;
 

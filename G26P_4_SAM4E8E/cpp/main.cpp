@@ -19,22 +19,23 @@ u16 rcvBuf[10];
 
 u32 readsFlash = 0;
 
-static const u16 manReqWord = 0x3A00;
+static const u16 manReqWord = 0x3B00;
 static const u16 manReqMask = 0xFF00;
 
 
 static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
 
-static bool ReqMan00(u16 *buf, u16 len, MTB* mtb);
-static bool ReqMan01(u16 *buf, u16 len, MTB* mtb);
-static bool ReqMan02(u16 *buf, u16 len, MTB* mtb);
-static bool ReqMan03(u16 *buf, u16 len, MTB* mtb);
-static bool ReqMan04(u16 *buf, u16 len, MTB* mtb);
+//static bool ReqMan00(u16 *buf, u16 len, MTB* mtb);
+//static bool ReqMan01(u16 *buf, u16 len, MTB* mtb);
+//static bool ReqMan02(u16 *buf, u16 len, MTB* mtb);
+//static bool ReqMan03(u16 *buf, u16 len, MTB* mtb);
+//static bool ReqMan04(u16 *buf, u16 len, MTB* mtb);
+//
+//typedef bool (*RMF)(u16 *buf, u16 len, MTB* mtb);
+//
+//static const RMF ReqManTbl[5] = {ReqMan00, ReqMan01, ReqMan02, ReqMan03, ReqMan04};
 
-typedef bool (*RMF)(u16 *buf, u16 len, MTB* mtb);
-
-static const RMF ReqManTbl[5] = {ReqMan00, ReqMan01, ReqMan02, ReqMan03, ReqMan04};
-
+static byte status = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -44,81 +45,158 @@ static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0;
 	manTrmData[1] = 0xEC00;
-
-	GetTime((RTC*)(&manTrmData[18]));
+	manTrmData[2] = 0xEC00;
 
 	mtb->data = manTrmData;
-	mtb->len = 22;
+	mtb->len = 3;
 
 	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool ReqMan01(u16 *buf, u16 len, MTB* mtb)
+static bool ReqMan10(u16 *buf, u16 len, MTB* mtb)
 {
 	if (buf == 0 || len == 0 || mtb == 0) return false;
 
-	manTrmData[0] = (manReqWord & manReqMask) | 1;
-	manTrmData[1] = 0xEC00;
-
-	GetTime((RTC*)(&manTrmData[18]));
+	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
 
 	mtb->data = manTrmData;
-	mtb->len = 22;
+	mtb->len = 1;
 
 	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool ReqMan02(u16 *buf, u16 len, MTB* mtb)
+static bool ReqMan20(u16 *buf, u16 len, MTB* mtb)
 {
 	if (buf == 0 || len == 0 || mtb == 0) return false;
 
-	manTrmData[0] = (manReqWord & manReqMask) | 2;
+	manTrmData[0] = (manReqWord & manReqMask) | 0x20;
 	manTrmData[1] = 0xEC00;
+	manTrmData[2] = 3;
+	manTrmData[3] = 4;
+	manTrmData[5] = 6;
+	manTrmData[7] = 8;
+	manTrmData[9] = 10;
+	manTrmData[11] = 12;
+	manTrmData[14] = 15;
+	manTrmData[15] = status;
 
-	GetTime((RTC*)(&manTrmData[18]));
+	GetTime((RTC*)(&manTrmData[16]));
 
 	mtb->data = manTrmData;
-	mtb->len = 22;
+	mtb->len = 20;
 
 	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool ReqMan03(u16 *buf, u16 len, MTB* mtb)
-{
-	if (buf == 0 || len == 0 || mtb == 0) return false;
-
-	manTrmData[0] = (manReqWord & manReqMask) | 3;
-	manTrmData[1] = 0xEC00;
-
-	GetTime((RTC*)(&manTrmData[18]));
-
-	mtb->data = manTrmData;
-	mtb->len = 22;
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool ReqMan04(u16 *buf, u16 len, MTB* mtb)
+static bool ReqMan30(u16 *buf, u16 len, MTB* mtb)
 {
 	if (buf == 0 || len < 5 || mtb == 0) return false;
 
-	manTrmData[0] = (manReqWord & manReqMask) | 4;
-	manTrmData[1] = 0xEC00;
+	manTrmData[0] = (manReqWord & manReqMask) | 0x30;
 
 	SetTime(*(RTC*)(&buf[1]));
 
-	GetTime((RTC*)(&manTrmData[18]));
+	mtb->data = manTrmData;
+	mtb->len = 1;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan31(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 0x31;
 
 	mtb->data = manTrmData;
-	mtb->len = 22;
+	mtb->len = 1;
+
+	status = 1;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan32(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 0x32;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
+
+	status = 0;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan33(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 0x33;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan80(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len < 3 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 0x80;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
+
+	if (buf[1] == 2)
+	{
+		SetTrmBoudRate(buf[2]-1);
+	};
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqMan90(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len < 3 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 0x90;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool ReqManF0(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	manTrmData[0] = (manReqWord & manReqMask) | 0xF0;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
 
 	return true;
 }
@@ -133,9 +211,18 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
 
 	byte i = buf[0]&0xFF;
 
-	if (i < 5)
+	switch (i)
 	{
-		res = ReqManTbl[i](buf, len, mtb);
+		case 0x00:	res = ReqMan00(buf, len, mtb); break;
+		case 0x10:	res = ReqMan10(buf, len, mtb); break;
+		case 0x20:	res = ReqMan20(buf, len, mtb); break;
+		case 0x30:	res = ReqMan30(buf, len, mtb); break;
+		case 0x31:	res = ReqMan31(buf, len, mtb); break;
+		case 0x32:	res = ReqMan32(buf, len, mtb); break;
+		case 0x33:	res = ReqMan33(buf, len, mtb); break;
+		case 0x80:	res = ReqMan80(buf, len, mtb); break;
+		case 0x90:	res = ReqMan90(buf, len, mtb); break;
+		case 0xF0:	res = ReqManF0(buf, len, mtb); break;
 	};
 
 	return res;

@@ -18,7 +18,7 @@ extern void SyncReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv
 extern void ReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv, bool *ready0, bool *ready1);
 extern void WritePGA(u16 v);
 inline void SetGain(byte g) { WritePGA(0x2A01|(g<<4)); }
-extern u16 ReadADC();
+inline u16 GetADC() { extern U32u adcValue; return adcValue.w[1]; }
 
 
 #endif // HARDWARE_H__15_05_2009__14_35

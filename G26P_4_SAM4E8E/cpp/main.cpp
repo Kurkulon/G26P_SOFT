@@ -19,7 +19,7 @@ u16 rcvBuf[10];
 
 u32 readsFlash = 0;
 
-static const u16 manReqWord = 0x3B00;
+static const u16 manReqWord = 0xAA00;
 static const u16 manReqMask = 0xFF00;
 
 

@@ -161,7 +161,56 @@
           <Name>UL2CM3(-O207 -O207 -S9 -C0 -FO7  -FN1 -FC800 -FD20000000 -FF0ATSAM4S_1024 -FL0100000 -FS0400000</Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint/>
+      <Breakpoint>
+        <Bp>
+          <Number>0</Number>
+          <Type>0</Type>
+          <LineNumber>580</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>4196090</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\main.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P2SM4\cpp/main.cpp\580</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>573</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>4196084</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\main.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P2SM4\cpp/main.cpp\573</Expression>
+        </Bp>
+        <Bp>
+          <Number>2</Number>
+          <Type>0</Type>
+          <LineNumber>587</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>4196096</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\main.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P2SM4\cpp/main.cpp\587</Expression>
+        </Bp>
+      </Breakpoint>
       <WatchWindow1>
         <Ww>
           <count>0</count>
@@ -198,12 +247,17 @@
           <WinNumber>1</WinNumber>
           <ItemText>fc,0x0A</ItemText>
         </Ww>
+        <Ww>
+          <count>7</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>r02[0][0][3].rsp.data</ItemText>
+        </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>10</SubType>
-          <ItemText>0x200198ec</ItemText>
+          <ItemText>rsp</ItemText>
         </Mm>
       </MemoryWindow1>
       <Tracepoint>

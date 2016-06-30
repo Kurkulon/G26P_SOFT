@@ -454,63 +454,114 @@ static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	__packed struct Rsp { u16 hdr; u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[2000]; };
+	__packed struct Req { u16 rw; u16 off; u16 len; };
+
+	__packed struct Hdr { u32 cnt; u16 gain; u16 st; u16 len; u16 delay; };
+
+	__packed struct St { Hdr h; u16 data[2000]; };
+
+	__packed struct Rsp { u16 hdr; u16 rw; St st; };
 	
 	static Rsp rsp; 
+
+	Hdr hdr;
+
+
+	const u16 sz = sizeof(rsp.st)/2;
+
+	Req &req = *((Req*)data);
 
 	//off 0...2005
 
 
 	if (wb == 0 || !(len == 1 || len == 3)) return false;
 
-	u16 *p = (u16*)&rsp;
+	byte nf = ((req.rw>>4)-3)&3;
+	byte nr = req.rw & 7;
+
+	u16 *p = (u16*)&rsp.st;
 
 	u16 c = 0;
 	u16 off = 0;
+	u16 diglen = 500;
+	u16 hdrlen = (sizeof(hdr)/2);
 
 	if (len == 1)
 	{
 		off = 0;
-		c = 2006;
+		c = sz;
 	}
 	else
 	{
-		off = data[1];
-		c = data[2];
+		off = req.off;
+		c = req.len;
 
-		if (off >= 2006)
+		if (off >= sz)
 		{
 			c = 0; off = 0;
 		}
-		else if ((off+c) > 2006)
+		else if ((off+c) > sz)
 		{
-			c = 2006-off;
+			c = sz-off;
 		};
 	};
 
-	if (off == 0)
-	{
-		for (u16 i = 0; i < 2000; i++)
-		{
-			rsp.data[i] = ((u32)i) * 150; 
-		};
-	};
-
-
-	if (off < 6)
-	{
-		rsp.cnt = manCounter;
-		rsp.gain = gain[((rsp.rw>>4)-3)&3];
-		rsp.st = sampleTime[((rsp.rw>>4)-3)&3];
-		rsp.len = 500;
-		rsp.delay = 0;
-	};
-
-	p[off] = 0x5501;
-	p[off+1] = *data;
-
-	wb->data = p+off;
+	wb->data = &rsp;
 	wb->len = (c+2)<<1;
+
+	if (off < hdrlen)
+	{
+		hdr.cnt = manCounter;
+		hdr.gain = gain[nf];
+		hdr.st = sampleTime[nf];
+		hdr.len = diglen;
+		hdr.delay = 0;
+
+		u16 *s = ((u16*)&hdr) + off;
+
+		u16 l = hdrlen - off;
+
+		c -= l;
+		off -= l;
+
+		while (l-- > 0) { *p++ = *s++;};
+	}
+	else
+	{
+		off -= hdrlen;
+	};
+
+	byte chnl = off / diglen;
+
+	u16 i = 0;
+
+	u16 j = off % diglen;
+
+	while (c > 0)
+	{
+		u16 k = diglen - j;
+
+		if (c < k)
+		{
+			k = c;
+			c = 0;
+		}
+		else
+		{
+			c -= k;
+		};
+
+		while (k-- > 0)
+		{
+			*p++ = 0;//r02[nr][nf][chnl].rsp.data[j++]; 
+		};
+
+		j = 0;
+		chnl++;
+	};
+
+	rsp.hdr = 0x5501;
+	rsp.rw = req.rw;
 
 	return true;
 }
@@ -993,6 +1044,7 @@ static void MainMode()
 
 			if (req->ready)
 			{
+
 				rm = CreateMemReq02(rcv, fireType, chnl);
 
 				if (rm == 0) break;
@@ -1007,6 +1059,8 @@ static void MainMode()
 				}
 				else if (rcv < numStations)
 				{
+					manCounter++;
+
 					rcv += 1;
 					chnl = 0;
 
@@ -1033,7 +1087,7 @@ static void MainMode()
 
 		case 5:
 
-			if (rt.Check(MS2RT(1000)))
+			if (rt.Check(MS2RT(15)))
 			{
 				fireType = (fireType+1) % 3; 
 

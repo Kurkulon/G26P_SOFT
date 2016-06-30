@@ -71,12 +71,14 @@ struct Response
 
 static Response rsp02[3][4];
 
+static byte rspBuf[10];
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
 {
 	const Request *req = (Request*)rb->data;
-	static Response rsp;
+	Response &rsp = *((Response*)rspBuf);
 
 	byte n = req->f1.n;
 	if (n > 2) n = 2;
@@ -90,7 +92,16 @@ bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 	fireN = n;
 	sportState = 0;
 
-	return false;
+	if (req->adr == 0) return  false;
+
+	rsp.adr = netAdr;
+	rsp.func = 1;
+	rsp.f1.crc = GetCRC16(&rsp, 2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp.f1)+2;
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -125,6 +136,11 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 	//rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp.f2));
 
+	if (req->adr == 0) return  false;
+
+	rsp.adr = netAdr;
+	rsp.func = 2;
+
 	wb->data = &rsp;
 	wb->len = sizeof(rsp.f2)+2;
 
@@ -136,7 +152,7 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 bool RequestFunc03(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
 {
 	const Request *req = (Request*)rb->data;
-	static Response rsp;
+	Response &rsp = *((Response*)rspBuf);
 
 	sampleTime[0] = req->f3.dt[0];
 	sampleTime[1] = req->f3.dt[1];
@@ -154,6 +170,41 @@ bool RequestFunc03(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 	wb->data = &rsp;
 	wb->len = sizeof(rsp.f3)+2;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool RequestFunc04(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
+{
+	const Request *req = (Request*)rb->data;
+	Response &rsp = *((Response*)rspBuf);
+
+	byte n = req->f4.n;
+	if (n > 2) n = 2;
+
+	sampleTime[n] = req->f4.dt;
+
+	gain[n] = req->f4.ka;
+
+	spTime[n] = sampleTime[n];
+	spGain[n] = gain[n];
+
+	SetGain(spGain[n]);
+	SyncReadSPORT(spd[0], spd[1], 2000, 2000, spTime[n], &ready1, &ready2);
+
+	fireN = n;
+	sportState = 0;
+
+	if (req->adr == 0) return  false;
+
+	rsp.adr = netAdr;
+	rsp.func = 4;
+	rsp.f4.crc = GetCRC16(&rsp, 2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp.f4)+2;
 
 	return true;
 }
@@ -181,6 +232,7 @@ bool RequestFunc(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
 		case 1: result = RequestFunc01 (rb, wb, crcok); break;
 		case 2: result = RequestFunc02 (rb, wb, crcok); break;
 		case 3: result = RequestFunc03 (rb, wb, crcok); break;
+		case 4: result = RequestFunc04 (rb, wb, crcok); break;
 	};
 
 	return result;
@@ -282,7 +334,7 @@ static void UpdateSport()
 
 			for (u16 i = 0; i < 500; i++)
 			{
-				rsp02[n][chnl].f2.data[i] = spd[ch][i*2+cl];
+				rsp02[n][chnl].f2.data[i] = spd[ch][i*2+cl] - 0x8000;
 			};
 
 			sportState++;

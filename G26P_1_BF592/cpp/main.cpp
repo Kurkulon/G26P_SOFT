@@ -25,8 +25,12 @@ static bool ready1 = false, ready2 = false;
 //static u32 CRCOK = 0;
 //static u32 CRCER = 0;
 
-static byte sampleTime[3] = { 19, 19, 9};
+static byte sampleTime[3] = { 9, 19, 19};
 static byte gain[3] = { 3, 3, 3 };
+static u16 sampleLen[3] = {512, 512, 512};
+static u16 sampleDelay[3] = { 0, 0, 0};
+
+
 static byte netAdr = 1;
 
 static U32u fadc = 0;
@@ -46,8 +50,8 @@ struct Request
 	{
 		struct  { byte n; word crc; } f1;  // старт оцифровки
 		struct  { byte n; byte chnl; word crc; } f2;  // чтение вектора
-		struct  { byte dt[3]; byte ka[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
-		struct  { byte n; byte dt; byte ka; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
+		struct  { byte st[3]; u16 sl[3]; u16 sd[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
+		struct  { byte ka[3]; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
 	};
 };
 
@@ -116,7 +120,7 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 	};
 
 	byte n = req->f2.n;
-	byte ch = (req->f2.chnl>>1)&1;
+	byte ch = (req->f2.chnl)&3;
 
 	Response &rsp = rsp02[n][ch];
 
@@ -154,13 +158,17 @@ bool RequestFunc03(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 	const Request *req = (Request*)rb->data;
 	Response &rsp = *((Response*)rspBuf);
 
-	sampleTime[0] = req->f3.dt[0];
-	sampleTime[1] = req->f3.dt[1];
-	sampleTime[2] = req->f3.dt[2];
+	sampleTime[0] = req->f3.st[0];
+	sampleTime[1] = req->f3.st[1];
+	sampleTime[2] = req->f3.st[2];
 
-	gain[0] = req->f3.ka[0];
-	gain[1] = req->f3.ka[0];
-	gain[2] = req->f3.ka[0];
+	sampleLen[0] = req->f3.sl[0];
+	sampleLen[1] = req->f3.sl[1];
+	sampleLen[2] = req->f3.sl[2];
+
+	sampleDelay[0] = req->f3.sd[0];
+	sampleDelay[1] = req->f3.sd[1];
+	sampleDelay[2] = req->f3.sd[2];
 
 	if (req->adr == 0) return  false;
 
@@ -181,27 +189,15 @@ bool RequestFunc04(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 	const Request *req = (Request*)rb->data;
 	Response &rsp = *((Response*)rspBuf);
 
-	byte n = req->f4.n;
-	if (n > 2) n = 2;
-
-	sampleTime[n] = req->f4.dt;
-
-	gain[n] = req->f4.ka;
-
-	spTime[n] = sampleTime[n];
-	spGain[n] = gain[n];
-
-	SetGain(spGain[n]);
-	SyncReadSPORT(spd[0], spd[1], 2000, 2000, spTime[n], &ready1, &ready2);
-
-	fireN = n;
-	sportState = 0;
+	gain[0] = req->f4.ka[0];
+	gain[1] = req->f4.ka[1];
+	gain[2] = req->f4.ka[2];
 
 	if (req->adr == 0) return  false;
 
-	rsp.adr = netAdr;
-	rsp.func = 4;
-	rsp.f4.crc = GetCRC16(&rsp, 2);
+	rsp.adr = req->adr;
+	rsp.func = req->func;
+	rsp.f3.crc = GetCRC16(&rsp, 2);
 
 	wb->data = &rsp;
 	wb->len = sizeof(rsp.f4)+2;
@@ -343,7 +339,12 @@ static void UpdateSport()
 
 		case 2:
 
+			*pPORTFIO_SET = 1<<8;
+
 			rsp02[n][chnl].f2.crc = GetCRC16(&rsp02[n][chnl], sizeof(rsp02[n][chnl].f2));
+
+			*pPORTFIO_CLEAR = 1<<8;
+
 
 			if (chnl < 3)
 			{

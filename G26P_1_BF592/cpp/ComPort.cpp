@@ -194,7 +194,7 @@ void ComPort::EnableReceive(void* dst, word count)
 	count = *pUART0_LSR;
 	*pUART0_IER = ERBFI;
 
-	*pPORTFIO_SET = 1<<8;
+//	*pPORTFIO_SET = 1<<8;
 
 #else
 
@@ -222,7 +222,7 @@ void ComPort::DisableReceive()
 	*pUART0_IER = 0;
 	*pPORTFIO_CLEAR = MASKRTS;
 
-	*pPORTFIO_CLEAR = 1<<8;
+//	*pPORTFIO_CLEAR = 1<<8;
 
 #endif
 }

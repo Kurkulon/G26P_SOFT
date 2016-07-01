@@ -35,8 +35,11 @@ static List<RMEM> freeRmem;
 
 static byte fireType = 0;
 
-static byte sampleTime[3] = { 19, 19, 9};
-static byte gain[3] = { 7, 7, 7 };
+static byte gain[8][3];// = { { 7, 7, 7, 7, 7, 7, 7, 7 }, { 7, 7, 7, 7, 7, 7, 7, 7 }, { 7, 7, 7, 7, 7, 7, 7, 7 } };
+static byte sampleTime[3] = { 9, 19, 19};
+static u16 sampleLen[3] = { 512, 512, 512};
+static u16 sampleDelay[3] = { 0, 0, 0};
+
 
 static u16 manReqWord = 0xAA00;
 static u16 manReqMask = 0xFF00;
@@ -55,6 +58,8 @@ static byte mainModeState = 0;
 
 //static u32 rcvCRCOK = 0;
 //static u32 rcvCRCER = 0;
+
+static u32 chnlCount[4] = {0};
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -161,7 +166,7 @@ void CallBackRcvReq03(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReq03(byte adr, byte dt[], byte ka[])
+REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[])
 {
 	static Req03 req;
 	static Rsp03 rsp;
@@ -184,17 +189,69 @@ REQ* CreateRcvReq03(byte adr, byte dt[], byte ka[])
 
 	req.adr = adr;
 	req.func = 3;
-	req.dt[0] = dt[0];
-	req.dt[1] = dt[1];
-	req.dt[2] = dt[2];
-	req.ka[0] = ka[0];
-	req.ka[1] = ka[1];
-	req.ka[2] = ka[2];
+
+	req.st[0] = st[0];
+	req.st[1] = st[1];
+	req.st[2] = st[2];
+
+	req.sl[0] = sl[0];
+	req.sl[1] = sl[1];
+	req.sl[2] = sl[2];
+
+	req.sd[0] = sd[0];
+	req.sd[1] = sd[1];
+	req.sd[2] = sd[2];
+
 	req.crc = GetCRC16(&req, sizeof(req)-2);
 	
 	return &q;
 }
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackRcvReq04(REQ *q)
+{
+//	Rsp03 *rsp = (Rsp03*)q->rb->data;
+
+
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateRcvReq04(byte adr, byte ka[])
+{
+	static Req04 req;
+	static Rsp04 rsp;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static REQ q;
+
+	q.CallBack = CallBackRcvReq04;
+	q.preTimeOut = MS2RT(10);
+	q.postTimeOut = 1;
+	q.rb = &rb;
+	q.wb = &wb;
+	q.ready = false;
+	
+	wb.data = &req;
+	wb.len = sizeof(req);
+	
+	rb.data = &rsp;
+	rb.maxLen = sizeof(rsp);
+
+	req.adr = adr;
+	req.func = 4;
+
+	req.ka[0] = ka[0];
+	req.ka[1] = ka[1];
+	req.ka[2] = ka[2];
+
+	req.crc = GetCRC16(&req, sizeof(req)-2);
+	
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -405,23 +462,23 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	for (byte i = 0; i < 8; i++)
 	{
-		rsp.t1.g[i] = gain[0];
-		rsp.t2.g[i] = gain[1];
-		rsp.t3.g[i] = gain[2];
+		rsp.t1.g[i] = gain[0][i];
+		rsp.t2.g[i] = gain[1][i];
+		rsp.t3.g[i] = gain[2][i];
 	};
 
 	rsp.t1.st = sampleTime[0];
-	rsp.t1.len = 500;
+	rsp.t1.len = sampleLen[0];
 	rsp.t1.delay = 0;
 	rsp.t1.voltage = 800;
 
 	rsp.t2.st = sampleTime[1];
-	rsp.t2.len = 500;
+	rsp.t2.len = sampleLen[1];
 	rsp.t2.delay = 0;
 	rsp.t2.voltage = 800;
 
 	rsp.t3.st = sampleTime[2];
-	rsp.t3.len = 500;
+	rsp.t3.len = sampleLen[2];
 	rsp.t3.delay = 0;
 	rsp.t3.voltage = 800;
 
@@ -512,7 +569,7 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	if (off < hdrlen)
 	{
 		hdr.cnt = manCounter;
-		hdr.gain = gain[nf];
+		hdr.gain = gain[nf][nr];
 		hdr.st = sampleTime[nf];
 		hdr.len = diglen;
 		hdr.delay = 0;
@@ -522,7 +579,7 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		u16 l = hdrlen - off;
 
 		c -= l;
-		off -= l;
+		off = 0;
 
 		while (l-- > 0) { *p++ = *s++;};
 	}
@@ -539,6 +596,8 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	while (c > 0)
 	{
+		chnlCount[chnl]++;
+
 		u16 k = diglen - j;
 
 		if (c < k)
@@ -553,7 +612,7 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 		while (k-- > 0)
 		{
-			*p++ = 0;//r02[nr][nf][chnl].rsp.data[j++]; 
+			*p++ = r02[nr][nf][chnl].rsp.data[j++] + chnl*15000; 
 		};
 
 		j = 0;
@@ -570,21 +629,100 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 static bool RequestMan_80(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	return false;
+	static u16 rsp[2];
+
+	if (wb == 0) return false;
+
+	rsp[0] = 0x5501;
+	rsp[1] = manReqWord|0x80;
+ 
+	wb->data = rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	return false;
+	static u16 rsp[2];
+
+	if (wb == 0 || len < 3) return false;
+
+
+	byte nf = ((data[1]>>4) & 3)-1;
+	byte nr = data[1] & 0xF;
+	byte st;
+	u16 sl;
+
+	if (nf > 2) return false;
+
+	if (nr < 8)
+	{
+		gain[nr][nf] = data[2]&7;
+		
+		qrcv.Add(CreateRcvReq04(nr+1, gain[nr]));
+	}
+	else
+	{
+		switch(nr)
+		{
+			case 0x8:
+
+				st = data[2] & 0xFF;
+				if (st > 0) st -= 1;
+				sampleTime[nf] = st;
+
+				break;
+
+			case 0x9:
+
+				sl = data[2];
+				if (sl > 512) sl = 512;
+				sampleLen[nf] = sl;
+
+				break;
+
+			case 0xA:
+
+
+				break;
+
+			case 0xB:
+
+
+				break;
+		};
+
+		qrcv.Add(CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay));
+	};
+
+
+	rsp[0] = 0x5501;
+	rsp[1] = manReqWord|0x90;
+ 
+	wb->data = rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool RequestMan_F0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	return false;
+	static u16 rsp[2];
+
+	if (wb == 0) return false;
+
+	rsp[0] = 0x5501;
+	rsp[1] = manReqWord|0xF0;
+ 
+	wb->data = rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -819,100 +957,100 @@ static void UpdateRcvTrm()
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool RequestTestCom01(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
-{
-	__packed struct Req { byte func; byte ft; u16 crc; };
-	__packed struct Rsp { byte func; u16 crc; };
-
-	Req *req = (Req*)rb->data;
-
-	static Rsp rsp;
-
-	if (rb->len < 2) return false;
-
-	if (req->ft <= 2)
-	{
-		fireType = req->ft;
-	};
-
-	rsp.func = 1;
-
-	rsp.crc = GetCRC16(&rsp, 1);
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
-
-	startFire = true;
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool RequestTestCom02(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
-{
-	__packed struct Req { byte func; byte adr; byte n; byte ch; u16 crc; };
-
-	Req *req = (Req*)rb->data;
-
-	if (rb->len < 4) return false;
-	if (req->adr < 1 || req->adr > 8 || req->n > 2 || req->ch > 1) return false;
-
-	R02 &r = r02[req->adr-1][req->n][req->ch];
-
-	wb->data = &r.rsp;
-	wb->len = sizeof(r.rsp);
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool RequestTestCom03(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
-{
-	__packed struct Req { byte func; byte dt[3]; byte ka[3]; word crc; };
-	__packed struct Rsp { byte func; u16 crc; };
-
-	Req *req = (Req*)rb->data;
-
-	static Rsp rsp;
-
-	if (rb->len < 7) return false;
-
-	sampleTime[0] = req->dt[0];
-	sampleTime[1] = req->dt[1];
-	sampleTime[2] = req->dt[2];
-
-	gain[0] = req->ka[0];
-	gain[1] = req->ka[1];
-	gain[2] = req->ka[2];
-
-	qrcv.Add(CreateRcvReq03(0, sampleTime, gain));
-
-	rsp.func = 3;
-	rsp.crc = GetCRC16(&rsp, 1);
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool RequestTestCom(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
-{
-	byte *pb = (byte*)rb->data;
-
-	switch (pb[0])
-	{
-		case 1 : return RequestTestCom01(rb, wb);
-		case 2 : return RequestTestCom02(rb, wb);
-		case 3 : return RequestTestCom03(rb, wb);
-		default : return false;
-	};
-}
+//
+//bool RequestTestCom01(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+//{
+//	__packed struct Req { byte func; byte ft; u16 crc; };
+//	__packed struct Rsp { byte func; u16 crc; };
+//
+//	Req *req = (Req*)rb->data;
+//
+//	static Rsp rsp;
+//
+//	if (rb->len < 2) return false;
+//
+//	if (req->ft <= 2)
+//	{
+//		fireType = req->ft;
+//	};
+//
+//	rsp.func = 1;
+//
+//	rsp.crc = GetCRC16(&rsp, 1);
+//
+//	wb->data = &rsp;
+//	wb->len = sizeof(rsp);
+//
+//	startFire = true;
+//
+//	return true;
+//}
+//
+////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//bool RequestTestCom02(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+//{
+//	__packed struct Req { byte func; byte adr; byte n; byte ch; u16 crc; };
+//
+//	Req *req = (Req*)rb->data;
+//
+//	if (rb->len < 4) return false;
+//	if (req->adr < 1 || req->adr > 8 || req->n > 2 || req->ch > 1) return false;
+//
+//	R02 &r = r02[req->adr-1][req->n][req->ch];
+//
+//	wb->data = &r.rsp;
+//	wb->len = sizeof(r.rsp);
+//
+//	return true;
+//}
+//
+////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//bool RequestTestCom03(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+//{
+//	__packed struct Req { byte func; byte dt[3]; byte ka[3]; word crc; };
+//	__packed struct Rsp { byte func; u16 crc; };
+//
+//	Req *req = (Req*)rb->data;
+//
+//	static Rsp rsp;
+//
+//	if (rb->len < 7) return false;
+//
+//	sampleTime[0] = req->dt[0];
+//	sampleTime[1] = req->dt[1];
+//	sampleTime[2] = req->dt[2];
+//
+//	gain[0] = req->ka[0];
+//	gain[1] = req->ka[1];
+//	gain[2] = req->ka[2];
+//
+//	qrcv.Add(CreateRcvReq03(0, sampleTime, gain));
+//
+//	rsp.func = 3;
+//	rsp.crc = GetCRC16(&rsp, 1);
+//
+//	wb->data = &rsp;
+//	wb->len = sizeof(rsp);
+//
+//	return true;
+//}
+//
+////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//bool RequestTestCom(ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+//{
+//	byte *pb = (byte*)rb->data;
+//
+//	switch (pb[0])
+//	{
+//		case 1 : return RequestTestCom01(rb, wb);
+//		case 2 : return RequestTestCom02(rb, wb);
+//		case 3 : return RequestTestCom03(rb, wb);
+//		default : return false;
+//	};
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

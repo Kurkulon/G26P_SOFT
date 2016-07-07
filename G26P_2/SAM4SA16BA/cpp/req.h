@@ -60,7 +60,8 @@ __packed struct Rsp02	// чтение вектора
 	byte 	gain; 
 	byte 	delay; 
 	byte 	filtr;
-	u16		data[500]; 
+	u16		len;
+	u16		data[512]; 
 	word	crc; 
 };  
 
@@ -70,7 +71,7 @@ __packed struct  Req03	// установка периода дискретизации вектора и коэффициента
 { 
 	byte 	adr;
 	byte 	func;
-	byte 	st[3]; 
+	u16 	st[3]; 
 	u16		sl[3]; 
 	u16		sd[3];
 	word	crc; 

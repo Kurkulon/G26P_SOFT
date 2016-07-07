@@ -106,17 +106,18 @@ void RequestQuery::Update()
 
 			case 4:
 
+				_req->ready = true;
+
 				if (_req->CallBack != 0)
 				{
-					if (!HW::RomCheck((void*)_req->CallBack))
-					{
-						__breakpoint(0);
-					};
+					//if (!HW::RomCheck((void*)_req->CallBack))
+					//{
+					//	__breakpoint(0);
+					//};
 
 					_req->CallBack(_req);
 				};
 
-				_req->ready = true;
 
 				_state = 0;
 

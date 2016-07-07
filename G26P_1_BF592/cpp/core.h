@@ -28,6 +28,10 @@
 #define CCLK (VCO_VALUE >> ((PLLDIV_VALUE >> 4) & 3))
 //#define MCK CCLK
 
+#define US2SCLK(x) ((u32)((x*(float)SCLK+500000)/1000000))
+#define MS2SCLK(x) ((u32)((x*(float)SCLK+500)/1000))
+
+
 #include "bf592.h"
 
 #endif // CORE_H__05_12_12__16_12

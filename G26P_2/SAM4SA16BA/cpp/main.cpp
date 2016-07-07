@@ -60,6 +60,11 @@ static byte mainModeState = 0;
 //static u32 rcvCRCER = 0;
 
 static u32 chnlCount[4] = {0};
+
+static u32 crcErr02 = 0;
+static u32 crcErr03 = 0;
+static u32 crcErr04 = 0;
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -105,7 +110,24 @@ REQ* CreateRcvReqFire(byte adr, byte n)
 
 void CallBackRcvReq02(REQ *q)
 {
+//	Rsp02 *rsp = (Rsp02*)q->rb->data;
+	
+	bool crcOK;
 
+	if (q->rb->recieved)
+	{
+		crcOK = GetCRC16(q->rb->data, q->rb->len) == 0;
+
+		if (!crcOK) 
+		{
+			crcErr02++;
+			qrcv.Add(q);
+		};
+	}
+	else
+	{
+		qrcv.Add(q);
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -161,7 +183,14 @@ void CallBackRcvReq03(REQ *q)
 {
 //	Rsp03 *rsp = (Rsp03*)q->rb->data;
 
+	bool crcOK = GetCRC16(q->rb->data, q->rb->len) == 0;
 
+	if (!crcOK) 
+	{
+		crcErr03++;
+
+//		qrcv.Add(q);
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -211,9 +240,16 @@ REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[])
 
 void CallBackRcvReq04(REQ *q)
 {
-//	Rsp03 *rsp = (Rsp03*)q->rb->data;
+//	Rsp04 *rsp = (Rsp04*)q->rb->data;
 
+	bool crcOK = GetCRC16(q->rb->data, q->rb->len) == 0;
 
+	if (!crcOK) 
+	{
+		crcErr04++;
+
+//		qrcv.Add(q);
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -671,7 +707,7 @@ static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 			case 0x8:
 
 				st = data[2] & 0xFF;
-				if (st > 0) st -= 1;
+//				if (st > 0) st -= 1;
 				sampleTime[nf] = st;
 
 				break;
@@ -1225,7 +1261,7 @@ static void MainMode()
 
 		case 5:
 
-			if (rt.Check(MS2RT(15)))
+			if (rt.Check(MS2RT(100)))
 			{
 				fireType = (fireType+1) % 3; 
 

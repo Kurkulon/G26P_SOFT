@@ -182,7 +182,7 @@ void ComPort::DisableTransmit()
 	
 	_SU->CR = 0x80;
 	_SU->PDC.PTCR = 0x200;
-	_pm->CODR = _maskRTS;
+//	_pm->CODR = _maskRTS;
 
 #endif
 }
@@ -229,7 +229,7 @@ void ComPort::DisableReceive()
 
 	_SU->CR = 0x120;
 	_SU->PDC.PTCR = 2;
-	_pm->CODR = _maskRTS;
+//	_pm->CODR = _maskRTS;
 
 #endif
 }
@@ -241,6 +241,7 @@ bool ComPort::Update()
 	static u32 stamp = 0;
 
 	bool r = true;
+//	byte t;
 
 	if (!_connected) 
 	{
@@ -279,6 +280,7 @@ bool ComPort::Update()
 				if ((stamp - _startReceiveTime) >= _preReadTimeout)
 				{
 					DisableReceive();
+					_pReadBuffer->pretimeout = true;
 					_pReadBuffer->len = _pReadBuffer->maxLen - _prevDmaCounter;
 					_pReadBuffer->recieved = _pReadBuffer->len > 0;
 					_status485 = READ_END;
@@ -309,12 +311,15 @@ bool ComPort::Update()
 
 		case READING:
 
-			if (_SU->CSR & 0xE4) 
-			{
-				DisableReceive();
-				_status485 = READ_END;
-				return false;
-			};
+			//t = (_SU->CSR & 0xE4);
+
+			//if (t) 
+			//{
+			//	_pReadBuffer->CSR = t;
+			//	DisableReceive();
+			//	_status485 = READ_END;
+			//	return false;
+			//};
 
 			if ((_prevDmaCounter-_SU->PDC.RCR) == 0)
 			{
@@ -323,6 +328,7 @@ bool ComPort::Update()
 					DisableReceive();
 					_pReadBuffer->len = _pReadBuffer->maxLen - _prevDmaCounter;
 					_pReadBuffer->recieved = _pReadBuffer->len > 0;
+					_pReadBuffer->CSR = _SU->CSR & 0xE4;
 					_status485 = READ_END;
 					r = false;
 				};
@@ -375,6 +381,7 @@ bool ComPort::Read(ComPort::ReadBuffer *readBuffer, dword preTimeout, dword post
 
 	_pReadBuffer = readBuffer;
 	_pReadBuffer->recieved = false;
+	_pReadBuffer->pretimeout = false;
 	_pReadBuffer->len = 0;
 
 	_prevDmaCounter = _pReadBuffer->maxLen;

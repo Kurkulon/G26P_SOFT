@@ -18,6 +18,8 @@ class ComPort
 	struct ReadBuffer
 	{
 		bool	recieved;
+		bool	pretimeout;
+		byte	CSR;
 		word	len;
 		word	maxLen;
 		void*	data;

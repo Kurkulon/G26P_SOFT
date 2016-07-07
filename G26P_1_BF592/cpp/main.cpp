@@ -11,6 +11,7 @@ static ComPort com;
 static u16 spd[2][512*2];
 static byte spTime[3];
 static byte spGain[3];
+static u16	spLen[3];
 
 
 //static u16 spd2[512*2];
@@ -41,6 +42,8 @@ static byte fireN = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+//#pragma pack(1)
+
 struct Request
 {
 	byte adr;
@@ -50,8 +53,8 @@ struct Request
 	{
 		struct  { byte n; word crc; } f1;  // старт оцифровки
 		struct  { byte n; byte chnl; word crc; } f2;  // чтение вектора
-		struct  { byte st[3]; u16 sl[3]; u16 sd[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
-		struct  { byte ka[3]; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
+		struct  { u16 st[3]; u16 sl[3]; u16 sd[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
+		struct  { u16 ka[3]; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
 	};
 };
 
@@ -65,11 +68,13 @@ struct Response
 	union
 	{
 		struct  { word crc; } f1;  // старт оцифровки
-		struct  { byte n; byte chnl; byte count[4]; byte time; byte gain; byte delay; byte filtr; u16 data[500]; word crc; } f2;  // чтение вектора
+		struct  { byte n; byte chnl; byte count[4]; byte time; byte gain; byte delay; byte filtr; u16 len; u16 data[512]; word crc; } f2;  // чтение вектора
 		struct  { word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
 		struct  { word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
 	};
 };
+
+#pragma pack()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -89,9 +94,10 @@ bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 	spTime[n] = sampleTime[n];
 	spGain[n] = gain[n];
+	spLen[n] = sampleLen[n];
 
 	SetGain(spGain[n]);
-	SyncReadSPORT(spd[0], spd[1], 2000, 2000, spTime[n], &ready1, &ready2);
+	SyncReadSPORT(spd[0], spd[1], spLen[n]*4, spLen[n]*4, spTime[n]-1, &ready1, &ready2);
 
 	fireN = n;
 	sportState = 0;
@@ -119,34 +125,45 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 		return false;
 	};
 
-	byte n = req->f2.n;
-	byte ch = (req->f2.chnl)&3;
-
-	Response &rsp = rsp02[n][ch];
-
-	//rsp.adr = req->adr;
-	//rsp.func = req->func;
-	//rsp.f2.n = n;
-	//rsp.f2.chnl = req->f2.chnl;
-	//rsp.f2.time = spTime[n];
-	//rsp.f2.gain = spGain[n];
-	//rsp.f2.delay = 0;
-	//rsp.f2.filtr = 0;
-
-	//for (u16 i = 0; i < 500; i++)
-	//{
-	//	rsp.f2.data[i] = spd[ch][i*2+cl];
-	//};
-
-	//rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp.f2));
-
 	if (req->adr == 0) return  false;
+
+	byte n = req->f2.n;
+	byte chnl = (req->f2.chnl)&3;
+
+	byte ch = 0;
+	byte cl = 0;
+	u16 len = sampleLen[n];
+
+	Response &rsp = rsp02[n][chnl];
+
+	if (rsp.adr == 0 || rsp.func == 0)
+	{
+		rsp.adr = netAdr;
+		rsp.func = 2;
+		rsp.f2.n = n;
+		rsp.f2.chnl = chnl;
+		rsp.f2.time = sampleTime[n];
+		rsp.f2.gain = gain[n];
+		rsp.f2.delay = 0;
+		rsp.f2.filtr = 0;
+		rsp.f2.len = len;
+
+		ch = chnl>>1;
+		cl = chnl&1;
+
+		for (u16 i = 0; i < len; i++)
+		{
+			rsp.f2.data[i] = spd[ch][i*2+cl] - 0x8000;
+		};
+
+		rsp.f2.data[len] = GetCRC16(&rsp, sizeof(rsp.f2) - sizeof(rsp.f2.data) + len*2);
+	};
 
 	rsp.adr = netAdr;
 	rsp.func = 2;
 
 	wb->data = &rsp;
-	wb->len = sizeof(rsp.f2)+2;
+	wb->len = sizeof(rsp.f2) - sizeof(rsp.f2.data) + rsp.f2.len*2 + 2;
 
 	return true;
 }
@@ -241,7 +258,7 @@ static void UpdateBlackFin()
 	static byte i = 0;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
-	static byte buf[1024];
+	static byte buf[sizeof(Request)+10];
 
 	switch(i)
 	{
@@ -249,7 +266,7 @@ static void UpdateBlackFin()
 
 			rb.data = buf;
 			rb.maxLen = sizeof(buf);
-			com.Read(&rb, (u32)-1, 720);
+			com.Read(&rb, (u32)-1, US2SCLK(50));
 			i++;
 
 			break;
@@ -295,10 +312,14 @@ static void UpdateSport()
 {
 	static byte n = 0;
 	static byte chnl = 0;
+	static u16 len = 0;
+	static byte st = 0;
+	static byte sg = 0;
 
 	byte ch = 0;
 	byte cl = 0;
 
+	Response &rsp = rsp02[n][chnl];
 
 	switch(sportState)
 	{
@@ -308,6 +329,9 @@ static void UpdateSport()
 			{
 				n = fireN;
 				chnl = 0;
+				len = spLen[n];
+				st = spTime[n];
+				sg = spGain[n];
 
 				sportState++;
 			};
@@ -316,21 +340,22 @@ static void UpdateSport()
 
 		case 1:
 
-			rsp02[n][chnl].adr = netAdr;
-			rsp02[n][chnl].func = 2;
-			rsp02[n][chnl].f2.n = n;
-			rsp02[n][chnl].f2.chnl = chnl;
-			rsp02[n][chnl].f2.time = spTime[n];
-			rsp02[n][chnl].f2.gain = spGain[n];
-			rsp02[n][chnl].f2.delay = 0;
-			rsp02[n][chnl].f2.filtr = 0;
+			rsp.adr = netAdr;
+			rsp.func = 2;
+			rsp.f2.n = n;
+			rsp.f2.chnl = chnl;
+			rsp.f2.time = st;
+			rsp.f2.gain = sg;
+			rsp.f2.delay = 0;
+			rsp.f2.filtr = 0;
+			rsp.f2.len = len;
 
 			ch = chnl>>1;
 			cl = chnl&1;
 
-			for (u16 i = 0; i < 500; i++)
+			for (u16 i = 0; i < len; i++)
 			{
-				rsp02[n][chnl].f2.data[i] = spd[ch][i*2+cl] - 0x8000;
+				rsp.f2.data[i] = spd[ch][i*2+cl] - 0x8000;
 			};
 
 			sportState++;
@@ -341,7 +366,7 @@ static void UpdateSport()
 
 			*pPORTFIO_SET = 1<<8;
 
-			rsp02[n][chnl].f2.crc = GetCRC16(&rsp02[n][chnl], sizeof(rsp02[n][chnl].f2));
+			rsp.f2.data[len] = GetCRC16(&rsp, sizeof(rsp.f2) - sizeof(rsp.f2.data) + len*2);
 
 			*pPORTFIO_CLEAR = 1<<8;
 

@@ -648,7 +648,7 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 		while (k-- > 0)
 		{
-			*p++ = r02[nr][nf][chnl].rsp.data[j++] + chnl*15000; 
+			*p++ = r02[nr][nf][chnl].rsp.data[j++];// + chnl*15000; 
 		};
 
 		j = 0;

@@ -5,10 +5,15 @@
 //#include <cdefBF592-A.h>
 //#include <ccblkfn.h>
 
+//#pragma optimize_for_speed
+
 const u32 coreCLK = CCLK;
 const u32 sysCLK = SCLK;
 
 U32u adcValue;
+
+u16 pgaValue = 0x2A01;
+bool pgaSet = true;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -213,21 +218,21 @@ static void LowLevelInit()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void WritePGA(u16 v)
-{
-	
-	*pSPI1_BAUD = 7; // SCLK=7MHz
-	*pSPI1_FLG = 0;//FLS5|FLS2;
-	*pSPI1_CTL = SPE|MSTR|SIZE|(TIMOD & 1);    // MSTR=1, CPOL=0, CPHA=0, LSBF=0, SIZE=1, EMISO=0, PSSE=0, GM=0, SZ=0, TIMOD=01
-	*pPORTGIO_CLEAR = 1<<11;
-	*pSPI1_TDBR = v;
-
-	while((*pSPI1_STAT&1) == 0) ;
-
-	*pPORTGIO_SET = 1<<11;
-
-	*pSPI1_CTL = 0;
-}
+//void WritePGA(u16 v)
+//{
+//	
+//	*pSPI1_BAUD = 7; // SCLK=7MHz
+//	*pSPI1_FLG = 0;//FLS5|FLS2;
+//	*pSPI1_CTL = SPE|MSTR|SIZE|(TIMOD & 1);    // MSTR=1, CPOL=0, CPHA=0, LSBF=0, SIZE=1, EMISO=0, PSSE=0, GM=0, SZ=0, TIMOD=01
+//	*pPORTGIO_CLEAR = 1<<11;
+//	*pSPI1_TDBR = v;
+//
+//	while((*pSPI1_STAT&1) == 0) ;
+//
+//	*pPORTGIO_SET = 1<<11;
+//
+//	*pSPI1_CTL = 0;
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -235,18 +240,32 @@ static void UpdateADC()
 {
 	static byte i = 0;
 
+	static TM32 tm;
+
+	u16 t;
+
 	switch (i)
 	{
 		case 0:
 
-			*pSPI1_BAUD = 50; // SCLK=16MHz
-			*pSPI1_FLG = 0;//FLS5|FLS2;
-			*pSPI1_STAT = 0x7F;
-			*pSPI1_CTL = SPE|MSTR|CPOL|/*CPHA|*/SIZE|(TIMOD & 1);    // MSTR=1, CPOL=0, CPHA=0, LSBF=0, SIZE=1, EMISO=0, PSSE=0, GM=0, SZ=0, TIMOD=01
-			*pPORTGIO_CLEAR = 1<<12;
-			*pSPI1_TDBR = 0;
+			if (tm.Check(MS2SCLK(1)))
+			{
+				*pSPI1_BAUD = 50; // SCLK=16MHz
+				*pSPI1_FLG = 0;//FLS5|FLS2;
+				*pSPI1_STAT = 0x7F;
+				*pSPI1_CTL = SPE|MSTR|CPOL|/*CPHA|*/SIZE|(TIMOD & 1);    // MSTR=1, CPOL=0, CPHA=0, LSBF=0, SIZE=1, EMISO=0, PSSE=0, GM=0, SZ=0, TIMOD=01
+				*pPORTGIO_CLEAR = 1<<12;
+				
+				t = *pSPI1_RDBR;
+				
+				*pSPI1_TDBR = 0;
 
-			i++;
+				i++;
+			}
+			else
+			{
+				i = 2;
+			};
 
 			break;
 
@@ -254,9 +273,45 @@ static void UpdateADC()
 
 			if ((*pSPI1_STAT&1) != 0)
 			{
-				adcValue.d += (i32)(*pSPI1_RDBR) - (i32)adcValue.w[1];
+				adcValue.d += ((i32)(*pSPI1_RDBR) - (i32)adcValue.w[1])*8192;
+
+//				adcValue.w[1] = *pSPI1_RDBR;
 
 				*pPORTGIO_SET = 1<<12;
+
+				*pSPI1_CTL = 0;
+
+				i++;
+			};
+
+			break;
+
+		case 2:
+
+			if (pgaSet)
+			{
+				*pSPI1_BAUD = 7; // SCLK=7MHz
+				*pSPI1_FLG = 0;//FLS5|FLS2;
+				*pSPI1_CTL = SPE|MSTR|SIZE|(TIMOD & 1);    // MSTR=1, CPOL=0, CPHA=0, LSBF=0, SIZE=1, EMISO=0, PSSE=0, GM=0, SZ=0, TIMOD=01
+				*pPORTGIO_CLEAR = 1<<11;
+				*pSPI1_TDBR = pgaValue;
+
+				pgaSet = false;
+
+				i++;
+			}
+			else
+			{
+				i = 0;
+			};
+
+			break;
+
+		case 3:
+
+			if ((*pSPI1_STAT&1) != 0)
+			{
+				*pPORTGIO_SET = 1<<11;
 
 				*pSPI1_CTL = 0;
 
@@ -264,6 +319,7 @@ static void UpdateADC()
 			};
 
 			break;
+
 	};
 }
 

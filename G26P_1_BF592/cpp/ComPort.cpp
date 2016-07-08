@@ -6,6 +6,8 @@
 #include "time.h"
 //#include "hardware.h"
 
+//#pragma optimize_for_speed
+
 #ifdef _DEBUG_
 //	static const bool _debug = true;
 #else

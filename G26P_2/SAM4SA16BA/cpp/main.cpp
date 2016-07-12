@@ -35,8 +35,8 @@ static List<RMEM> freeRmem;
 
 static byte fireType = 0;
 
-static byte gain[8][3];// = { { 7, 7, 7, 7, 7, 7, 7, 7 }, { 7, 7, 7, 7, 7, 7, 7, 7 }, { 7, 7, 7, 7, 7, 7, 7, 7 } };
-static byte sampleTime[3] = { 9, 19, 19};
+static byte gain[8][3] = { { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 } };
+static byte sampleTime[3] = { 10, 20, 20};
 static u16 sampleLen[3] = { 512, 512, 512};
 static u16 sampleDelay[3] = { 0, 0, 0};
 
@@ -83,7 +83,7 @@ void CallBackRcvReqFire(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReqFire(byte adr, byte n)
+REQ* CreateRcvReqFire(byte adr, byte n, u16 tryCount)
 {
 	static Req01 req;
 	static ComPort::WriteBuffer wb;
@@ -93,6 +93,7 @@ REQ* CreateRcvReqFire(byte adr, byte n)
 	q.rb = 0;
 	q.wb = &wb;
 	q.ready = false;
+	q.tryCount = tryCount;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -121,18 +122,24 @@ void CallBackRcvReq02(REQ *q)
 		if (!crcOK) 
 		{
 			crcErr02++;
-			qrcv.Add(q);
 		};
 	}
 	else
 	{
+		crcOK = false;
+	};
+
+	if (!crcOK && q->tryCount > 0)
+	{
+		q->tryCount--;
 		qrcv.Add(q);
 	};
+
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
+REQ* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 {
 	adr = (adr-1)&7; 
 	chnl &= 3; n %= 3;
@@ -159,6 +166,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl)
 	q.preTimeOut = MS2RT(1);
 	q.postTimeOut = 1;
 	q.ready = false;
+	q.tryCount = tryCount;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -189,13 +197,17 @@ void CallBackRcvReq03(REQ *q)
 	{
 		crcErr03++;
 
-//		qrcv.Add(q);
+		if (q->tryCount > 0)
+		{
+			q->tryCount--;
+			qrcv.Add(q);
+		};
 	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[])
+REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[], u16 tryCount)
 {
 	static Req03 req;
 	static Rsp03 rsp;
@@ -204,11 +216,12 @@ REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[])
 	static REQ q;
 
 	q.CallBack = CallBackRcvReq03;
-	q.preTimeOut = MS2RT(10);
-	q.postTimeOut = 1;
+	q.preTimeOut = US2RT(500);
+	q.postTimeOut = US2RT(100);
 	q.rb = &rb;
 	q.wb = &wb;
 	q.ready = false;
+	q.tryCount = tryCount;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -248,13 +261,17 @@ void CallBackRcvReq04(REQ *q)
 	{
 		crcErr04++;
 
-//		qrcv.Add(q);
+		if (q->tryCount > 0)
+		{
+			q->tryCount--;
+			qrcv.Add(q);
+		};
 	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReq04(byte adr, byte ka[])
+REQ* CreateRcvReq04(byte adr, byte ka[], u16 tryCount)
 {
 	static Req04 req;
 	static Rsp04 rsp;
@@ -263,11 +280,12 @@ REQ* CreateRcvReq04(byte adr, byte ka[])
 	static REQ q;
 
 	q.CallBack = CallBackRcvReq04;
-	q.preTimeOut = MS2RT(10);
-	q.postTimeOut = 1;
+	q.preTimeOut = US2RT(500);
+	q.postTimeOut = US2RT(100);
 	q.rb = &rb;
 	q.wb = &wb;
 	q.ready = false;
+	q.tryCount = tryCount;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -626,7 +644,7 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	byte chnl = off / diglen;
 
-	u16 i = 0;
+//	u16 i = 0;
 
 	u16 j = off % diglen;
 
@@ -698,7 +716,7 @@ static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	{
 		gain[nr][nf] = data[2]&7;
 		
-		qrcv.Add(CreateRcvReq04(nr+1, gain[nr]));
+		qrcv.Add(CreateRcvReq04(nr+1, gain[nr], 2));
 	}
 	else
 	{
@@ -731,7 +749,7 @@ static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 				break;
 		};
 
-		qrcv.Add(CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay));
+		qrcv.Add(CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 2));
 	};
 
 
@@ -931,7 +949,7 @@ static void UpdateRcvTrm()
 
 		case 4:
 
-			reqr = CreateRcvReqFire(0, n);
+			reqr = CreateRcvReqFire(0, n, 0);
 			reqt = CreateTrmReqFire(n);
 
 			comrcv.Write(reqr->wb);
@@ -1203,7 +1221,7 @@ static void MainMode()
 
 		case 2:
 
-			req = CreateRcvReq02(rcv, fireType, chnl);
+			req = CreateRcvReq02(rcv, fireType, chnl, 1);
 
 			if (req != 0)
 			{
@@ -1327,6 +1345,34 @@ static void UpdateMisc()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void InitRcv()
+{
+	REQ *req = 0;
+
+	for (byte i = 1; i <= numStations; i++)
+	{
+		req = CreateRcvReq04(i, gain[i-1], -1);
+
+		qrcv.Add(req);
+
+		while(!req->ready)
+		{
+			qrcv.Update();
+		};
+	};
+
+	req = CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 0);
+	
+	qrcv.Add(req);
+
+	while(!req->ready)
+	{
+		qrcv.Update();
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 //	static byte i = 0;
@@ -1341,6 +1387,8 @@ int main()
 	comtr.Connect(1, 1562500, 0);
 	combf.Connect(3, 6250000, 0);
 	comrcv.Connect(2, 6250000, 0);
+
+	InitRcv();
 
 //	com1.Write(&wb);
 

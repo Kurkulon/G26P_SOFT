@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "G26P1BF592", "G26P1BF592.vcproj", "{78AB4CA0-E665-4E3C-98EB-BB35E12CD5F9}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bootloader", "bootloader\bootloader.vcproj", "{C3504354-2116-4299-A5E8-D05A0CCF5CE0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -13,6 +15,10 @@ Global
 		{78AB4CA0-E665-4E3C-98EB-BB35E12CD5F9}.Debug|Win32.Build.0 = Debug|Win32
 		{78AB4CA0-E665-4E3C-98EB-BB35E12CD5F9}.Release|Win32.ActiveCfg = Release|Win32
 		{78AB4CA0-E665-4E3C-98EB-BB35E12CD5F9}.Release|Win32.Build.0 = Release|Win32
+		{C3504354-2116-4299-A5E8-D05A0CCF5CE0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C3504354-2116-4299-A5E8-D05A0CCF5CE0}.Debug|Win32.Build.0 = Debug|Win32
+		{C3504354-2116-4299-A5E8-D05A0CCF5CE0}.Release|Win32.ActiveCfg = Release|Win32
+		{C3504354-2116-4299-A5E8-D05A0CCF5CE0}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

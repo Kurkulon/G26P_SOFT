@@ -143,6 +143,8 @@ struct REQ
 	bool	ready;
 	bool	crcOK;
 	typedef void tRsp(REQ*);
+
+	u16		tryCount;
 	
 	REQ *next;
 
@@ -154,7 +156,7 @@ struct REQ
 
 	u32		preTimeOut, postTimeOut;
 
-	REQ() : next(0), wb(0), rb(0) {}
+	REQ() : next(0), wb(0), rb(0), tryCount(0) {}
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

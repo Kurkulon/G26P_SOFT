@@ -1351,7 +1351,7 @@ static void InitRcv()
 
 	for (byte i = 1; i <= numStations; i++)
 	{
-		req = CreateRcvReq04(i, gain[i-1], -1);
+		req = CreateRcvReq04(i, gain[i-1], 200);
 
 		qrcv.Add(req);
 

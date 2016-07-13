@@ -197,7 +197,7 @@ int main( void )
 
 	while (1)
 	{
-//		*pPORTFIO_TOGGLE = 1<<2;
+		*pPORTFIO_TOGGLE = 1<<8;
 
 		//u32 t = GetRTT();
 
@@ -227,7 +227,7 @@ int main( void )
 		//};
 
 
-//		*pPORTFIO_TOGGLE = 1<<2;
+		*pPORTFIO_TOGGLE = 1<<8;
 
 	};
 

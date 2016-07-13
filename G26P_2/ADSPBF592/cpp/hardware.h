@@ -12,9 +12,10 @@
 extern void InitHardware();
 extern void UpdateHardware();
 
+#pragma always_inline
 inline u32 GetRTT() { return *pTIMER0_COUNTER; }
 
-extern void ReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv, bool *ready0, bool *ready1);
+//extern void ReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv, bool *ready0, bool *ready1);
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -56,8 +57,8 @@ extern void SetTrmBoudRate(byte i);
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define US2CLK(x) ((u32)(x*SCLK/1e6+0.5))
-#define MS2CLK(x) ((u32)(x*SCLK/1e3+0.5))
+#define US2CLK(x) ((u32)(x*(SCLK/1000000)))
+#define MS2CLK(x) ((u32)(x*(SCLK/1000)))
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

@@ -8,18 +8,67 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void ManDisable() { *pPORTFIO = 0x50; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; }
-inline void ManOne() { *pPORTFIO = 0x50; *pPORTFIO = 0xC0; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0xC0; *pPORTFIO_SET = 0x30; }
-inline void ManZero() { *pPORTFIO = 0x50; *pPORTFIO = 0x30; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0x30; *pPORTFIO_SET = 0xC0; }
+EX_INTERRUPT_HANDLER(WaitManCmdSync);
+EX_INTERRUPT_HANDLER(WaitManDataSync);
+EX_INTERRUPT_HANDLER(ManRcvSyncIrq);
+EX_INTERRUPT_HANDLER(ManRcvTimerIRQ);
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define BOUD2CLK(x) ((u32)((SCLK/2.0)/x+0.5))
+#pragma always_inline
+inline void ManDisable() { *pPORTFIO = 0x50; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; }
+#pragma always_inline
+inline void ManOne() { *pPORTFIO = 0x50; *pPORTFIO = 0xC0; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0xC0; *pPORTFIO_SET = 0x30; }
+#pragma always_inline
+inline void ManZero() { *pPORTFIO = 0x50; *pPORTFIO = 0x30; } //{ *pPORTFIO_CLEAR = 0xA0; *pPORTFIO_SET = 0x50; *pPORTFIO_CLEAR = 0x30; *pPORTFIO_SET = 0xC0; }
+
+#pragma always_inline
+inline void ManRcvTmrEn(u32 t) { *pTCOUNT = t; *pTCNTL = TMREN|TMPWR; }
+
+#pragma always_inline
+inline void ManRcvTmrDis() { *pTCNTL = 0; }
+			
+#pragma always_inline
+inline void ManRcvTmrReset(u32 t) { *pTCNTL = 0; *pTCOUNT = t; *pTCNTL = TMREN|TMPWR; }
+
+#pragma always_inline
+inline void ManRcvTmrIrqEn() { *pIMASK |= EVT_IVTMR; } 
+
+#pragma always_inline
+inline void ManRcvTmrIrqDis() { *pIMASK &= ~EVT_IVTMR; } 
+
+
+static u32 manPulseTmr = 0;
+
+#pragma always_inline
+inline void ManPulseTmrReset() { manPulseTmr = *pTIMER0_COUNTER; } 
+
+#pragma always_inline
+inline u32 ManPulseTmrGet() { return *pTIMER0_COUNTER - manPulseTmr; } 
+
+
+#define	ManRcvTmrIrqPtr (*pEVT6)
+#define	ManRcvPinIrq (*pEVT11)
+#define PINIRQ (1<<10)
+
+//	*pTPERIOD = rcvQuartPeriod;
+//
+////	*pPORTFIO_SET = 1<<2;
+//
+//	*pTCNTL = TAUTORLD|TMREN|TMPWR;
+
+	//*pEVT11 = (void*)WAITMANRCVR_ISR;
+	//*pSIC_IMASK |= IRQ_PFA_PORTF;
+	//*pIMASK |= EVT_IVG11; 
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define BOUD2CLK(x) ((u32)((SCLK/1.0)/x+0.5))
 
 static const u16 manboud[8] = { BOUD2CLK(20833), BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333), BOUD2CLK(83333), BOUD2CLK(83333), BOUD2CLK(83333) };
 
 
-u16 trmHalfPeriod = BOUD2CLK(20833);
+u16 trmHalfPeriod = BOUD2CLK(20833)/2;
 byte stateManTrans = 0;
 static MTB *manTB = 0;
 static bool trmBusy = false;
@@ -28,17 +77,37 @@ static bool trmBusy = false;
 
 void SetTrmBoudRate(byte i)
 {
-	trmHalfPeriod = manboud[i&7];
+	trmHalfPeriod = manboud[i&7]/2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#define ManRxd (*pPORTFIO & 1)
+
+const u16 rcvPeriod = BOUD2CLK(20833);
+const u16 rcvHalfPeriod = rcvPeriod/2;
+const u16 rcvQuartPeriod = rcvPeriod/4;
+const u16 rcvSyncPulse = rcvPeriod * 1.5;
+const u16 rcvSyncPulseMin = rcvSyncPulse * 0.9;
+const u16 rcvSyncPulseMax = rcvSyncPulse * 1.2;
+const u16 rcvSyncHalf = rcvSyncPulseMax + rcvHalfPeriod;
+const u16 rcvPeriodMin = rcvPeriod * 0.8;
+const u16 rcvPeriodMax = rcvPeriod * 1.2;
+
+static u32* rcvManPtr = 0;
+static u16 rcvManCount = 0;
+
+static byte rcvSyncState = 0;
+static byte rcvDataState = 0;
+
 static u16 rcvCount = 0;
 static bool rcvBusy = false;
 byte stateManRcvr = 0;
-const u16 rcvQuartPeriod = BOUD2CLK(20833)/2;
+//const u16 rcvQuartPeriod = BOUD2CLK(20833)/2;
 
 static MRB *manRB = 0;
+
+//static void(*ManRcvPinIrq)() = WaitManCmdSync;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -85,88 +154,6 @@ static void Init_PLL()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool defSport0_Ready = false, defSport1_Ready = false;
-static bool *sport0_Ready = 0, *sport1_Ready = 0;
-
-EX_INTERRUPT_HANDLER(SPORT_ISR)
-{
-	if (*pDMA1_IRQ_STATUS & 1)
-	{
-		*pDMA1_IRQ_STATUS = 1;
-		*pSPORT0_RCR1 = 0;
-		*pDMA1_CONFIG = 0;
-		*sport0_Ready = true;
-	};
-
-	if (*pDMA3_IRQ_STATUS & 1)
-	{
-		*pDMA3_IRQ_STATUS = 1;
-		*pSPORT1_RCR1 = 0;
-		*pDMA3_CONFIG = 0;
-		*sport1_Ready = true;
-	};
-
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void InitSPORT()
-{
-	*pDMA1_CONFIG = 0;
-	*pDMA3_CONFIG = 0;
-	*pSPORT0_RCR1 = 0;
-	*pSPORT1_RCR1 = 0;
-	//*pSPORT0_RCR2 = 15; //|RXSE;
-	//*pSPORT0_RCLKDIV = 0;
-	//*pSPORT0_RFSDIV = 34;
-	//*pSPORT0_RCR1 = RCKFE|LARFS|LRFS|RFSR|IRFS|IRCLK|RSPEN;
-
-	*pEVT9 = (void*)SPORT_ISR;
-	*pIMASK |= EVT_IVG9; 
-	*pSIC_IMASK |= 1<<9;
-
-	//register_handler(ik_ivg9, SPORT_ISR);
-
-
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void ReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv, bool *ready0, bool *ready1)
-{
-	sport0_Ready = (ready0 != 0) ? ready0 : &defSport0_Ready;
-	sport1_Ready = (ready1 != 0) ? ready1 : &defSport1_Ready;
-
-	*sport0_Ready = false;
-	*sport1_Ready = false;
-
-	*pDMA1_CONFIG = 0;
-	*pDMA3_CONFIG = 0;
-
-	*pSPORT0_RCR1 = 0;
-	*pSPORT0_RCR2 = 15|RXSE;
-	*pSPORT0_RCLKDIV = clkdiv;
-	*pSPORT0_RFSDIV = 49;
-
-	*pSPORT1_RCR1 = 0;
-	*pSPORT1_RCR2 = 15|RXSE;
-	*pSPORT1_RCLKDIV = clkdiv;
-	*pSPORT1_RFSDIV = 49;
-
-	*pDMA1_START_ADDR = dst1;
-	*pDMA1_X_COUNT = len1/2;
-	*pDMA1_X_MODIFY = 2;
-
-	*pDMA3_START_ADDR = dst2;
-	*pDMA3_X_COUNT = len2/2;
-	*pDMA3_X_MODIFY = 2;
-
-	*pDMA1_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
-	*pDMA3_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
-
-	*pSPORT0_RCR1 = RCKFE|LARFS|LRFS|RFSR|IRFS|IRCLK|RSPEN;
-	*pSPORT1_RCR1 = RCKFE|LARFS|LRFS|RFSR|IRFS|IRCLK|RSPEN;
-}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -181,7 +168,7 @@ static void LowLevelInit()
 	*pPORTF_FER = 0x1800;		//  0001 1000 0000 0000
 //	*pPORTG_FER = 0xE70F;		//  0000 0000 0000 0000
 
-	*pPORTFIO_DIR = 0x00F4;		//  0000 0000 1111 0100
+	*pPORTFIO_DIR = 0x21F4;		//  0010 0001 1111 0100
 //	*pPORTGIO_DIR = 0x1800;		//  0001 1000 0000 0000
 
 	*pPORTFIO_INEN = 0x0601;	//  0000 0110 0000 0001
@@ -362,35 +349,195 @@ static void InitManTransmit()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-EX_INTERRUPT_HANDLER(MANRCVR_ISR)
+//EX_INTERRUPT_HANDLER(MANRCVR_ISR)
+//{
+//	u16 t;
+//	static byte ib;
+//	static u32 rw;
+//	static u16 l, lp;
+////	static byte lastbit, bit;
+////	static byte sc;
+//	static u32 *p;
+//	static u16 count;
+//	static bool c;
+//
+//	enum {FSP = 0, SSP = 1, FH = 3, SH = 4, END = 49, ERR = 50};
+//
+////	*pPORTFIO_SET = 1<<2;
+//
+//	if (((rcvCount++) & 1) == 0) switch (stateManRcvr)
+//	{
+//		case 0:
+//
+//			l = 16;
+//			lp = 8;
+//			p = manRB->data;
+//			count = manRB->maxLen;
+//			c = false;
+//
+//			rw = 0;
+//			rw |= *pPORTFIO & 1; // синхро бит 
+//			lp--;
+//
+//			stateManRcvr++;
+//
+//			break;
+//
+//		case 1:
+//
+//			rw <<= 1;
+//			rw |= *pPORTFIO & 1; // синхро бит 
+//			lp--;
+//
+//			if (rw >= 0x1C)
+//			{
+//				if (((rw+1)&3) > 1)
+//				{
+//					stateManRcvr = 3;
+//				}
+//				else
+//				{
+//					*pTCNTL = 0;
+//					stateManRcvr = 0;
+//				};
+//			}
+//			else if (lp == 0)
+//			{
+////				*pPORTFIO_POLAR ^= (1<<10)|0xF1;
+//				stateManRcvr++;
+//			};
+//
+//			break;
+//
+//		case 2:
+//
+//			rw <<= 1;
+//			rw |= *pPORTFIO & 1; // бит данных
+//			l--;
+//
+//			if (l > 0)
+//			{
+//				stateManRcvr++;
+//			}
+//			else
+//			{
+//				*p++ = rw;
+//				count--;
+//
+//				rw = 0;
+//
+//				lp = 6;
+//				stateManRcvr = (count == 0) ? END : 4;
+//			};
+//
+//			break;
+//
+//		case 3:
+//
+//			stateManRcvr--;
+//
+//			break;
+//
+//		case 4:
+//
+//			rw <<= 1;
+//			rw |= *pPORTFIO & 1; // синхробит
+//			lp--;
+//
+//			if (lp == 0)
+//			{
+//				l = 17;
+//
+//				if (rw == 0 || rw >=63)
+//				{
+//					stateManRcvr = END;
+//				}
+//				else 
+//				{
+//					c = c || !((rw == 0x38) || rw == 7);
+//					stateManRcvr = 3;
+//				};
+//			};
+//
+//			break;
+//
+//		case END:
+//			
+//			manRB->OK = !c;
+//			manRB->ready = true;
+//			manRB->len = manRB->maxLen - count;
+//			*pTCNTL = 0;
+//			*pPORTFIO_MASKA = 0;
+//			*pPORTFIO_CLEAR = 1<<10;
+//			*pSIC_IMASK &= ~IRQ_PFA_PORTF;
+//
+//			rcvBusy = false;
+//
+//			break;
+//	};
+//
+////	*pPORTFIO_CLEAR = (1<<2);
+//}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//EX_INTERRUPT_HANDLER(WAITMANRCVR_ISR)
+//{
+////	*pPORTFIO_SET = 1<<2;
+//
+//	*pTCNTL = TMPWR;
+//
+//	*pPORTFIO_CLEAR = /*(1<<2)|*/(1<<10);
+//
+//	*pTPERIOD = rcvQuartPeriod;
+//
+////	*pPORTFIO_SET = 1<<2;
+//
+//	*pTCNTL = TAUTORLD|TMREN|TMPWR;
+//
+//	if ((*pILAT & EVT_IVTMR) == 0) { rcvCount = 0; };
+//
+////	*pPORTFIO_CLEAR = 1<<2;
+//}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void ManRcvEnd(bool ok)
 {
-	u16 t;
-	static byte ib;
+	*pTCNTL = 0;
+	*pPORTFIO_MASKA = 0;
+	*pPORTFIO_CLEAR = PINIRQ;
+	*pSIC_IMASK &= ~IRQ_PFA_PORTF;
+
+	ManRcvTmrDis();
+	ManRcvTmrIrqDis();
+
+	manRB->OK = ok;
+	manRB->ready = true;
+	manRB->len = manRB->maxLen - rcvManCount;
+
+	rcvBusy = false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+EX_INTERRUPT_HANDLER(ManRcvTimerIRQ)
+{
 	static u32 rw;
-	static u16 l, lp;
-//	static byte lastbit, bit;
-//	static byte sc;
-	static u32 *p;
-	static u16 count;
-	static bool c;
+	static u16 l;
 
-	enum {FSP = 0, SSP = 1, FH = 3, SH = 4, END = 49, ERR = 50};
+	*pPORTFIO_SET = 1<<13;
 
-//	*pPORTFIO_SET = 1<<2;
+//	ManRcvTmrIrqDis(); //ManTmr.IDR = CPCS;
 
-	if (((rcvCount++) & 1) == 0) switch (stateManRcvr)
+	switch (stateManRcvr)
 	{
 		case 0:
 
 			l = 16;
-			lp = 8;
-			p = manRB->data;
-			count = manRB->maxLen;
-			c = false;
 
 			rw = 0;
-			rw |= *pPORTFIO & 1; // синхро бит 
-			lp--;
+			rw |= ManRxd; // синхро бит 
 
 			stateManRcvr++;
 
@@ -399,119 +546,213 @@ EX_INTERRUPT_HANDLER(MANRCVR_ISR)
 		case 1:
 
 			rw <<= 1;
-			rw |= *pPORTFIO & 1; // синхро бит 
-			lp--;
+			rw |= ManRxd; // бит данных
+			l--;
 
-			if (rw >= 0x1C)
+			if (l == 0)
 			{
-				if (((rw+1)&3) > 1)
+				*rcvManPtr++ = rw;
+				rcvManCount--;
+
+				if (rcvManCount == 0)
 				{
-					stateManRcvr = 3;
+					ManRcvEnd(true);
 				}
 				else
 				{
-					*pTCNTL = 0;
-					stateManRcvr = 0;
+					stateManRcvr++;
+
+					ManRcvPinIrq = (void*)WaitManDataSync;
+
+					ManRcvTmrEn(rcvSyncHalf);
+					rcvDataState = 0;
 				};
-			}
-			else if (lp == 0)
-			{
-//				*pPORTFIO_POLAR ^= (1<<10)|0xF1;
-				stateManRcvr++;
 			};
 
 			break;
 
 		case 2:
 
-			rw <<= 1;
-			rw |= *pPORTFIO & 1; // бит данных
-			l--;
+			ManRcvEnd(true);
 
-			if (l > 0)
+			break;
+
+	};
+
+	*pPORTFIO_CLEAR = 1<<13;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+EX_INTERRUPT_HANDLER(WaitManCmdSync)
+{
+	*pPORTFIO_CLEAR = PINIRQ;
+	
+//	*pPORTFIO_SET = 1<<8;
+
+	u32 t = ManPulseTmrGet();
+
+	switch (rcvSyncState)
+	{
+		case 0:
+
+			if (ManRxd)
 			{
-				stateManRcvr++;
-			}
-			else
-			{
-				*p++ = rw;
-				count--;
-
-				rw = 0;
-
-				lp = 6;
-				stateManRcvr = (count == 0) ? END : 4;
+				ManPulseTmrReset();
+				rcvSyncState++;
 			};
 
 			break;
 
-		case 3:
+		case 1:
 
-			stateManRcvr--;
+			if (t < rcvSyncPulseMin || t > rcvSyncHalf)
+			{
+				rcvSyncState = 0;
+//				ManPulseTmrDis();
+			}
+			else if (t > rcvSyncPulseMax)
+			{
+				ManPulseTmrReset();
+
+				ManRcvPinIrq = (void*)ManRcvSyncIrq;
+
+				ManRcvTmrEn(rcvQuartPeriod);
+				ManRcvTmrIrqEn();
+
+				rcvSyncState = 0;
+			};
 
 			break;
+	};
 
-		case 4:
+//	t = HW::PIOE->ISR;
 
-			rw <<= 1;
-			rw |= *pPORTFIO & 1; // синхробит
-			lp--;
+//	*pPORTFIO_CLEAR = 1<<8;
+}
 
-			if (lp == 0)
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+EX_INTERRUPT_HANDLER(WaitManDataSync)
+{
+	*pPORTFIO_CLEAR = PINIRQ;
+	
+	u32 t = ManPulseTmrGet();
+
+	ManRcvTmrReset(rcvSyncHalf);
+
+	switch (rcvDataState)
+	{
+		case 0:
+
+			if (ManRxd)
 			{
-				l = 17;
-
-				if (rw == 0 || rw >=63)
+				if (t < rcvHalfPeriod)
 				{
-					stateManRcvr = END;
+					ManPulseTmrReset();
+					rcvDataState++;
 				}
-				else 
+				else
 				{
-					c = c || !((rw == 0x38) || rw == 7);
-					stateManRcvr = 3;
+					ManRcvEnd(true);
+				};
+			}
+			else
+			{
+				if (t > rcvSyncPulseMin && t < rcvSyncHalf)
+				{
+					ManPulseTmrReset();
+					rcvDataState += 2;
+				}
+				else
+				{
+					ManRcvEnd(true);
 				};
 			};
 
 			break;
 
-		case END:
-			
-			manRB->OK = !c;
-			manRB->ready = true;
-			manRB->len = manRB->maxLen - count;
-			*pTCNTL = 0;
-			*pPORTFIO_MASKA = 0;
-			*pPORTFIO_CLEAR = 1<<10;
-			*pSIC_IMASK &= ~IRQ_PFA_PORTF;
+		case 1:
 
-			rcvBusy = false;
+			if (t > rcvSyncPulseMin && t < rcvSyncPulseMax)
+			{
+				ManPulseTmrReset();
+				rcvDataState++;
+			}
+			else
+			{
+				ManRcvEnd(true);
+			};
+
+			break;
+
+		case 2:
+
+			if (t < rcvSyncPulseMin || t > rcvSyncHalf)
+			{
+				ManRcvEnd(true);
+			}
+			else if (t > rcvSyncPulseMax)
+			{
+				ManPulseTmrReset();
+
+				ManRcvPinIrq = (void*)ManRcvSyncIrq;
+
+				stateManRcvr = 0;
+
+				ManRcvTmrEn(rcvQuartPeriod);
+				ManRcvTmrIrqEn();
+
+				rcvDataState = 0;
+			};
 
 			break;
 	};
 
-//	*pPORTFIO_CLEAR = (1<<2);
+//	t = HW::PIOE->ISR;
+
+//	HW::PIOE->CODR = 3;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-EX_INTERRUPT_HANDLER(WAITMANRCVR_ISR)
+EX_INTERRUPT_HANDLER(ManRcvSyncIrq)
 {
-//	*pPORTFIO_SET = 1<<2;
+	*pPORTFIO_CLEAR = PINIRQ;
 
-	*pTCNTL = TMPWR;
+//	*pPORTFIO_SET = 1<<13;
 
-	*pPORTFIO_CLEAR = /*(1<<2)|*/(1<<10);
+	u32 t = ManPulseTmrGet();
 
-	*pTPERIOD = rcvQuartPeriod;
+	if (t > rcvPeriodMax)
+	{
+		ManRcvEnd(false);
+	}
+	else if (t > rcvPeriodMin)
+	{
+		ManPulseTmrReset();
 
-//	*pPORTFIO_SET = 1<<2;
+		ManRcvTmrEn(rcvQuartPeriod);
+		ManRcvTmrIrqEn();
+	};
 
-	*pTCNTL = TAUTORLD|TMREN|TMPWR;
-
-	if ((*pILAT & EVT_IVTMR) == 0) { rcvCount = 0; };
-
-//	*pPORTFIO_CLEAR = 1<<2;
+//	*pPORTFIO_CLEAR = 1<<13;
 }
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//EX_INTERRUPT_HANDLER(ManRcvSync)
+//{
+//	if (*pSIC_ISR & IRQ_PFA_PORTF)
+//	{
+//		ManRcvPinIrq();
+//	};
+//
+//	if (*pSIC_ISR & IRQ_TIMER1)
+//	{
+//		ManRcvTimerIRQ();
+//	};
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -519,10 +760,31 @@ static void InitManRecieve()
 {
 	*pTSCALE = 0;
 	*pTPERIOD = rcvQuartPeriod;
-	*pEVT6 = (void*)MANRCVR_ISR;
+	*pEVT6 = (void*)ManRcvTimerIRQ;
 	*pTCNTL = TMPWR;;
 
 	*pIMASK |= EVT_IVTMR; 
+
+	ManPulseTmrReset();
+
+	//using namespace HW;
+
+	//PMC->PCER0 = PID::TC1_M|PID::PIOE_M;
+
+	//VectorTableExt[HW::PID::PIOE_I] = WaitManCmdSync;
+	//CM4::NVIC->ICPR[0] = HW::PID::PIOE_M;
+	//CM4::NVIC->ISER[0] = HW::PID::PIOE_M;	
+
+	////HW::PIOE->IER = 1<<3;
+	////HW::PIOE->IFER = 1<<3;
+
+	//HW::PIOE->OER = 7;
+
+	//VectorTableExt[HW::PID::TC1_I] = ManRcvIRQ;
+	//CM4::NVIC->ICPR[0] = HW::PID::TC1_M;
+	//CM4::NVIC->ISER[0] = HW::PID::TC1_M;	
+	//ManTmr.IDR = CPCS;
+
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -540,16 +802,27 @@ bool RcvManData(MRB *mrb)
 	manRB = mrb;
 	
 	stateManRcvr = 0;
+	rcvSyncState = 0;
+
+	rcvManPtr = manRB->data;
+	rcvManCount = manRB->maxLen;
+
 	rcvCount = 0;
 
-	*pEVT11 = (void*)WAITMANRCVR_ISR;
+	ManPulseTmrReset();
+
+	ManRcvTmrDis();
+	ManRcvTmrIrqDis();
+	ManRcvTmrIrqPtr = (void*)ManRcvTimerIRQ;
+
+	ManRcvPinIrq = (void*)WaitManCmdSync;
 	*pSIC_IMASK |= IRQ_PFA_PORTF;
 	*pIMASK |= EVT_IVG11; 
 
-	*pPORTFIO_EDGE = 1<<10;
-	*pPORTFIO_BOTH = 1<<10;
-	*pPORTFIO_CLEAR = 1<<10;
-	*pPORTFIO_MASKA = 1<<10;
+	*pPORTFIO_EDGE = PINIRQ;
+	*pPORTFIO_BOTH = PINIRQ;
+	*pPORTFIO_CLEAR = PINIRQ;
+	*pPORTFIO_MASKA = PINIRQ;
 	*pPORTFIO_MASKB = 0;
 
 	return rcvBusy = true;

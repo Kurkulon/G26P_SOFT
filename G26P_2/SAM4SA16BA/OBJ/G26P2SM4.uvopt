@@ -133,12 +133,12 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=1995,100,2405,643,0)(1007=-1,-1,-1,-1,0)(1008=-1,-1,-1,-1,0)(1009=2269,224,2503,758,0)(1012=-1,-1,-1,-1,0)</Name>
+          <Name>(1010=1995,100,2405,643,0)(1007=-1,-1,-1,-1,0)(1008=-1,-1,-1,-1,0)(1009=2681,219,2915,753,0)(1012=2055,165,2520,465,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name></Name>
+          <Name>/</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -167,7 +167,7 @@
           <Type>0</Type>
           <LineNumber>1377</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>4198536</Address>
+          <Address>4198550</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -215,6 +215,21 @@
           <WinNumber>1</WinNumber>
           <ItemText>r02</ItemText>
         </Ww>
+        <Ww>
+          <count>7</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>bfCRCOK</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>bfCRCER</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>manCounter</ItemText>
+        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>
@@ -227,7 +242,7 @@
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>0x20000248</ItemText>
+          <ItemText>sp</ItemText>
         </Mm>
       </MemoryWindow1>
       <Tracepoint>

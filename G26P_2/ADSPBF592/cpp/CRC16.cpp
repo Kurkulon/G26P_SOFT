@@ -1,5 +1,7 @@
 #include "types.h"
 
+#pragma optimize_for_speed
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 extern const u16 tableCRC[256] = 

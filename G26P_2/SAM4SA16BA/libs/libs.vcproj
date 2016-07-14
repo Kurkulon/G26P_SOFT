@@ -84,14 +84,6 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\cpp\AllocMem.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ByteArray.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\ComPort.cpp"
 				>
 			</File>
@@ -101,34 +93,6 @@
 			</File>
 			<File
 				RelativePath=".\cpp\CRC32.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\DateTimeVar.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\DwordVar.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\FloatPtrVar.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\FloatVar.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\fontWin1251_8x10.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\fontWin1251_8x16.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\fontWin1251_8x8.cpp"
 				>
 			</File>
 			<File
@@ -144,67 +108,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\IntVar.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\LogVar.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\modbus.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ReadArrayB.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ReadArrayD.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ReadArrayF.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ReadArrayW.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\SPI.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\time.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\UserVar.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\Vars.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\WIN2LCD.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\WriteArrayB.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\WriteArrayD.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\WriteArrayF.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\WriteArrayW.cpp"
 				>
 			</File>
 		</Filter>
@@ -214,15 +118,7 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\cpp\AllocMem.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ByteArray.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\cm3.h"
+				RelativePath=".\cpp\cm4.h"
 				>
 			</File>
 			<File
@@ -242,47 +138,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\DateTimeVar.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\DwordVar.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\FloatPtrVar.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\FloatVar.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\fonts.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\IntVar.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\LogVar.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\lpc43xx.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\modbus.h"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\PointerCRC.h"
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\SPI.h"
+				RelativePath=".\cpp\sam4sa.h"
 				>
 			</File>
 			<File
@@ -291,18 +151,6 @@
 			</File>
 			<File
 				RelativePath=".\cpp\types.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\UserVar.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\vars.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\WIN2LCD.h"
 				>
 			</File>
 		</Filter>

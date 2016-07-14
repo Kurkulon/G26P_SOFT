@@ -57,7 +57,7 @@ REQ* CreateReqMan(void *data, u16 len)
 	
 	q.CallBack = CallBackReqMan;
 	q.preTimeOut = MS2CLK(10);
-	q.postTimeOut = US2CLK(7.2);
+	q.postTimeOut = US2CLK(50);
 	
 	q.wb.data = data;
 	q.wb.len = len;
@@ -110,6 +110,13 @@ static void UpdateMan()
 				c = mrb.len;
 
 				*d++ = 0x5501;
+
+				if (!mrb.OK)
+				{
+					stateMan = 0;
+
+					break;
+				};
 
 				while (c > 0)
 				{

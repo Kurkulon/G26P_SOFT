@@ -88,11 +88,11 @@ const u16 rcvPeriod = BOUD2CLK(20833);
 const u16 rcvHalfPeriod = rcvPeriod/2;
 const u16 rcvQuartPeriod = rcvPeriod/4;
 const u16 rcvSyncPulse = rcvPeriod * 1.5;
-const u16 rcvSyncPulseMin = rcvSyncPulse * 0.9;
-const u16 rcvSyncPulseMax = rcvSyncPulse * 1.2;
+const u16 rcvSyncPulseMin = rcvSyncPulse - rcvQuartPeriod;
+const u16 rcvSyncPulseMax = rcvSyncPulse + rcvQuartPeriod;
 const u16 rcvSyncHalf = rcvSyncPulseMax + rcvHalfPeriod;
-const u16 rcvPeriodMin = rcvPeriod * 0.8;
-const u16 rcvPeriodMax = rcvPeriod * 1.2;
+const u16 rcvPeriodMin = rcvPeriod - rcvQuartPeriod;
+const u16 rcvPeriodMax = rcvPeriod + rcvQuartPeriod;
 
 static u32* rcvManPtr = 0;
 static u16 rcvManCount = 0;

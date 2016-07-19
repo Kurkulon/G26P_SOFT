@@ -35,7 +35,7 @@ static List<RMEM> freeRmem;
 
 static byte fireType = 0;
 
-static byte gain[8][3] = { { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 }, { 7, 7, 7 } };
+static byte gain[8][3] = { { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 } };
 static byte sampleTime[3] = { 10, 20, 20};
 static u16 sampleLen[3] = { 512, 512, 512};
 static u16 sampleDelay[3] = { 0, 0, 0};

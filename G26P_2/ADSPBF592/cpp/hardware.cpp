@@ -178,6 +178,9 @@ static void LowLevelInit()
 
 	ManDisable();
 
+	*pWDOG_CNT = MS2SCLK(10);
+	*pWDOG_CTL = WDEV_RESET|WDEN;
+
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

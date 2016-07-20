@@ -233,6 +233,8 @@ int main( void )
 		//	com1.Write(&wb);
 		//};
 
+		*pWDOG_STAT = 0; //Reset WDT
+
 
 		*pPORTFIO_TOGGLE = 1<<8;
 

@@ -81,11 +81,21 @@ static bool FCMD(T_HW::S_EFC *efc, byte cmd, u16 farg)
 {
 	while ((efc->FSR & FRDY) == 0) ;
 
-	efc->FCR = cmd | (farg << 8) | (0x5A << 24);
+	efc->FCR = (u32)cmd | (((u32)farg) << 8) | (0x5A << 24);
 
 	while ((efc->FSR & FRDY) == 0) ;
 
 	return (efc->FSR & 6) == 0;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void ClearLockBits(T_HW::S_EFC *efc, u16 page, u16 num)
+{
+	for (u16 i = 0; i < num; i++)
+	{
+		FCMD(efc, 9, page+i);
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -160,9 +170,12 @@ static bool WritePage(u32 padr, u32 *pbuf)
 	//	return true;
 	//};
 
-	if ((page & 0x7) == 0) // Erase 8 pages
+	if ((page & 0x1F) == 0) // Erase 32 pages
 	{
-		FCMD(efc, 7, 1|(page<<2));
+//		ClearLockBits(efc, page, 8);
+
+		FCMD(efc, 7, 3|(page));
+//		FCMD(efc, 5, 0);
 	};
 
 	for (u32 i = 0; i < PAGEDWORDS; i++)
@@ -399,7 +412,7 @@ static void UpdateCom2()
 
 int main()
 {
-//	__breakpoint(0);
+ //	__breakpoint(0);
 
 	SystemInit();
 
@@ -408,6 +421,11 @@ int main()
 	//	InitHardware();
 
 //	GetFlashDescriptor(&flDscr);
+
+	//for(u16 i = 0; i < 0x100; i++)
+	//{
+	//	FCMD(HW::EFC0, 7, 3|(i<<2));
+	//};
 
 	run = HandShake();
 

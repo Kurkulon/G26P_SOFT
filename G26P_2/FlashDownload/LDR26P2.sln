@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LDR26P2", "LDR26P2.vcproj", "{88912121-2779-44AB-81A1-C4DA22E16967}"
+	ProjectSection(ProjectDependencies) = postProject
+		{CA5FD0F4-9D2A-4B11-9A90-090307C413E0} = {CA5FD0F4-9D2A-4B11-9A90-090307C413E0}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bin2cpp", "bin2cpp.vcproj", "{CA5FD0F4-9D2A-4B11-9A90-090307C413E0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{88912121-2779-44AB-81A1-C4DA22E16967}.Debug|Win32.ActiveCfg = Debug|Win32
+		{88912121-2779-44AB-81A1-C4DA22E16967}.Debug|Win32.Build.0 = Debug|Win32
+		{88912121-2779-44AB-81A1-C4DA22E16967}.Release|Win32.ActiveCfg = Release|Win32
+		{88912121-2779-44AB-81A1-C4DA22E16967}.Release|Win32.Build.0 = Release|Win32
+		{CA5FD0F4-9D2A-4B11-9A90-090307C413E0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{CA5FD0F4-9D2A-4B11-9A90-090307C413E0}.Debug|Win32.Build.0 = Debug|Win32
+		{CA5FD0F4-9D2A-4B11-9A90-090307C413E0}.Release|Win32.ActiveCfg = Release|Win32
+		{CA5FD0F4-9D2A-4B11-9A90-090307C413E0}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

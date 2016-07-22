@@ -53,8 +53,12 @@ static u16 adcValue = 0;
 static U32u filtrValue;
 static u16 resistValue = 0;
 static byte numStations = 0;
+static u16 voltage = 0;
+static i16 temperature = 0;
 
 static byte mainModeState = 0;
+
+static byte rcvStatus = 0;
 
 //static u32 rcvCRCOK = 0;
 //static u32 rcvCRCER = 0;
@@ -111,7 +115,7 @@ REQ* CreateRcvReqFire(byte adr, byte n, u16 tryCount)
 
 void CallBackRcvReq02(REQ *q)
 {
-//	Rsp02 *rsp = (Rsp02*)q->rb->data;
+	Rsp02 &rsp = *((Rsp02*)q->rb->data);
 	
 	bool crcOK;
 
@@ -127,6 +131,15 @@ void CallBackRcvReq02(REQ *q)
 	else
 	{
 		crcOK = false;
+	};
+
+	if (crcOK)
+	{
+		rcvStatus |= 1 << (rsp.adr - 1);
+	}
+	else
+	{
+		rcvStatus &= ~(1 << (rsp.adr - 1));
 	};
 
 	if (!crcOK && q->tryCount > 0)
@@ -309,19 +322,21 @@ REQ* CreateRcvReq04(byte adr, byte ka[], u16 tryCount)
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackTrmReqFire(REQ *q)
+static void CallBackTrmReqFire(REQ *q)
 {
 //	waitSync = true;;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateTrmReqFire(byte n)
+static REQ* CreateTrmReqFire(byte n)
 {
 	static __packed struct { byte func; byte n; word crc; } req;
 
 	static ComPort::WriteBuffer wb;
 	static REQ q;
+
+	const byte fn[3] = {3, 1, 2};
 
 	q.CallBack = CallBackTrmReqFire;
 	q.rb = 0;
@@ -331,7 +346,53 @@ REQ* CreateTrmReqFire(byte n)
 	wb.len = sizeof(req);
 	
 	req.func = 1;
-	req.n = n+1;
+	req.n = fn[n];
+	req.crc = GetCRC16(&req, sizeof(req)-2);
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void CallBackTrmReq02(REQ *q)
+{
+	__packed struct Rsp { byte f; u16 hv; u16 crc; };
+
+	Rsp *rsp = (Rsp*)q->rb->data;
+
+	bool crcOK = GetCRC16(q->rb->data, q->rb->len) == 0;
+
+	if (crcOK)
+	{
+		voltage = rsp->hv;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static REQ* CreateTrmReq02()
+{
+	static __packed struct { byte f; u16 crc; } req;
+	static __packed struct { byte f; u16 hv; u16 crc; } rsp;
+
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static REQ q;
+
+	q.CallBack = CallBackTrmReq02;
+	q.rb = &rb;
+	q.wb = &wb;
+	q.preTimeOut = MS2RT(1);
+	q.postTimeOut = 1;
+	q.ready = false;
+	
+	rb.data = &rsp;
+	rb.maxLen = sizeof(rsp);
+
+	wb.data = &req;
+	wb.len = sizeof(req);
+	
+	req.f = 2;
 	req.crc = GetCRC16(&req, sizeof(req)-2);
 
 	return &q;
@@ -546,7 +607,7 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	static u16 rsp[4];
+	static u16 rsp[8];
 
 	if (wb == 0) return false;
 
@@ -554,6 +615,10 @@ static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	rsp[1] = manReqWord|0x20;
 	rsp[2] = GD(&manCounter, u16, 0);
 	rsp[3] = GD(&manCounter, u16, 1);
+	rsp[4] = voltage;
+	rsp[5] = numStations|(((u16)rcvStatus)<<8);
+	rsp[6] = resistValue;
+	rsp[7] = temperature;
  
 	wb->data = rsp;
 	wb->len = sizeof(rsp);
@@ -1373,6 +1438,27 @@ static void InitRcv()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void InitTemp()
+{
+	using namespace HW;
+
+	PMC->PCER0 = PID::ADC_M;
+
+	ADC->MR = 0x0001FF80;
+	ADC->ACR = 0x10;
+	ADC->CHER = 1<<15;
+	ADC->CR = 2;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateTemp()
+{
+	temperature = (((i32)HW::ADC->CDR[15] - 1787) * 11234) / 65536 + 27;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 //	static byte i = 0;
@@ -1382,6 +1468,8 @@ int main()
 	InitNumStations();
 
 	InitRmemList();
+
+	InitTemp();
 
 	commem.Connect(0, 6250000, 0);
 	comtr.Connect(1, 1562500, 0);
@@ -1411,6 +1499,8 @@ int main()
 
 		if (rtm.Check(MS2RT(500)))
 		{ 
+			UpdateTemp();
+			qtrm.Add(CreateTrmReq02());
 			fc = fps; fps = 0; 
 //			startFire = true;
 //			com1.TransmitByte(0);

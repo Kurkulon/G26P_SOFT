@@ -2,6 +2,10 @@
 #include "trap.h"
 #include "trap_def.h"
 #include "list.h"
+#include "flash.h"
+#include "vector.h"
+
+#pragma diag_suppress 550,177
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -35,11 +39,7 @@ static u32 ComputerOldIpAddr	= 0;
 static u16 ComputerOldUDPPort	= 0;
 static bool ComputerFind = false;
 
-static SmallTx	smallTxBuf[8];
-//static HugeTx	hugeTxBuf[4];
 
-static byte indSmallTx = 0;
-//static byte indHugeTx = 0;
 
 static u16  txIpID = 0;
 
@@ -144,6 +144,9 @@ void SendTrap(SmallTx *p)
 
 SmallTx* GetSmallTxBuffer()
 {
+	static byte		indSmallTx = 0;
+	static SmallTx	smallTxBuf[8];
+
 	SmallTx *p = &smallTxBuf[indSmallTx];
 
 	if (p->len == 0)
@@ -160,20 +163,23 @@ SmallTx* GetSmallTxBuffer()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//HugeTx* GetHugeTxBuffer()
-//{
-//	HugeTx *p = &hugeTxBuf[indHugeTx];
-//
-//	if (p->len == 0)
-//	{
-//		indHugeTx = (indHugeTx + 1) & 3;
-//		return p;
-//	}
-//	else
-//	{
-//		return 0;
-//	};
-//}
+HugeTx* GetHugeTxBuffer()
+{
+	static byte		indHugeTx = 0;
+	static HugeTx	hugeTxBuf[4];
+
+	HugeTx *p = &hugeTxBuf[indHugeTx];
+
+	if (p->len == 0)
+	{
+		indHugeTx = (indHugeTx + 1) & 3;
+		return p;
+	}
+	else
+	{
+		return 0;
+	};
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -297,6 +303,49 @@ static void UpdateSendTraps()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateSendVector()
+{
+	static byte i = 0;
+	static FLRB flrb;
+
+	static HugeTx *t = 0;
+	static vector_type *v = 0;
+
+	switch (i)
+	{
+		case 0:
+
+			t = GetHugeTxBuffer();
+
+			if (t != 0)
+			{
+				flrb.data = t->data;
+				flrb.maxLen = sizeof(vector_type);
+				
+				RequestFlashRead(&flrb);
+
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			if (flrb.ready)
+			{
+				v = (vector_type*)t->data;
+			//	v->header.
+
+			};
+
+			break;
+
+
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void UpdateTraps()
 {
 	static byte i = 0;
@@ -307,7 +356,8 @@ void UpdateTraps()
 	switch(i++)
 	{
 		CALL( UpdateRequestTraps()		);
-		CALL( UpdateSendTraps()		);
+		CALL( UpdateSendTraps()			);
+		CALL( UpdateSendVector()		);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;

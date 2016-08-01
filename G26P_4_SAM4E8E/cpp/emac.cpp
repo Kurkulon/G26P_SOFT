@@ -4,6 +4,8 @@
 #include "xtrap.h"
 #include "list.h"
 
+#pragma diag_suppress 546,550,177
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 /* Net_Config.c */

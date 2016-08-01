@@ -449,10 +449,12 @@ namespace T_HW
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	struct S_ADC
+	struct S_AFE
 	{
 		AT91_REG		CR;
 		AT91_REG		MR;
+
+		AT91_REG		EMR;
 
 		AT91_REG		SEQR1;
 		AT91_REG		SEQR2;
@@ -461,8 +463,6 @@ namespace T_HW
 		AT91_REG		CHDR;
 		AT91_REG		CHSR;
 
-		AT91_REG		zrsrv;
-
 		AT91_REG		LCDR;
 
 		AT91_REG		IER;
@@ -470,29 +470,38 @@ namespace T_HW
 		AT91_REG		IMR;
 		AT91_REG		ISR;
 
-		AT91_REG		zrsrv2[2];
+		AT91_REG		zrsrv2[(0x4C-0x34)/4];
 
 		AT91_REG		OVER;
-		AT91_REG		EMR;
 		AT91_REG		CWR;
 		AT91_REG		CGR;
-		AT91_REG		COR;
-		AT91_REG		CDR[16];
 
-		AT91_REG		zrsrv3;
+		AT91_REG		zrsrv;
+
+		AT91_REG		CDOR;
+		AT91_REG		DIFFR;
+		AT91_REG		CSELR;
+		AT91_REG		CDR;
+		AT91_REG		COCR;
+
+		AT91_REG		TEMPMR;
+		AT91_REG		TEMPCWR;
+
+		AT91_REG		zrsrv3[7];
 
 		AT91_REG		ACR;
 
-		AT91_REG		zrsrv4[19];
+		AT91_REG		zrsrv4[(0xE4-0x98)/4];
 
 		AT91_REG		WPMR;
 		AT91_REG		WPSR;
 
-		AT91_REG		zrsrv5[5];
+		AT91_REG		zrsrv5[(0x100-0xEC)/4];
 
 		S_PDC			PDC;
 	};
 
+	typedef S_AFE S_AFE0, S_AFE1;
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -761,7 +770,8 @@ namespace HW
 	MK_PTR(USART0,	0x400A0000);
 	MK_PTR(USART1,	0x400A4000);
 
-	MK_PTR(ADC,		0X40038000);
+	MK_PTR(AFE0,	0x400B0000);
+	MK_PTR(AFE1,	0x400B4000);
 
 	MK_PTR(DMAC,	0X400C0000);
 

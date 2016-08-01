@@ -23,8 +23,11 @@ __packed struct vector_header_type
 
 __packed struct vector_adress_type   
 {
-	byte hi;
- 	u32 lo;	//адрес предыдущего вектора
+	byte	hi;
+ 	u32		lo;	//адрес предыдущего вектора
+
+	inline void operator=(const vector_adress_type &v) { lo = v.lo; hi = v.hi; }
+	inline void operator=(u64 v) { lo = (u32)v; hi = (byte)(v>>32); }
 } ;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -8,6 +8,8 @@
 #include "vector.h"
 #include "list.h"
 
+#pragma diag_suppress 546,550,177
+
 u32 fps = 0;
 
 extern byte Heap_Mem[10];
@@ -19,11 +21,13 @@ u16 rcvBuf[10];
 
 u32 readsFlash = 0;
 
-static const u16 manReqWord = 0xAA00;
+static const u16 manReqWord = 0x3B00;
 static const u16 manReqMask = 0xFF00;
 
 
 static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
+
+static i16 temperature = 0;
 
 //static bool ReqMan00(u16 *buf, u16 len, MTB* mtb);
 //static bool ReqMan01(u16 *buf, u16 len, MTB* mtb);
@@ -71,20 +75,24 @@ static bool ReqMan10(u16 *buf, u16 len, MTB* mtb)
 
 static bool ReqMan20(u16 *buf, u16 len, MTB* mtb)
 {
+	__packed struct Rsp {u16 rw; u16 device; u16 session; u32 rcvVec; u32 rejVec; u32 wrVec; u32 errVec; u16 wrAdr[3]; u16 temp; u16 status; RTC rtc; };
+
 	if (buf == 0 || len == 0 || mtb == 0) return false;
 
-	manTrmData[0] = (manReqWord & manReqMask) | 0x20;
-	manTrmData[1] = 0xEC00;
-	manTrmData[2] = 3;
-	manTrmData[3] = 4;
-	manTrmData[5] = 6;
-	manTrmData[7] = 8;
-	manTrmData[9] = 10;
-	manTrmData[11] = 12;
-	manTrmData[14] = 15;
-	manTrmData[15] = status;
+	Rsp &rsp = *((Rsp*)&manTrmData);
 
-	GetTime((RTC*)(&manTrmData[16]));
+	rsp.rw = (manReqWord & manReqMask) | 0x20;
+	rsp.device = 0xEC00;  
+	rsp.session = FLASH_Session_Get();	  
+	rsp.rcvVec =  FLASH_Vectors_Recieved_Get();
+	rsp.rejVec = FLASH_Vectors_Rejected_Get();
+	rsp.wrVec = FLASH_Vectors_Saved_Get();
+	rsp.errVec = FLASH_Vectors_Errors_Get();
+	*((__packed u64*)rsp.wrAdr) = FLASH_Current_Adress_Get();
+	rsp.temp = temperature;
+	rsp.status = FLASH_Status();
+
+	GetTime(&rsp.rtc);
 
 	mtb->data = manTrmData;
 	mtb->len = 20;
@@ -119,7 +127,7 @@ static bool ReqMan31(u16 *buf, u16 len, MTB* mtb)
 	mtb->data = manTrmData;
 	mtb->len = 1;
 
-	status = 1;
+	FLASH_WriteEnable();
 
 	return true;
 }
@@ -135,7 +143,7 @@ static bool ReqMan32(u16 *buf, u16 len, MTB* mtb)
 	mtb->data = manTrmData;
 	mtb->len = 1;
 
-	status = 0;
+	FLASH_WriteDisable();
 
 	return true;
 }
@@ -345,12 +353,12 @@ static void UpdateWriteFlash()
 			{
 				fb->ready = &ready;
 
-				fb->hdrLen = 0;
+//				fb->hdrLen = 0;
 				fb->dataLen = 2048;
 
 				for (u32 n = 0; n < fb->dataLen; n++)
 				{
-					fb->data[n] = cnt;
+	//				fb->data[n] = cnt;
 				};
 
 				cnt++;
@@ -382,6 +390,27 @@ static void UpdateWriteFlash()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void InitTemp()
+{
+	using namespace HW;
+
+	PMC->PCER0 = PID::AFEC0_M;
+
+	AFE0->MR = 0x0031FF80;
+	AFE0->CHER = (1<<15)|15;
+	AFE0->CR = 2;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateTemp()
+{
+	HW::AFE0->CSELR = 15;
+	temperature = (((i32)HW::AFE0->CDR - 1787*2) * 11234/2) / 65536 + 27;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 	InitHardware();
@@ -391,6 +420,8 @@ int main()
 	InitTraps();
 
 	FLASH_Init();
+
+	InitTemp();
 
 	u32 f = 0;
 
@@ -433,6 +464,7 @@ int main()
 
 		if (rtm.Check(MS2RT(1000)))
 		{
+			UpdateTemp();
 			fps = f;
 			f = 0;
 

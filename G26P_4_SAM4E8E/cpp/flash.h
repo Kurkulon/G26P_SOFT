@@ -2,6 +2,7 @@
 #define MEMORY_AT91SAM7X256_FLASH_H
 
 #include "rtc.h"
+#include "vector.h"
 
 #define FLWB_LEN 2048
 #define FLRB_LEN 1536
@@ -15,15 +16,33 @@ enum flash_save_repeat_type
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+__packed struct VecData
+{
+	__packed struct Hdr
+	{
+		u16 		session;
+		u16 		device;
+		RTC_type	rtc;
+		byte		flags;		// флажки
+		u64			prVecAdr;	// адрес предыдущего блядовектора
+		u16			dataLen;
+		u16			crc;		// CRC16 всей этой хрени
+	} h;
+
+	byte		data[FLWB_LEN]; // Последние 2 байта CRC16
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 struct FLWB
 {
 	FLWB *next;
 
 	bool	*ready;
-	u16 	hdrLen;
+//	u16 	hdrLen;
 	u16 	dataLen;
 
-	byte data[FLWB_LEN];
+	VecData vd;
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -62,6 +81,9 @@ __packed struct SpareArea
 	u32		start;		// start page of file
 	u32		fpn;		// file page number
 	u32		prev;		// start page of previos file
+	u32		rawPage;	// raw page num
+
+	u32		vectorCount; // vector count in file
 
 	u16		vecFstOff;	// first vector header offset. 0xFFFF - no vector header 
 	u16		vecFstLen;	// first vector lenght. 0 - no vector
@@ -102,16 +124,26 @@ extern bool FLASH_Reset();
 extern void FLASH_Idle();
 extern bool FLASH_Busy();
 
+extern void FLASH_WriteEnable();
+extern void FLASH_WriteDisable();
+extern byte FLASH_Status();
+
 /*****************************************************************************/
 extern bool FLASH_Erase_Full();
 extern bool FLASH_UnErase_Full();
 extern bool FLASH_Write_Vector(u16 session, u16 device, RTC_type rtc, byte flags, byte *data, u16 size, flash_save_repeat_type repeat);
 extern bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector);
-//extern u32 FLASH_Vectors_Errors_Get();
-//extern u32 FLASH_Vectors_Saved_Get();
+
+extern u32 FLASH_Vectors_Errors_Get();
+extern u32 FLASH_Vectors_Saved_Get();
+extern u32 FLASH_Vectors_Recieved_Get();
+extern u32 FLASH_Vectors_Rejected_Get();
+extern u32 FLASH_Session_Get();
+
+
 //extern void FLASH_Vectors_Errors_Reset();
 //extern void FLASH_Vectors_Saved_Reset();
-//extern i64 FLASH_Current_Adress_Get();
+extern u64 FLASH_Current_Adress_Get();
 extern u64 FLASH_Full_Size_Get();
 extern u16 FLASH_Chip_Mask_Get();
 extern u64 FLASH_Used_Size_Get();

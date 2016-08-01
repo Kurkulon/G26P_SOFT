@@ -1,7 +1,10 @@
 #include "types.h"
 #include "CRC16.h"
 
-word GetCRC16(const void *data, u32 len)
+#pragma O3
+#pragma Otime
+
+word GetCRC16(const void *data, i32 len)
 {
 //	DataCRC CRC = { 0xFFFF };
 	u16 CRC = 0xFFFF;

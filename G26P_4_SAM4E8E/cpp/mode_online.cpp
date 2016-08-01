@@ -12,6 +12,8 @@
 #include "trap.h"
 #include "sensors.h"
 
+#pragma diag_suppress 546,550,177
+
 /*********************************************************************/
 bool Mode_Online_Special_Busy();
 bool Mode_Online_Measure_Busy();

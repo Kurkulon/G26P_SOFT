@@ -17,7 +17,7 @@
 #include "trap_def.h"
 #include "xtrap.h"
 
-#pragma diag_suppress 2548,546
+#pragma diag_suppress 2548,546,550,177
 
 static const bool __trace = true;
 
@@ -359,9 +359,10 @@ bool TRAP_MEMORY_SendVector(u16 session, u16 device, RTC_type rtc, byte *data, u
 	memmove((char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), (char *)(&v.session), sizeof(TRAP_MEMORY_vector_type));
 	memmove((char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_vector_type), (char *)data, size);
 	EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_vector_type) + size);
-	return true;
 
 	if (__trace) { TRAP_TRACE_PrintString(__func__); };
+
+	return true;
 }
 
 /******************** BATTERY ******************************/
@@ -766,7 +767,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 					case TRAP_MEMORY_COMMAND_READ_SESSION_START:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-						Mode_Ethernet_Flash_Read_Session_Start();
+//						Mode_Ethernet_Flash_Read_Session_Start();
 						break;
 
 					case TRAP_MEMORY_COMMAND_READ_VECTOR_START:
@@ -775,38 +776,38 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						TrapReadVector &tr = (TrapReadVector&)*t;
 
-						Mode_Ethernet_Flash_Read_Vector_Start(tr.session, tr.last_adress);
+//						Mode_Ethernet_Flash_Read_Vector_Start(tr.session, tr.last_adress);
 
 						break;
 
 					case TRAP_MEMORY_COMMAND_STOP:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-						Mode_Ethernet_Flash_Stop();
+//						Mode_Ethernet_Flash_Stop();
 						break;
 
 					case TRAP_MEMORY_COMMAND_PAUSE:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-						Mode_Ethernet_Flash_Pause();
+//						Mode_Ethernet_Flash_Pause();
 						break;
 
 					case TRAP_MEMORY_COMMAND_RESUME:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-						Mode_Ethernet_Flash_Resume();
+//						Mode_Ethernet_Flash_Resume();
 						break;
 
 					case TRAP_MEMORY_COMMAND_ERASE:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-						Mode_Ethernet_Flash_Erase();
+//						Mode_Ethernet_Flash_Erase();
 						break;
 
 					case TRAP_MEMORY_COMMAND_UNERASE:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
-						Mode_Ethernet_Flash_UnErase();
+//						Mode_Ethernet_Flash_UnErase();
 						break;
 
 					default: 

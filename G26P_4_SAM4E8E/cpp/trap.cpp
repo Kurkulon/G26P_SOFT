@@ -16,8 +16,20 @@
 
 #include "trap_def.h"
 #include "xtrap.h"
+#include "CRC16.h"
 
 #pragma diag_suppress 2548,546,550,177
+
+enum trap_status
+{
+	TRAP_WAIT = 0,
+	TRAP_SEND_SESSION,
+	TRAP_SEND_VECTOR,
+	TRAP_PAUSE_VECTOR
+};
+
+static trap_status trapStatus = TRAP_WAIT;
+
 
 static const bool __trace = true;
 
@@ -28,11 +40,23 @@ u32 TrapRxCounter;
 u32 TrapTxCounter;
 u32 TrapRxLost;
 
+static bool stop = false;
+static bool start = false;
+static bool pause = false;
+
+
 /******************************************************/
 static void TRAP_MakePacketHeaders(char *data, bool need_ask, bool is_ask, char device);
 static void MakePacketHeaders(TrapHdr *p, bool need_ask, bool is_ask, char device);
 
 /*********************** Info *************************/
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void StartSendVector()
+{
+	trapStatus = TRAP_SEND_VECTOR;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -49,7 +73,7 @@ bool TRAP_INFO_SendError(u32 error)
 	trap.hdr.cmd = TRAP_INFO_COMMAND_ERROR;
 	trap.error = error;
 
-	buf->len = sizeof(EthUdp) + sizeof(TrapError);
+	buf->len = sizeof(EthUdp) + sizeof(trap);
 	
 	SendTrap(buf);
 
@@ -73,7 +97,7 @@ bool TRAP_INFO_SendCaptureIP(u32 old_ip, u16 old_port)
 	trap.ip = old_ip;
 	trap.port = old_port;
 
-	buf->len = sizeof(EthUdp) + sizeof(TrapIP);
+	buf->len = sizeof(EthUdp) + sizeof(trap);
 
 	SendTrap(buf);
 
@@ -97,7 +121,7 @@ bool TRAP_INFO_SendLostIP(u32 new_ip, u16 new_port)
 	trap.ip = new_ip;
 	trap.port = new_port;
 
-	buf->len = sizeof(EthUdp) + sizeof(TrapIP);
+	buf->len = sizeof(EthUdp) + sizeof(trap);
 
 	SendTrap(buf);
 
@@ -128,7 +152,7 @@ bool TRAP_INFO_SendInfo()
 	trap.device_type = FRAM_Main_Device_Type_Get();
 	trap.device_telemetry = FRAM_Main_Device_Telemetry_Get();
 	
-	buf->len = sizeof(EthUdp) + sizeof(TrapInfo);
+	buf->len = sizeof(EthUdp) + sizeof(trap);
 
 	SendTrap(buf);
 
@@ -155,7 +179,7 @@ bool TRAP_CLOCK_SendMain(/*const RTC_type &rtc*/)
 	
 	GetTime(&trap.rtc);	
 
-	buf->len = sizeof(EthUdp) + sizeof(TrapClock);
+	buf->len = sizeof(EthUdp) + sizeof(trap);
 
 	SendTrap(buf);
 
@@ -286,59 +310,106 @@ void TRAP_TRACE_PrintHex(u32 number)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_MEMORY_SendInfo()
+bool TRAP_MEMORY_SendInfo()
 {
-	TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
-	TRAP_command_type c;
-	c.command = TRAP_MEMORY_COMMAND_INFO;
-	COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	TRAP_MEMORY_info_type info;	
-	info.mask = FLASH_Chip_Mask_Get();
-	info.size = FLASH_Full_Size_Get();
-	info.size_used = FLASH_Used_Size_Get();
-	COPY((char *)(&info.mask), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(TRAP_MEMORY_info_type));
-	EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_info_type));
+	SmallTx* buf = GetSmallTxBuffer();
+
+	if (buf == 0) return false;
+
+	TrapMemInfo &trap = (TrapMemInfo&)buf->th;
+
+	MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
+
+	trap.hdr.cmd = TRAP_MEMORY_COMMAND_INFO;
+
+	trap.mask = FLASH_Chip_Mask_Get();
+	trap.size = FLASH_Full_Size_Get();
+	trap.size_used = FLASH_Used_Size_Get();
+
+	buf->len = sizeof(EthUdp) + sizeof(trap);
+
+	SendTrap(buf);
 
 	if (__trace) { TRAP_TRACE_PrintString(__func__); };
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_MEMORY_SendStatus(u32 progress, byte status)
+bool TRAP_MEMORY_SendStatus(u32 progress, byte status)
 {
-	TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
-	TRAP_command_type c;
-	c.command = TRAP_MEMORY_COMMAND_STATUS;
-	COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	TRAP_MEMORY_status_type s;	
-	s.progress = progress;
-	s.status = status;
-	COPY((char *)(&s.progress), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(TRAP_MEMORY_status_type));
-	EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_status_type));
+	SmallTx* buf = GetSmallTxBuffer();
+
+	if (buf == 0) return false;
+
+	TrapMemStatus &trap = (TrapMemStatus&)buf->th;
+
+	MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
+
+	trap.hdr.cmd = TRAP_MEMORY_COMMAND_STATUS;
+
+	trap.progress = progress;
+	trap.status = status;
+
+	buf->len = sizeof(EthUdp) + sizeof(trap);
+
+	SendTrap(buf);
 
 	if (__trace) { TRAP_TRACE_PrintString(__func__); };
+
+	return true;
 }
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_MEMORY_SendSession(u16 session, i64 size, i64 last_adress, RTC_type start_rtc, RTC_type stop_rtc, byte flags)
+bool TRAP_MEMORY_SendSession(u16 session, i64 size, i64 last_adress, RTC_type start_rtc, RTC_type stop_rtc, byte flags)
 {
-	TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
-	TRAP_command_type c;
-	c.command = TRAP_MEMORY_COMMAND_SESSION;
-	COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	TRAP_MEMORY_session_type s;	
-	s.session = session;
-	s.size = size;
-	s.last_adress = last_adress;
-	s.start_rtc = start_rtc;
-	s.stop_rtc = stop_rtc;
-	s.flags = flags;
-	COPY((char *)(&s.session), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(TRAP_MEMORY_session_type));
-	EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_session_type));
+	SmallTx* buf = GetSmallTxBuffer();
+
+	if (buf == 0) return false;
+
+	TrapSession &trap = (TrapSession&)buf->th;
+
+	MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
+
+	trap.hdr.cmd = TRAP_MEMORY_COMMAND_SESSION;
+
+	trap.si.session = session;
+	trap.si.size = size;
+	trap.si.last_adress = last_adress;
+	trap.si.start_rtc = start_rtc;
+	trap.si.stop_rtc = stop_rtc;
+	trap.si.flags = flags;
+
+	buf->len = sizeof(EthUdp) + sizeof(trap);
+
+	SendTrap(buf);
 
 	if (__trace) { TRAP_TRACE_PrintString(__func__); };
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool TRAP_MEMORY_SendLastSession(const SessionInfo *si)
+{
+	return TRAP_MEMORY_SendSession(si->session, si->size, si->last_adress, si->start_rtc, si->stop_rtc, si->flags);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool TRAP_MEMORY_SendNullSession()
+{
+	SessionInfo si;
+
+	si.size = 0;
+	si.last_adress = -1;
+	si.session = -1;
+
+	return TRAP_MEMORY_SendSession(si.session, si.size, si.last_adress, si.start_rtc, si.stop_rtc, si.flags);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -741,7 +812,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 						TrapClock &tc = (TrapClock&)*t;
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_CLOCK_DEVICE, TrapRxCounter);	
-						RTC_Set(tc.rtc);
+						SetTime(tc.rtc);
 
 						if (__trace) { TRAP_TRACE_PrintString(" TRAP_CLOCK_COMMAND_SET \r\n"); };
 
@@ -766,7 +837,11 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 					case TRAP_MEMORY_COMMAND_READ_SESSION_START:
 
-						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
+
+						TRAP_MEMORY_SendLastSession(GetLastSessionInfo());
+//						TRAP_MEMORY_SendNullSession();
+
 //						Mode_Ethernet_Flash_Read_Session_Start();
 						break;
 
@@ -774,7 +849,10 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
 
-						TrapReadVector &tr = (TrapReadVector&)*t;
+//						TrapReadVector &tr = (TrapReadVector&)*t;
+
+						start = true;
+						stop = false;
 
 //						Mode_Ethernet_Flash_Read_Vector_Start(tr.session, tr.last_adress);
 
@@ -783,18 +861,26 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 					case TRAP_MEMORY_COMMAND_STOP:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+
+						stop = true;
+						start = false;
+
 //						Mode_Ethernet_Flash_Stop();
 						break;
 
 					case TRAP_MEMORY_COMMAND_PAUSE:
 
-						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);	
+
+						pause = true;
 //						Mode_Ethernet_Flash_Pause();
 						break;
 
 					case TRAP_MEMORY_COMMAND_RESUME:
 
-						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
+
+						pause = false;
 //						Mode_Ethernet_Flash_Resume();
 						break;
 
@@ -1182,6 +1268,99 @@ static void TRAP_MakePacketHeaders(char *data, bool need_ask, bool is_ask, char 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateSendVector()
+{
+	static byte i = 0;
+	static FLRB flrb;
+
+	static HugeTx *t = 0;
+	static VecData::Hdr h;
+
+	TrapVector *trap = (TrapVector*)&t->th;
+
+	switch (i)
+	{
+		case 0:
+
+			if (start)
+			{
+				start = false;
+
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			if (stop)
+			{
+				stop = false;
+				i = 0;
+			}
+			else if (!pause)
+			{
+				t = GetHugeTxBuffer();
+
+				if (t != 0)
+				{
+					flrb.data = (byte*)&h;
+					flrb.maxLen = sizeof(h);
+					
+					RequestFlashRead(&flrb);
+
+					i++;
+				};
+			};
+
+			break;
+
+		case 2:
+
+			if (flrb.ready)
+			{
+				if (GetCRC16(&h, sizeof(h)) == 0)
+				{
+					trap->hdr.cmd = TRAP_MEMORY_COMMAND_VECTOR;
+					trap->session = h.session;
+					trap->device = h.device;
+					trap->rtc = h.rtc;
+					trap->flags = h.flags;
+
+					flrb.data = trap->data;
+					flrb.maxLen = h.dataLen;
+
+					RequestFlashRead(&flrb);
+
+					i++;
+				}
+				else
+				{
+					__breakpoint(0);
+				};
+
+			};
+
+			break;
+
+		case 3:
+
+			if (flrb.ready)
+			{
+				t->len = sizeof(EthUdp) + sizeof(*trap) - sizeof(trap->data) + flrb.len;
+
+				SendTrap(t);
+
+				i = 1;
+			};
+
+			break;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 void TRAP_Init()
 {
 	TrapRxCounter = 0;
@@ -1193,6 +1372,7 @@ void TRAP_Init()
 
 void TRAP_Idle()
 {
+	UpdateSendVector();
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

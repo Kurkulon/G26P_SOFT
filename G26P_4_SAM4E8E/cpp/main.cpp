@@ -421,7 +421,7 @@ int main()
 
 	FLASH_Init();
 
-	InitTemp();
+//	InitTemp();
 
 	u32 f = 0;
 
@@ -464,11 +464,13 @@ int main()
 
 		if (rtm.Check(MS2RT(1000)))
 		{
-			UpdateTemp();
+//			UpdateTemp();
 			fps = f;
 			f = 0;
 
 		};
+
+		HW::ResetWDT();
 
 //		__asm { WFE };
 	};

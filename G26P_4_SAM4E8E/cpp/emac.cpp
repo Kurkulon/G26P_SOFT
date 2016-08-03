@@ -794,12 +794,20 @@ static void UpdateTransmit()
 				HW::GMAC->TSR = 0x17F;
 				HW::GMAC->NCR |= GMAC_TXEN|GMAC_TSTART;
 
-				i = 0;
+				i += 1;
 			}
 			else
 			{
 				FreeTxDesc();
 			};
+
+			break;
+
+		case 2:
+
+			FreeTxDesc();
+
+			i = 0;
 
 			break;
 	};

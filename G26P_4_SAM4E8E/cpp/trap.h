@@ -21,9 +21,9 @@ extern void TRAP_TRACE_PrintChar(char data);
 extern void TRAP_TRACE_PrintDec(int number);
 extern void TRAP_TRACE_PrintHex(u32 number);
 /************ MEMORY *******************************************/
-extern void TRAP_MEMORY_SendInfo();
-extern void TRAP_MEMORY_SendStatus(u32 progress, byte status);
-extern void TRAP_MEMORY_SendSession(u16 session, i64 size, i64 last_adress, RTC_type start_rtc, RTC_type stop_rtc, byte flags);
+extern bool TRAP_MEMORY_SendInfo();
+extern bool TRAP_MEMORY_SendStatus(u32 progress, byte status);
+extern bool TRAP_MEMORY_SendSession(u16 session, i64 size, i64 last_adress, RTC_type start_rtc, RTC_type stop_rtc, byte flags);
 extern bool TRAP_MEMORY_SendVector(u16 session, u16 device, RTC_type rtc, byte *data, u16 size, byte flags);
 /************ CLOCK *******************************************/
 extern bool TRAP_CLOCK_SendMain(/*const RTC_type &rtc*/);

@@ -135,6 +135,63 @@ __packed struct	TrapInfoSet
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+__packed struct TrapMemInfo
+{
+	TrapHdr	hdr;
+
+	u16 mask;
+	i64 size;
+	i64 size_used;
+};	
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct TrapMemStatus
+{
+	TrapHdr	hdr;
+
+	u32		progress;
+	byte	status;
+};	
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct SessionInfo
+{
+	u16			session;
+	i64			size; //если 0 то сессия немного порченная
+	RTC_type	start_rtc; //если 0 то сессия немного порченная
+	RTC_type	stop_rtc;  
+	i64			last_adress; 
+	byte		flags;
+};	
+
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct TrapSession
+{
+	TrapHdr			hdr;
+
+	SessionInfo		si;
+};	
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct TrapVector
+{
+	TrapHdr			hdr;
+
+	u16 session;
+	u16 device;
+	RTC_type rtc;
+	byte flags;
+
+	byte data[1];
+};	
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 __packed struct	TrapReadVector
 {
 	TrapHdr	hdr;

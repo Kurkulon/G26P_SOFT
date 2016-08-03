@@ -6,6 +6,7 @@
 #include "list.h"
 #include <CRC16.h>
 #include "ComPort.h"
+#include "trap_def.h"
 
 #pragma diag_suppress 550,177
 
@@ -55,12 +56,25 @@ static u32 pagesRead = 0;
 static u32 pagesReadOK = 0;
 static u32 pagesReadErr = 0;
 
+static u64 adrLastVector = -1;
+static u32 lastSessionBlock = -1;
+static u32 lastSessionPage = -1;
+
 static bool cmdCreateNextFile = false;
 static bool cmdFullErase = false;
 
 static bool writeFlashEnabled = false;
 static bool flashFull = false;
+static bool flashEmpty = false;
 
+static SessionInfo lastSessionInfo;
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+const SessionInfo* GetLastSessionInfo()
+{
+	return &lastSessionInfo;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1313,7 +1327,7 @@ static void Write::Vector_Make(VecData *vd, u16 size)
 {
 	vd->h.session = spare.file;
 	vd->h.device = 0;
-	vd->h.rtc = RTC_Get();
+	GetTime(&vd->h.rtc);
 	vd->h.prVecAdr = prWrAdr; 
 	vd->h.flags = 0;
 	vd->h.dataLen = size;
@@ -1719,6 +1733,7 @@ static bool Read::Start()
 		rd_data = curRdBuf->data;
 		rd_count = curRdBuf->maxLen;
 		curRdBuf->len = 0;	
+		state = READ_START;
 		return true;
 	};
 
@@ -1767,7 +1782,15 @@ static bool Read::Update()
 
 			if (CheckDataComplete())
 			{
-				if (spare.validPage != 0xFFFF)
+				if (rd.page == 0 && spare.validBlock != 0xFFFF)
+				{
+					rd.NextBlock();
+
+					CmdReadPage(rd.pg, rd.block, rd.page);
+
+					state = READ_1;
+				}
+				else if (spare.validPage != 0xFFFF)
 				{
 					rd.NextPage();
 
@@ -1800,7 +1823,7 @@ static bool Read::Update()
 				NandReadData(rd_data, c);
 
 				rd_count -= c;
-				rd.col += c;
+				rd.raw += c;
 				rd_data += c;
 				curRdBuf->len += c;
 
@@ -1813,13 +1836,7 @@ static bool Read::Update()
 
 			if (CheckDataComplete())
 			{
-				if (rd.col >= rd.pg)
-				{
-					rd.NextPage();
-
-					state = READ_START;
-				}
-				else
+				if (rd_count == 0)
 				{
 					curRdBuf->ready = true;
 
@@ -1828,6 +1845,10 @@ static bool Read::Update()
 					state = WAIT;
 
 					return false;
+				}
+				else
+				{
+					state = READ_START;
 				};
 			};
 
@@ -1838,39 +1859,45 @@ static bool Read::Update()
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-/*
-struct ReadSpare
-{
-	enum {	WAIT = 0,START,READ_1,READ_2,READ_3};
 
-	byte state;
-	SpareArea *spare;
-	FLADR *rd;
-
-	bool Start(SpareArea *sp, FLADR *rd);
-	bool Update();
-
-};
+static SpareArea *spareReadPtr = 0;
+static FLADR *spareAdrPtr = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool ReadSpare::Start(SpareArea *sp, FLADR *frd)
+bool ReadSpareStart(SpareArea *sp, FLADR *frd)
 {
-	spare = sp;
-	rd = frd;
+	spareReadPtr = sp;
+	spareAdrPtr = frd;
 
-	state = START;
-
-	return false;
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool ReadSpare::Update()
+bool ReadSpareUpdate()
 {
+	enum {	WAIT = 0,START,READ_1,READ_2,READ_3};
+
+	static byte state = WAIT;
+	static SpareArea *spare = 0;
+	static FLADR *rd = 0;
+
 	switch(state)
 	{
-		case WAIT:	return false;
+		case WAIT:	
+			
+			if (spareReadPtr != 0 && spareAdrPtr != 0)
+			{
+				spare = spareReadPtr;
+				rd = spareAdrPtr;
+
+				state = START;
+			}
+			else
+			{
+				return false;
+			};
 
 		case START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1913,6 +1940,9 @@ bool ReadSpare::Update()
 				{
 					spare->crc = GetCRC16((void*)&spare->file, sizeof(*spare) - spare->CRC_SKIP);
 				
+					spareReadPtr = 0;
+					spareAdrPtr = 0;
+
 					state = WAIT;
 
 					return false;
@@ -1930,7 +1960,7 @@ bool ReadSpare::Update()
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+/*
 struct BuildFileTable
 {
 	enum {	WAIT = 0,START,READ_1, READ_2, READ_3,READ_4,NO_FILE};
@@ -2173,6 +2203,31 @@ static void ReadSpareNow(SpareArea *spare, FLADR *rd, bool crc)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void ReadDataNow(void *dst, u16 len, FLADR *rd)
+{
+	NAND_Chip_Select(rd->chip);
+
+	CmdReadPage(rd->col, rd->block, rd->page);
+
+	while(!NAND_BUSY());
+	while(NAND_BUSY());
+
+	NandReadData(dst, len);
+
+	while (!CheckDataComplete());
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void ReadVecHdrNow(VecData::Hdr *h, FLADR *rd)
+{
+	ReadDataNow(h, sizeof(*h), rd);
+
+	h->crc = GetCRC16(h, sizeof(*h));
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void SimpleBuildFileTable()
 {
 	FLADR rd(0, 0, 0, 0);
@@ -2194,7 +2249,7 @@ static void SimpleBuildFileTable()
 	//rd.page = 0;
 	//rd.chip = 0;
 
-	__breakpoint(0);
+//	__breakpoint(0);
 
 	rd.SetRawBlock(-1);
 	endBlock = rd.GetRawBlock();
@@ -2275,6 +2330,8 @@ static void SimpleBuildFileTable()
 	{
 		// Флэха пустая
 
+		flashEmpty = true;
+
 		wr.SetRawBlock(0);
 
 		Write::spare.file = 1;
@@ -2302,6 +2359,9 @@ static void SimpleBuildFileTable()
 		Erase::Start(wr.chip, wr.block, true, false);
 		while (Erase::Update());
 
+		adrLastVector = -1;
+
+		return;
 	}
 	else if (spare.crc == 0)
 	{
@@ -2332,50 +2392,12 @@ static void SimpleBuildFileTable()
 		Write::spare.fbb = 0;		
 		Write::spare.fbp = 0;		
 
-		Write::spare.chipMask = nandSize.mask;	
+		Write::spare.chipMask = nandSize.mask;
 
 		Erase::Start(wr.chip, wr.block, true, false);
 		while (Erase::Update());
 
 
-		// Найти последнюю записанную страницу в блоке
-
-		//bs = rd.GetRawPage();
-		//be = bs + rd.sz.pagesInBlock - 1;
-
-		//bm = (be+bs)/2;
-
-		//rd.SetRawPage(bm);
-
-		//while (be >= bs && bm <= be && bm >= bs)
-		//{
-		//	ReadSpareNow(&spare, &rd, false);
-
-		//	if (spare.validPage != 0xFFFF)
-		//	{
-		//		rd.NextPage();
-		//		bm = rd.GetRawPage();
-		//	}
-		//	else
-		//	{
-		//		if (spare.lpn == -1 || spare.start == -1 || spare.fpn == -1 )
-		//		{
-		//			be = bm;
-		//		}
-		//		else
-		//		{
-		//			bs = bm+1;
-		//		};
-
-		//		bm = (bs + be) / 2;
-
-		//		rd.SetRawPage(bm);
-		//	};
-		//};
-
-		//rd.SetRawPage(bs);
-
-		//ReadSpareNow(&spare, &rd, false);
 
 		//Write::spare.file = spare.file;
 		//Write::spare.start = spare.start;
@@ -2387,8 +2409,242 @@ static void SimpleBuildFileTable()
 
 	};
 
+	// Найти последнюю записанную страницу в блоке
+
+	lastSessionBlock = bs;
+
+	bs = rd.GetRawPage();
+	be = bs + (1<<NAND_PAGE_BITS) - 1;
+
+	bm = (be+bs)/2;
+
+	rd.SetRawPage(bm);
+
+	while (be > bs)
+	{
+		ReadSpareNow(&spare, &rd, false);
+
+		if (spare.validPage != 0xFFFF)
+		{
+			rd.NextPage();
+			bm = rd.GetRawPage();
+		}
+		else
+		{
+			if (spare.lpn == -1 || spare.start == -1 || spare.fpn == -1 )
+			{
+				be = bm-1;
+			}
+			else
+			{
+				bs = bm;
+			};
+
+			bm = (bs + be + 1) / 2;
+
+			rd.SetRawPage(bm);
+		};
+	};
+
+	lastSessionPage = bs;
+
+	rd.SetRawPage(bs);
+
+	ReadSpareNow(&spare, &rd, true);
+
+	while (spare.vecLstOff == 0xFFFF || spare.crc != 0)
+	{
+		rd.PrevPage();
+		
+		ReadSpareNow(&spare, &rd, true);
+	}
+
+	adrLastVector = rd.GetRawAdr() + spare.vecLstOff;
+
+
+
+	static VecData::Hdr hdr;
+
+	rd.raw = adrLastVector;
+
+	ReadSpareNow(&spare, &rd, true);
+
+	lastSessionInfo.size = (u64)lastSessionPage << NAND_COL_BITS;
+
+	lastSessionInfo.last_adress = adrLastVector;
+
+	ReadVecHdrNow(&hdr, &rd);
+
+	if (hdr.crc == 0)
+	{
+		lastSessionInfo.stop_rtc = hdr.rtc;
+	}
+	else
+	{
+
+	};
+
+	rd.SetRawPage(0);
+
+	ReadSpareNow(&spare, &rd, true);
+
+	while (spare.validPage != 0xFFFF || spare.validBlock != 0xFFFF)
+	{
+		if (spare.validBlock != 0xFFFF)
+		{
+			rd.NextBlock();
+			ReadSpareNow(&spare, &rd, true);
+		}
+		else if (spare.validPage != 0xFFFF)
+		{
+			rd.NextPage();
+			ReadSpareNow(&spare, &rd, true);
+		};
+	};
+
+	lastSessionInfo.session = spare.file;
+	lastSessionInfo.flags = 0;
+
+	ReadVecHdrNow(&hdr, &rd);
+
+	if (hdr.crc == 0)
+	{
+		lastSessionInfo.start_rtc = hdr.rtc;
+	}
+	else
+	{
+
+	};
 
 }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool GetSessionNow(SessionInfo *si)
+{
+	static SpareArea spare;
+
+	static VecData::Hdr hdr;
+
+	FLADR rd(0,0,0,0);
+
+	rd.raw = adrLastVector;
+
+	ReadSpareNow(&spare, &rd, true);
+
+	si->size = (u64)spare.fpn << NAND_COL_BITS;
+
+	si->last_adress = adrLastVector;
+	si->session = spare.file;
+
+	ReadVecHdrNow(&hdr, &rd);
+
+	if (hdr.crc == 0)
+	{
+		si->stop_rtc = hdr.rtc;
+	}
+	else
+	{
+
+	};
+
+	rd.SetRawPage(spare.start);
+
+	ReadVecHdrNow(&hdr, &rd);
+
+	if (hdr.crc == 0)
+	{
+		si->start_rtc = hdr.rtc;
+	}
+	else
+	{
+
+	};
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//static SessionInfo *readSessionInfoPtr = 0;
+
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//void ReadSessionInfoStart(SessionInfo *si)
+//{
+//	readSessionInfoPtr = si;
+//}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//bool ReadSessionInfoUpdate()
+//{
+//	enum {	WAIT = 0,START,READ_1,READ_2,READ_3};
+//
+//	static SpareArea spare;
+//	static VecData::Hdr hdr;
+//	static SessionInfo *si;
+//
+//	static FLADR rd(0,0,0,0);
+//
+//	static byte state = WAIT;
+//
+//	switch (state)
+//	{
+//		case WAIT:
+//
+//			if (readSessionInfoPtr != 0)
+//			{
+//				si = readSessionInfoPtr;
+//
+//				rd.raw = adrLastVector;
+//
+//				ReadSpareStart(&spare, &rd);
+//			}
+//			else
+//			{
+//				return false;
+//			};
+//
+//			break;
+//
+//		case START:
+//
+//			if (!ReadSpareUpdate())
+//			{
+//				si->size = (u64)spare.fpn << NAND_COL_BITS;
+//
+//				si->last_adress = adrLastVector;
+//				si->session = spare.file;
+//
+//			ReadVecHdrNow(&hdr, &rd);
+//
+//			if (hdr.crc == 0)
+//			{
+//				si->stop_rtc = hdr.rtc;
+//			}
+//			else
+//			{
+//
+//			};
+//
+//			rd.SetRawPage(spare.start);
+//
+//			ReadVecHdrNow(&hdr, &rd);
+//
+//			if (hdr.crc == 0)
+//			{
+//				si->start_rtc = hdr.rtc;
+//			}
+//			else
+//			{
+//
+//			};
+//	};
+//
+//	return true;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2756,22 +3012,22 @@ u16 FLASH_Chip_Mask_Get()
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // удалить 
-//bool FLASH_Erase_Full()
-//{
-//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return false;
-//	FRAM_Memory_Start_Adress_Set(FRAM_Memory_Current_Adress_Get());
-//	return true;
-//}
+bool FLASH_Erase_Full()
+{
+	//if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return false;
+	//FRAM_Memory_Start_Adress_Set(FRAM_Memory_Current_Adress_Get());
+	return true;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // восстановить
-//bool FLASH_UnErase_Full()
-//{
-//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return false;
-//	FRAM_Memory_Start_Adress_Set(-1);
-//	return true;
-//}
+bool FLASH_UnErase_Full()
+{
+	//if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return false;
+	//FRAM_Memory_Start_Adress_Set(-1);
+	return true;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2785,21 +3041,21 @@ u16 FLASH_Chip_Mask_Get()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector)
-//{
-//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT)
-//	{
-//		return false;
-//	}
-//	flash_read_vector_adress = adr;
-//	flash_read_vector_size_p = size;
-//	*flash_read_vector_size_p = 0;
-//	flash_read_vector_ready_p = ready;
-//	*flash_read_vector_ready_p = false;
-//	*vector = flash_read_buffer;
-//	flash_status_operation = FLASH_STATUS_OPERATION_READ_WAIT;
-//	return true;
-//}
+bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector)
+{
+	//if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT)
+	//{
+	//	return false;
+	//}
+	//flash_read_vector_adress = adr;
+	//flash_read_vector_size_p = size;
+	//*flash_read_vector_size_p = 0;
+	//flash_read_vector_ready_p = ready;
+	//*flash_read_vector_ready_p = false;
+	//*vector = flash_read_buffer;
+	//flash_status_operation = FLASH_STATUS_OPERATION_READ_WAIT;
+	return true;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // проверяет по указанному адресу
@@ -2918,6 +3174,10 @@ void FLASH_Init()
 //	cmdFullErase = true;
 
 	SimpleBuildFileTable();
+
+	//static SessionInfo si;
+
+	//GetSessionNow(&si);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

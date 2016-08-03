@@ -34,10 +34,10 @@ bool RTC_Check(RTC_type d_t)
 }
 
 
-/*inline*/ unsigned short RTC_Get_Millisecond()
-{
-	return rtc.msec;	
-}
+///*inline*/ unsigned short RTC_Get_Millisecond()
+//{
+//	return rtc.msec;	
+//}
 
 //void RTC_Set(RTC_type x)
 //{

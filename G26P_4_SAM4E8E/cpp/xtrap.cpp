@@ -142,10 +142,11 @@ void SendTrap(SmallTx *p)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static byte		indSmallTx = 0;
+static SmallTx	smallTxBuf[8];
+
 SmallTx* GetSmallTxBuffer()
 {
-	static byte		indSmallTx = 0;
-	static SmallTx	smallTxBuf[8];
 
 	SmallTx *p = &smallTxBuf[indSmallTx];
 
@@ -295,56 +296,13 @@ static void UpdateSendTraps()
 		TransmitUdp(t);
 	};
 	
-	if (ComputerFind/* && tm.Check(200)*/)
+	if (ComputerFind && tm.Check(500))
 	{ 
 		TRAP_CLOCK_SendMain();
 	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void UpdateSendVector()
-{
-	static byte i = 0;
-	static FLRB flrb;
-
-	static HugeTx *t = 0;
-	static vector_type *v = 0;
-
-	switch (i)
-	{
-		case 0:
-
-			t = GetHugeTxBuffer();
-
-			if (t != 0)
-			{
-				flrb.data = t->data;
-				flrb.maxLen = sizeof(vector_type);
-				
-				RequestFlashRead(&flrb);
-
-				i++;
-			};
-
-			break;
-
-		case 1:
-
-			if (flrb.ready)
-			{
-				v = (vector_type*)t->data;
-			//	v->header.
-
-			};
-
-			break;
-
-
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void UpdateTraps()
 {
@@ -357,7 +315,7 @@ void UpdateTraps()
 	{
 		CALL( UpdateRequestTraps()		);
 		CALL( UpdateSendTraps()			);
-		CALL( UpdateSendVector()		);
+		CALL( TRAP_Idle()				);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;

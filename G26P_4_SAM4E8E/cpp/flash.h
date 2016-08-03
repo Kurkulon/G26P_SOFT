@@ -3,6 +3,8 @@
 
 #include "rtc.h"
 #include "vector.h"
+#include "trap_def.h"
+
 
 #define FLWB_LEN 2048
 #define FLRB_LEN 1536
@@ -116,6 +118,8 @@ extern bool		RequestFlashWrite(FLWB* b);
 extern bool NAND_Idle();
 extern void NAND_FullErase();
 extern void NAND_NextSession();
+
+extern const SessionInfo* GetLastSessionInfo();
 
 
 /*************************/

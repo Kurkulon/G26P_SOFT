@@ -2,13 +2,16 @@
 #define MEMORY_AT91SAM7X256_MODE_ETHERNET_H
 
 
-///*****************************************************************************/
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 //#define MODE_ETHERNET_CLOCK_SEND_MAIN_PERIOD_MS		500	// если больше секунды, менять алгоритм
 //#define MODE_ETHERNET_FLASH_SEND_STATUS_PERIOD_MS	250	// если больше секунды, менять алгоритм
 //#define MODE_ETHERNET_POWER_SEND_MAIN_PERIOD_MS		250	// если больше секунды, менять алгоритм
 //#define MODE_ETHERNET_POWER_SEND_STATUS_PERIOD_MS	500	// если больше секунды, менять алгоритм
 //#define MODE_ETHERNET_SENSORS_SEND_MAIN_PERIOD_MS	250	// если больше секунды, менять алгоритм
-///*****************************************************************************/
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 //typedef enum __attribute__ ((packed)) 
 //{
 //	MODE_ETHERNET_FLASH_STATE_NONE = 0,

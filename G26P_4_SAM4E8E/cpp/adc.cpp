@@ -5,7 +5,7 @@
 #include "adc.h"
 #include "rtc.h"
 
-
+/*
 static u16 adc_min[8];
 static u16 adc_max[8];
 static u32 adc_value[8];
@@ -80,5 +80,5 @@ void ADC_Init()
 	//AT91C_BASE_ADC->ADC_CHER = ADC_CHANNELS_MASK;
 	//AT91C_BASE_ADC->ADC_CR = AT91C_ADC_START;
 }
-
+*/
 

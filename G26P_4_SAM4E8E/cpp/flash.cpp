@@ -115,9 +115,6 @@ static NandState nandState = NAND_STATE_WAIT;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static u32 	spareRd_block = -1;
-static u16 	spareRd_page = -1;
-static byte	spareRd_chip = -1;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1709,13 +1706,17 @@ static bool Write::Update()
 
 namespace Read
 {
-	enum {	WAIT = 0,READ_START,READ_1, READ_2, READ_PAGE,READ_PAGE_1};
+	enum {	WAIT = 0,READ_START,READ_1, READ_2, READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,FIND_2,FIND_3,FIND_4};
 
 	static FLADR rd(0, 0, 0, 0);
 	static byte*	rd_data = 0;
 	static u16		rd_count = 0;
 
+	static u32 		sparePage = -1;
+
 	static SpareArea spare;
+
+	static bool vecStart = false;
 
 	static byte state;
 
@@ -1730,10 +1731,23 @@ static bool Read::Start()
 {
 	if ((curRdBuf = readFlBuf.Get()) != 0)
 	{
-		rd_data = curRdBuf->data;
-		rd_count = curRdBuf->maxLen;
-		curRdBuf->len = 0;	
+		vecStart = curRdBuf->vecStart;
+
+		if (vecStart)
+		{
+			rd_data = (byte*)&curRdBuf->hdr;
+			rd_count = sizeof(curRdBuf->hdr);
+			curRdBuf->len = 0;	
+		}
+		else
+		{
+			rd_data = curRdBuf->data;
+			rd_count = curRdBuf->maxLen;
+			curRdBuf->len = 0;	
+		};
+
 		state = READ_START;
+
 		return true;
 	};
 
@@ -1752,7 +1766,7 @@ static bool Read::Update()
 
 			NAND_Chip_Select(rd.chip);
 
-			if ((rd.block != spareRd_block) || (rd.chip != spareRd_chip) || (rd.page != spareRd_page))
+			if (rd.GetRawPage() != sparePage)
 			{
 				CmdReadPage(rd.pg, rd.block, rd.page);
 
@@ -1786,6 +1800,16 @@ static bool Read::Update()
 				{
 					rd.NextBlock();
 
+					if (rd.GetRawBlock() == 0)
+					{
+						curRdBuf->ready = true;
+
+						curRdBuf = 0;
+
+						state = WAIT;
+						break;
+					};
+
 					CmdReadPage(rd.pg, rd.block, rd.page);
 
 					state = READ_1;
@@ -1794,15 +1818,28 @@ static bool Read::Update()
 				{
 					rd.NextPage();
 
+					if (rd.GetRawPage() == 0)
+					{
+						curRdBuf->ready = true;
+
+						curRdBuf = 0;
+
+						state = WAIT;
+						break;
+					};
+
 					CmdReadPage(rd.pg, rd.block, rd.page);
 
 					state = READ_1;
 				}
 				else
 				{
-					spareRd_block = rd.block;
-					spareRd_chip = rd.chip;
-					spareRd_page = rd.page;
+					sparePage = rd.GetRawPage();
+
+					if (sparePage != spare.rawPage)
+					{
+						__breakpoint(0);
+					};
 
 					CmdRandomRead(rd.col);
 
@@ -1838,19 +1875,180 @@ static bool Read::Update()
 			{
 				if (rd_count == 0)
 				{
-					curRdBuf->ready = true;
+					if (vecStart)
+					{
+						curRdBuf->hdr.crc = GetCRC16(&curRdBuf->hdr, sizeof(curRdBuf->hdr));
 
-					curRdBuf = 0;
+						if (curRdBuf->hdr.crc == 0)
+						{
+							rd_data = curRdBuf->data;
+							rd_count = (curRdBuf->hdr.dataLen > curRdBuf->maxLen) ? curRdBuf->maxLen : curRdBuf->hdr.dataLen;
+							curRdBuf->len = 0;	
+							vecStart = false;
 
-					state = WAIT;
+							state = READ_START;
+						}
+						else
+						{
+							// Искать вектор
 
-					return false;
+							state = FIND_START;
+						};
+					}
+					else
+					{
+						curRdBuf->ready = true;
+
+						curRdBuf = 0;
+
+						state = WAIT;
+
+						return false;
+					};
 				}
 				else
 				{
 					state = READ_START;
 				};
 			};
+
+			break;
+
+		case FIND_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			__breakpoint(0);
+
+			if (spare.lpn == -1 || spare.start == -1 || spare.fpn == -1 )
+			{
+				if (rd.page == 0)
+				{
+					// Вектора кончились
+					state = FIND_3;
+				}
+				else
+				{
+					//rd.NextBlock();
+
+					//if (rd.GetRawBlock() == 0)
+					//{
+					//	state = FIND_3;
+					//	break;
+					//};
+
+					rd.NextPage();
+
+					if (rd.GetRawPage() == 0)
+					{
+						state = FIND_3;
+						break;
+					};
+
+					CmdReadPage(rd.pg, rd.block, rd.page);
+
+					state = FIND_1;
+				};
+			}
+			else if (spare.vecFstOff == 0xFFFF || spare.vecLstOff == 0xFFFF || rd.col > spare.vecLstOff)
+			{
+				rd.NextPage();
+
+				if (rd.GetRawPage() == 0)
+				{
+					state = FIND_3;
+					break;
+				};
+
+				CmdReadPage(rd.pg, rd.block, rd.page);
+
+				state = FIND_1;
+			}
+			else 
+			{
+				if (rd.col <= spare.vecFstOff)
+				{
+					rd.col = spare.vecFstOff;
+				}
+				else if (rd.col <= (spare.vecFstOff+spare.vecFstLen))
+				{
+					rd.col = spare.vecFstOff+spare.vecFstLen;
+				}
+				else if (rd.col <= spare.vecLstOff)
+				{
+					rd.col = spare.vecLstOff;
+				};
+
+				rd_data = (byte*)&curRdBuf->hdr;
+				rd_count = sizeof(curRdBuf->hdr);
+				curRdBuf->len = 0;	
+
+				state = READ_START;
+			};
+
+			break;
+
+		case FIND_1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			if(!NAND_BUSY())
+			{
+				NandReadData(&spare, sizeof(spare));
+
+				state = FIND_2;
+			};
+
+			break;
+
+		case FIND_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			if (CheckDataComplete())
+			{
+				if (rd.page == 0 && spare.validBlock != 0xFFFF)
+				{
+					rd.NextBlock();
+
+					if (rd.GetRawBlock() == 0)
+					{
+						state = FIND_3;
+						break;
+					};
+
+					CmdReadPage(rd.pg, rd.block, rd.page);
+
+					state = FIND_1;
+				}
+				else if (spare.validPage != 0xFFFF)
+				{
+					rd.NextPage();
+
+					if (rd.GetRawPage() == 0)
+					{
+						state = FIND_3;
+						break;
+					};
+
+					CmdReadPage(rd.pg, rd.block, rd.page);
+
+					state = FIND_1;
+				}
+				else
+				{
+					sparePage = rd.GetRawPage();
+
+					state = FIND_START;
+				};
+			};
+
+			break;
+
+
+		case FIND_3:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			curRdBuf->ready = true;
+			curRdBuf->len = 0;
+			curRdBuf->hdr.dataLen = 0;
+
+			curRdBuf = 0;
+
+			state = WAIT;
 
 			break;
 	};

@@ -54,6 +54,10 @@ struct FLRB
 	FLRB *next;
 
 	bool	ready;
+	bool	vecStart; // Найти начало вектора и считать hdr
+
+	VecData::Hdr hdr;
+
 	u16		maxLen;
 	u16		len;
 

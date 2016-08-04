@@ -1304,9 +1304,10 @@ static void UpdateSendVector()
 
 				if (t != 0)
 				{
-					flrb.data = (byte*)&h;
-					flrb.maxLen = sizeof(h);
-					
+					flrb.data = trap->data;
+					flrb.maxLen = sizeof(t->th) + sizeof(t->data) + sizeof(t->exdata) - sizeof(*trap) + sizeof(trap->data);
+					flrb.vecStart = true;
+
 					RequestFlashRead(&flrb);
 
 					i++;
@@ -1319,39 +1320,30 @@ static void UpdateSendVector()
 
 			if (flrb.ready)
 			{
-				if (GetCRC16(&h, sizeof(h)) == 0)
+				if (flrb.len == 0)
+				{
+					i = 0;
+				}
+				else if (h.crc == 0)
 				{
 					trap->hdr.cmd = TRAP_MEMORY_COMMAND_VECTOR;
 					trap->session = h.session;
-					trap->device = h.device;
+					trap->device = 0xAA00; //h.device;
 					trap->rtc = h.rtc;
 					trap->flags = h.flags;
 
-					flrb.data = trap->data;
-					flrb.maxLen = h.dataLen;
+					t->len = sizeof(EthUdp) + sizeof(*trap) - sizeof(trap->data) + flrb.len;
 
-					RequestFlashRead(&flrb);
+					SendTrap(t);
 
-					i++;
+					i = 1;
 				}
 				else
 				{
+					// найти следующий вектор
 					__breakpoint(0);
 				};
 
-			};
-
-			break;
-
-		case 3:
-
-			if (flrb.ready)
-			{
-				t->len = sizeof(EthUdp) + sizeof(*trap) - sizeof(trap->data) + flrb.len;
-
-				SendTrap(t);
-
-				i = 1;
 			};
 
 			break;

@@ -109,7 +109,7 @@ void RequestTrap(EthUdp *h, u32 stat)
 
 	EthTrap *t = (EthTrap*)h;
 
-	u32 *p = (u32*)&t->trap;
+	__packed u32 *p = (u32*)&t->trap;
 	u32 *d = (u32*)&req->trap;
 
 	len = (len+3) >> 2;
@@ -167,13 +167,13 @@ SmallTx* GetSmallTxBuffer()
 HugeTx* GetHugeTxBuffer()
 {
 	static byte		indHugeTx = 0;
-	static HugeTx	hugeTxBuf[4];
+	static HugeTx	hugeTxBuf[8];
 
 	HugeTx *p = &hugeTxBuf[indHugeTx];
 
 	if (p->len == 0)
 	{
-		indHugeTx = (indHugeTx + 1) & 3;
+		indHugeTx = (indHugeTx + 1) & 7;
 		return p;
 	}
 	else

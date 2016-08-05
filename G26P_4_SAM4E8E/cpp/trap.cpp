@@ -1326,6 +1326,8 @@ static void UpdateSendVector()
 				}
 				else if (h.crc == 0)
 				{
+					MakePacketHeaders(&trap->hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
+
 					trap->hdr.cmd = TRAP_MEMORY_COMMAND_VECTOR;
 					trap->session = h.session;
 					trap->device = 0xAA00; //h.device;

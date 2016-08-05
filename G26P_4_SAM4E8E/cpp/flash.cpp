@@ -159,6 +159,8 @@ struct FLADR
 			u64 	page	: NAND_PAGE_BITS;
 			u64		chip	: NAND_CHIP_BITS;
 			u64 	block	: NAND_BLOCK_BITS;
+
+			u64		overflow : (64-(NAND_COL_BITS+NAND_PAGE_BITS+NAND_CHIP_BITS+NAND_BLOCK_BITS));
 		};
 
 		u64	raw;
@@ -173,11 +175,6 @@ struct FLADR
 	FLADR(u32 bl, u16 pg, u16 cl, byte ch) : block(bl), page(pg), col(cl), chip(ch) {}
 	FLADR(u32 pg) : col(0) { SetRawPage(pg); }
 
-	void	NextPage();
-	void	NextBlock();
-	void	PrevPage();
-	void	PrevBlock();
-
 	u32		GetRawPage() { return raw >> NAND_COL_BITS; }
 
 	void	SetRawPage(u32 p) { raw = (u64)(p & NAND_RAWPAGE_MASK) << NAND_COL_BITS; };
@@ -186,76 +183,12 @@ struct FLADR
 
 	void	SetRawBlock(u32 b) { raw = (u64)(b & NAND_RAWBLOCK_MASK) << (NAND_COL_BITS+NAND_PAGE_BITS); };
 
-	u64		GetRawAdr() { return raw & NAND_RAWADR_MASK; };
+	u64		GetRawAdr()	{ return raw & NAND_RAWADR_MASK; };
+	void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; }
+	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS);}
+	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS;col = 0;	}
+	void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0;}
 };
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void FLADR::NextPage()
-{
-	col = 0;
-
-	raw += 1 << NAND_COL_BITS;
-
-	raw &= NAND_RAWADR_MASK;
-
-	//page += 1;
-
-	//chip += page >> sz.bitPage;
-
-	//page &= sz.maskPage;
-
-	//block += chip >> NAND_CHIP_BITS;
-
-	//chip &= NAND_CHIP_MASK;
-
-	//block &= sz.maskBlock;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void FLADR::NextBlock()
-{
-	col = 0;
-
-	page = 0;
-
-	raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS);
-
-	raw &= NAND_RAWADR_MASK;
-
-	//chip += 1;
-
-	//block += chip >> NAND_CHIP_BITS;
-
-	//chip &= NAND_CHIP_MASK;
-
-	//block &= sz.maskBlock;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void FLADR::PrevPage()
-{
-	raw -= 1 << NAND_COL_BITS;
-
-	col = 0;
-
-	raw &= NAND_RAWADR_MASK;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void FLADR::PrevBlock()
-{
-	raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);
-
-	col = 0;
-
-	page = 0;
-
-	raw &= NAND_RAWADR_MASK;
-}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -542,6 +475,8 @@ static void InitCom()
 
 static void UpdateCom()
 {
+	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[700]; };
+
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
 
@@ -550,6 +485,10 @@ static void UpdateCom()
 	static FLWB *fwb;
 	static Req *req;
 	static VecData *vd;
+
+	static u32 count = 0;
+	static u16 v = 0;
+	static byte b = 0;
 
 	//static byte buf[100];
 
@@ -584,9 +523,28 @@ static void UpdateCom()
 
 			rb.data = req;
 			rb.maxLen = sizeof(vd->data);
-			rb.len = 0x429;
+			rb.len = sizeof(*req);
+
+			req->rw = 0xAA30 + ((b & (~7))<<4) + (b & 7);
+			req->cnt = count++;
+			req->gain = 7;
+			req->st = 10;
+			req->len = 175;
+			req->delay = 0;
+
+			if (writeFlashEnabled)
+			{
+				for (u16 i = 0; i < ArraySize(req->data); i++)
+				{
+					req->data[i] = v++;
+				};
+			};
 
 //			com1.Read(&rb, -1, 2);
+
+			b += 1;
+
+			if (b >= 24) { b = 0; };
 
 			state++;
 
@@ -1800,37 +1758,39 @@ static bool Read::Update()
 				{
 					rd.NextBlock();
 
-					if (rd.GetRawBlock() == 0)
+					if (rd.overflow != 0)
 					{
 						curRdBuf->ready = true;
 
 						curRdBuf = 0;
 
 						state = WAIT;
-						break;
+					}
+					else
+					{
+						CmdReadPage(rd.pg, rd.block, rd.page);
+
+						state = READ_1;
 					};
-
-					CmdReadPage(rd.pg, rd.block, rd.page);
-
-					state = READ_1;
 				}
 				else if (spare.validPage != 0xFFFF)
 				{
 					rd.NextPage();
 
-					if (rd.GetRawPage() == 0)
+					if (rd.overflow != 0)
 					{
 						curRdBuf->ready = true;
 
 						curRdBuf = 0;
 
 						state = WAIT;
-						break;
+					}
+					else
+					{
+						CmdReadPage(rd.pg, rd.block, rd.page);
+
+						state = READ_1;
 					};
-
-					CmdReadPage(rd.pg, rd.block, rd.page);
-
-					state = READ_1;
 				}
 				else
 				{
@@ -1838,7 +1798,7 @@ static bool Read::Update()
 
 					if (sparePage != spare.rawPage)
 					{
-						__breakpoint(0);
+//						__breakpoint(0);
 					};
 
 					CmdRandomRead(rd.col);
@@ -1916,7 +1876,7 @@ static bool Read::Update()
 
 		case FIND_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			__breakpoint(0);
+//			__breakpoint(0);
 
 			if (spare.lpn == -1 || spare.start == -1 || spare.fpn == -1 )
 			{
@@ -1937,7 +1897,7 @@ static bool Read::Update()
 
 					rd.NextPage();
 
-					if (rd.GetRawPage() == 0)
+					if (rd.overflow != 0)
 					{
 						state = FIND_3;
 						break;
@@ -1952,7 +1912,7 @@ static bool Read::Update()
 			{
 				rd.NextPage();
 
-				if (rd.GetRawPage() == 0)
+				if (rd.overflow != 0)
 				{
 					state = FIND_3;
 					break;
@@ -2005,7 +1965,7 @@ static bool Read::Update()
 				{
 					rd.NextBlock();
 
-					if (rd.GetRawBlock() == 0)
+					if (rd.overflow != 0)
 					{
 						state = FIND_3;
 						break;
@@ -2019,7 +1979,7 @@ static bool Read::Update()
 				{
 					rd.NextPage();
 
-					if (rd.GetRawPage() == 0)
+					if (rd.overflow != 0)
 					{
 						state = FIND_3;
 						break;
@@ -2422,6 +2382,79 @@ static void ReadVecHdrNow(VecData::Hdr *h, FLADR *rd)
 	ReadDataNow(h, sizeof(*h), rd);
 
 	h->crc = GetCRC16(h, sizeof(*h));
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Test()
+{
+	FLADR rd(0, 0, 0, 0);
+
+	SpareArea spare;
+
+	rd.SetRawPage(0);
+
+	while (1)
+	{
+		ReadSpareNow(&spare, &rd, false);
+
+		if (spare.validBlock != 0xFFFF)
+		{
+			rd.NextBlock();
+		}
+		else if (spare.validPage != 0xFFFF)
+		{
+			rd.NextPage();
+		}
+		else
+		{
+			if (spare.rawPage != rd.GetRawPage())
+			{
+				__breakpoint(0);
+			};
+
+			rd.NextPage();
+
+			if (rd.overflow != 0)
+			{
+				__breakpoint(0);
+				break;
+			};
+		};
+	};
+
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Test2()
+{
+	FLADR rd(0, 0, 0, 0);
+
+	SpareArea spare;
+
+	rd.SetRawPage(0);
+
+	while (1)
+	{
+		ReadSpareStart(&spare, &rd);
+
+		while (ReadSpareUpdate());
+
+		if (spare.rawPage != rd.GetRawPage())
+		{
+			__breakpoint(0);
+		};
+
+		rd.NextPage();
+
+		if (rd.overflow != 0)
+		{
+			__breakpoint(0);
+			break;
+		};
+	};
+
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3355,22 +3388,11 @@ void FLASH_Init()
 
 	InitCom();
 
-//	__breakpoint(0);
-
-	//FLADR r;
-
-	//for (u32 i = 0; i < (1<<16); i++)
-	//{
-	//	r.SetRawBlock(i);
-
-	//	if (r.GetRawBlock() != i)
-	//	{
-	//		__breakpoint(0);
-	//	};
-	//};
+	__breakpoint(0);
 
 //	cmdFullErase = true;
-
+	Test2();
+ 
 	SimpleBuildFileTable();
 
 	//static SessionInfo si;

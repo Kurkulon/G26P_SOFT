@@ -40,8 +40,9 @@ u32 TrapRxCounter;
 u32 TrapTxCounter;
 u32 TrapRxLost;
 
+static bool startSendVector = false;
+static bool startSendSession = false;
 static bool stop = false;
-static bool start = false;
 static bool pause = false;
 
 
@@ -49,14 +50,10 @@ static bool pause = false;
 static void TRAP_MakePacketHeaders(char *data, bool need_ask, bool is_ask, char device);
 static void MakePacketHeaders(TrapHdr *p, bool need_ask, bool is_ask, char device);
 
+static void StartSendVector(u16 session, u64 adr);
+
+
 /*********************** Info *************************/
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void StartSendVector()
-{
-	trapStatus = TRAP_SEND_VECTOR;
-}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -840,6 +837,8 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
 
 						TRAP_MEMORY_SendLastSession(GetLastSessionInfo());
+						TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY);
+
 //						TRAP_MEMORY_SendNullSession();
 
 //						Mode_Ethernet_Flash_Read_Session_Start();
@@ -849,10 +848,9 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
 
-//						TrapReadVector &tr = (TrapReadVector&)*t;
+						TrapReadVector &tr = (TrapReadVector&)*t;
 
-						start = true;
-						stop = false;
+						StartSendVector(tr.session, tr.last_adress);
 
 //						Mode_Ethernet_Flash_Read_Vector_Start(tr.session, tr.last_adress);
 
@@ -863,7 +861,8 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
 
 						stop = true;
-						start = false;
+
+						TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_STOP);
 
 //						Mode_Ethernet_Flash_Stop();
 						break;
@@ -873,7 +872,9 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);	
 
 						pause = true;
-//						Mode_Ethernet_Flash_Pause();
+
+						TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_PAUSE);
+
 						break;
 
 					case TRAP_MEMORY_COMMAND_RESUME:
@@ -881,12 +882,17 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
 
 						pause = false;
-//						Mode_Ethernet_Flash_Resume();
+
+						TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_RESUME);
+
 						break;
 
 					case TRAP_MEMORY_COMMAND_ERASE:
 
-						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);					
+						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);	
+
+						NAND_FullErase();
+
 //						Mode_Ethernet_Flash_Erase();
 						break;
 
@@ -1268,13 +1274,24 @@ static void TRAP_MakePacketHeaders(char *data, bool need_ask, bool is_ask, char 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateSendVector()
+static void StartSendVector(u16 session, u64 adr)
+{
+	startSendVector = true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool UpdateSendVector()
 {
 	static byte i = 0;
 	static FLRB flrb;
 
 	static HugeTx *t = 0;
-	static VecData::Hdr h;
+//	static VecData::Hdr h;
+
+	static u32 vecCount = 0;
+
+	static TM32 tm;
 
 	TrapVector *trap = (TrapVector*)&t->th;
 
@@ -1282,11 +1299,17 @@ static void UpdateSendVector()
 	{
 		case 0:
 
-			if (start)
+			if (startSendVector)
 			{
-				start = false;
+				startSendVector = false;
+
+				vecCount = 0;
 
 				i++;
+			}
+			else
+			{
+				return false;
 			};
 
 			break;
@@ -1296,7 +1319,9 @@ static void UpdateSendVector()
 			if (stop)
 			{
 				stop = false;
+
 				i = 0;
+
 			}
 			else if (!pause)
 			{
@@ -1322,21 +1347,30 @@ static void UpdateSendVector()
 			{
 				if (flrb.len == 0)
 				{
+					TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_VECTOR_READY);
+
 					i = 0;
 				}
-				else if (h.crc == 0)
+				else if (flrb.hdr.crc == 0)
 				{
 					MakePacketHeaders(&trap->hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
 
 					trap->hdr.cmd = TRAP_MEMORY_COMMAND_VECTOR;
-					trap->session = h.session;
+					trap->session = flrb.hdr.session;
 					trap->device = 0xAA00; //h.device;
-					trap->rtc = h.rtc;
-					trap->flags = h.flags;
+					trap->rtc = flrb.hdr.rtc;
+					trap->flags = flrb.hdr.flags;
+
+					vecCount += 1;
 
 					t->len = sizeof(EthUdp) + sizeof(*trap) - sizeof(trap->data) + flrb.len;
 
 					SendTrap(t);
+
+					if (tm.Check(500))
+					{
+						TRAP_MEMORY_SendStatus(vecCount, FLASH_STATUS_READ_VECTOR_IDLE);
+					};
 
 					i = 1;
 				}
@@ -1350,6 +1384,8 @@ static void UpdateSendVector()
 
 			break;
 	};
+
+	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

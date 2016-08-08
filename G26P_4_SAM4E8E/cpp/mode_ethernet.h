@@ -4,11 +4,11 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//#define MODE_ETHERNET_CLOCK_SEND_MAIN_PERIOD_MS		500	// если больше секунды, менять алгоритм
-//#define MODE_ETHERNET_FLASH_SEND_STATUS_PERIOD_MS	250	// если больше секунды, менять алгоритм
-//#define MODE_ETHERNET_POWER_SEND_MAIN_PERIOD_MS		250	// если больше секунды, менять алгоритм
-//#define MODE_ETHERNET_POWER_SEND_STATUS_PERIOD_MS	500	// если больше секунды, менять алгоритм
-//#define MODE_ETHERNET_SENSORS_SEND_MAIN_PERIOD_MS	250	// если больше секунды, менять алгоритм
+//#define MODE_ETHERNET_CLOCK_SEND_MAIN_PERIOD_MS		500	// хёыш сюы№°х ёхъєэф√, ьхэ Є№ рыуюЁшЄь
+//#define MODE_ETHERNET_FLASH_SEND_STATUS_PERIOD_MS	250	// хёыш сюы№°х ёхъєэф√, ьхэ Є№ рыуюЁшЄь
+//#define MODE_ETHERNET_POWER_SEND_MAIN_PERIOD_MS		250	// хёыш сюы№°х ёхъєэф√, ьхэ Є№ рыуюЁшЄь
+//#define MODE_ETHERNET_POWER_SEND_STATUS_PERIOD_MS	500	// хёыш сюы№°х ёхъєэф√, ьхэ Є№ рыуюЁшЄь
+//#define MODE_ETHERNET_SENSORS_SEND_MAIN_PERIOD_MS	250	// хёыш сюы№°х ёхъєэф√, ьхэ Є№ рыуюЁшЄь
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -41,7 +41,7 @@
 //typedef enum __attribute__ ((packed)) 
 //{
 //	MODE_ETHERNET_FLASH_STATUS_NONE = 0,
-//	MODE_ETHERNET_FLASH_STATUS_BUSY,	 // занят неизвестной для компьютера операцией (например записью в память)
+//	MODE_ETHERNET_FLASH_STATUS_BUSY,	 // чрэ Є эхшчтхёЄэющ фы  ъюья№■ЄхЁр юяхЁрЎшхщ (эряЁшьхЁ чряшё№■ т ярь Є№)
 //	MODE_ETHERNET_FLASH_STATUS_STOP,
 //	MODE_ETHERNET_FLASH_STATUS_PAUSE,
 //	MODE_ETHERNET_FLASH_STATUS_RESUME,
@@ -49,12 +49,12 @@
 //	MODE_ETHERNET_FLASH_STATUS_UNERASE,
 //	MODE_ETHERNET_FLASH_STATUS_READ_SESSION_START,
 //	MODE_ETHERNET_FLASH_STATUS_READ_SESSION_IDLE,
-//	MODE_ETHERNET_FLASH_STATUS_READ_SESSION_FIND, // поиск вектора по несвязанной области
+//	MODE_ETHERNET_FLASH_STATUS_READ_SESSION_FIND, // яюшёъ тхъЄюЁр яю эхёт чрээющ юсырёЄш
 //	MODE_ETHERNET_FLASH_STATUS_READ_SESSION_ERROR,
 //	MODE_ETHERNET_FLASH_STATUS_READ_SESSION_READY,
 //	MODE_ETHERNET_FLASH_STATUS_READ_VECTOR_START,
 //	MODE_ETHERNET_FLASH_STATUS_READ_VECTOR_IDLE,
-//	MODE_ETHERNET_FLASH_STATUS_READ_VECTOR_FIND, // поиск вектора по несвязанной области
+//	MODE_ETHERNET_FLASH_STATUS_READ_VECTOR_FIND, // яюшёъ тхъЄюЁр яю эхёт чрээющ юсырёЄш
 //	MODE_ETHERNET_FLASH_STATUS_READ_VECTOR_ERROR,
 //	MODE_ETHERNET_FLASH_STATUS_READ_VECTOR_READY,
 //} mode_ethernet_flash_status_type;

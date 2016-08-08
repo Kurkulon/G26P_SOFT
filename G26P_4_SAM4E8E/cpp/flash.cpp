@@ -7,6 +7,7 @@
 #include <CRC16.h>
 #include "ComPort.h"
 #include "trap_def.h"
+#include "trap.h"
 
 #pragma diag_suppress 550,177
 
@@ -78,15 +79,15 @@ const SessionInfo* GetLastSessionInfo()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-enum flash_status_type
-{
-	FLASH_STATUS_WAIT = 0,
-	FLASH_STATUS_WRITE,
-	FLASH_STATUS_READ,
-	FLASH_STATUS_ERASE
-};
+//enum flash_status_type
+//{
+//	FLASH_STATUS_WAIT = 0,
+//	FLASH_STATUS_WRITE,
+//	FLASH_STATUS_READ,
+//	FLASH_STATUS_ERASE
+//};
 
-static byte flashStatus = FLASH_STATUS_WAIT;
+//static byte flashStatus = FLASH_STATUS_WAIT;
 
 //enum flash_status_operation_type
 //{
@@ -1273,8 +1274,40 @@ namespace Write
 	static void CreateNextFile();
 	static void	Vector_Make(VecData *vd, u16 size);
 	static void Finish();
+	static void Init(u32 bl, u32 file, u32 prfile);
 
 };
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Write::Init(u32 bl, u32 file, u32 prfile)
+{
+	wr.SetRawBlock(bl);
+
+	Write::spare.file = file;  
+	Write::spare.lpn = wr.GetRawPage();
+
+	Write::spare.prev = prfile;		
+
+	Write::spare.start = wr.GetRawPage();		
+	Write::spare.fpn = 0;	
+
+	Write::spare.vectorCount = 0;
+
+	Write::spare.vecFstOff = -1;
+	Write::spare.vecFstLen = 0;
+
+	Write::spare.vecLstOff = -1;
+	Write::spare.vecLstLen = 0;
+
+	Write::wr_prev_pg = -1;
+	Write::wr_prev_col = 0;
+
+	Write::spare.fbb = 0;		
+	Write::spare.fbp = 0;		
+
+	Write::spare.chipMask = nandSize.mask;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2532,29 +2565,31 @@ static void SimpleBuildFileTable()
 		
 		flashFull = true;
 
-		wr.SetRawBlock(0);
+		Write::Init(0, 1, -1);
 
-		Write::spare.file = 1;
-		Write::spare.lpn = 0;
-		Write::spare.start = 0;
-		Write::spare.fpn = 0;	
-		Write::spare.prev = -1;
+		//wr.SetRawBlock(0);
 
-		Write::spare.vectorCount = 0;
+		//Write::spare.file = 1;
+		//Write::spare.lpn = 0;
+		//Write::spare.start = 0;
+		//Write::spare.fpn = 0;	
+		//Write::spare.prev = -1;
 
-		Write::spare.vecFstOff = -1;
-		Write::spare.vecFstLen = 0;
+		//Write::spare.vectorCount = 0;
 
-		Write::spare.vecLstOff = -1;
-		Write::spare.vecLstLen = 0;
+		//Write::spare.vecFstOff = -1;
+		//Write::spare.vecFstLen = 0;
 
-		Write::wr_prev_pg = -1;
-		Write::wr_prev_col = 0;
+		//Write::spare.vecLstOff = -1;
+		//Write::spare.vecLstLen = 0;
 
-		Write::spare.fbb = 0;		
-		Write::spare.fbp = 0;		
+		//Write::wr_prev_pg = -1;
+		//Write::wr_prev_col = 0;
 
-		Write::spare.chipMask = nandSize.mask;	
+		//Write::spare.fbb = 0;		
+		//Write::spare.fbp = 0;		
+
+		//Write::spare.chipMask = nandSize.mask;	
 
 	}
 	else if (spare.validBlock != 0xFFFF || spare.lpn == -1 || spare.start == -1 || spare.fpn == -1)
@@ -2565,27 +2600,29 @@ static void SimpleBuildFileTable()
 
 		wr.SetRawBlock(0);
 
-		Write::spare.file = 1;
-		Write::spare.lpn = 0;
-		Write::spare.start = 0;
-		Write::spare.fpn = 0;	
-		Write::spare.prev = -1;
+		Write::Init(0, 1, -1);
 
-		Write::spare.vectorCount = 0;
+		//Write::spare.file = 1;
+		//Write::spare.lpn = 0;
+		//Write::spare.start = 0;
+		//Write::spare.fpn = 0;	
+		//Write::spare.prev = -1;
 
-		Write::spare.vecFstOff = -1;
-		Write::spare.vecFstLen = 0;
+		//Write::spare.vectorCount = 0;
 
-		Write::spare.vecLstOff = -1;
-		Write::spare.vecLstLen = 0;
+		//Write::spare.vecFstOff = -1;
+		//Write::spare.vecFstLen = 0;
 
-		Write::wr_prev_pg = -1;
-		Write::wr_prev_col = 0;
+		//Write::spare.vecLstOff = -1;
+		//Write::spare.vecLstLen = 0;
 
-		Write::spare.fbb = 0;		
-		Write::spare.fbp = 0;		
+		//Write::wr_prev_pg = -1;
+		//Write::wr_prev_col = 0;
 
-		Write::spare.chipMask = nandSize.mask;	
+		//Write::spare.fbb = 0;		
+		//Write::spare.fbp = 0;		
+
+		//Write::spare.chipMask = nandSize.mask;	
 		
 		Erase::Start(wr.chip, wr.block, true, false);
 		while (Erase::Update());
@@ -2598,32 +2635,34 @@ static void SimpleBuildFileTable()
 	{
 		// Заебошить лук
 
-		wr.SetRawBlock(bs);
-		wr.NextBlock();
+		//wr.SetRawBlock(bs);
+		//wr.NextBlock();
 
-		Write::spare.file = spare.file + 1;  
-		Write::spare.lpn = wr.GetRawPage();
+		Write::Init(bs+1, 1, -1);
 
-		Write::spare.prev = spare.start;		
+		//Write::spare.file = spare.file + 1;  
+		//Write::spare.lpn = wr.GetRawPage();
 
-		Write::spare.start = wr.GetRawPage();		
-		Write::spare.fpn = 0;	
+		//Write::spare.prev = spare.start;		
 
-		Write::spare.vectorCount = 0;
+		//Write::spare.start = wr.GetRawPage();		
+		//Write::spare.fpn = 0;	
 
-		Write::spare.vecFstOff = -1;
-		Write::spare.vecFstLen = 0;
+		//Write::spare.vectorCount = 0;
 
-		Write::spare.vecLstOff = -1;
-		Write::spare.vecLstLen = 0;
+		//Write::spare.vecFstOff = -1;
+		//Write::spare.vecFstLen = 0;
 
-		Write::wr_prev_pg = -1;
-		Write::wr_prev_col = 0;
+		//Write::spare.vecLstOff = -1;
+		//Write::spare.vecLstLen = 0;
 
-		Write::spare.fbb = 0;		
-		Write::spare.fbp = 0;		
+		//Write::wr_prev_pg = -1;
+		//Write::wr_prev_col = 0;
 
-		Write::spare.chipMask = nandSize.mask;
+		//Write::spare.fbb = 0;		
+		//Write::spare.fbp = 0;		
+
+		//Write::spare.chipMask = nandSize.mask;
 
 		Erase::Start(wr.chip, wr.block, true, false);
 		while (Erase::Update());
@@ -2884,6 +2923,8 @@ bool NAND_Idle()
 //	register u32 t;
 
 	static i32 t = 0;
+	static i32 eb = 0;
+	static TM32 tm;
 
 	switch (nandState)
 	{
@@ -2937,7 +2978,7 @@ bool NAND_Idle()
 
 		case NAND_STATE_FULL_ERASE_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-			t = nandSize.fl >> (NAND_COL_BITS + NAND_PAGE_BITS); // blocks count
+			t = eb = nandSize.fl >> (NAND_COL_BITS + NAND_PAGE_BITS); // blocks count
 
 			Erase::Start(0, 0, true, true);
 
@@ -2961,9 +3002,18 @@ bool NAND_Idle()
 					er.NextBlock();
 
 					Erase::Start(er.chip, er.block, true, true);
+
+					if (tm.Check(500)) { TRAP_MEMORY_SendStatus((eb-t)*((u64)0x100000000)/eb, FLASH_STATUS_BUSY); };
 				}
 				else
 				{
+					flashEmpty = true;
+
+					Write::Init(0, 1, -1);
+
+					adrLastVector = -1;
+
+					TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_ERASE);
 					nandState = NAND_STATE_WAIT;
 				};
 			};
@@ -3046,26 +3096,26 @@ void NAND_Init()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-flash_status_type		flash_read_status = FLASH_STATUS_WAIT;          // результат последней операции
-flash_status_type 		flash_write_status = FLASH_STATUS_WAIT;
-flash_status_type 		flash_verify_status = FLASH_STATUS_WAIT;
-
-i64 	flash_current_adress;
-
-u32 	flash_vectors_errors = 0;
-u32 	flash_vectors_saved = 0;
-
-u16 	flash_save_size = 0;
-byte	flash_save_buffer[FLASH_SAVE_BUFFER_SIZE];
-byte	flash_save_repeat_counter = 0;
-
-flash_save_repeat_type		flash_save_repeat = FLASH_SAVE_REPEAT_NONE;
-
-byte	flash_read_buffer[FLASH_READ_BUFFER_SIZE];
-u64 	flash_read_vector_adress;
-u16 	*flash_read_vector_size_p;
-bool	*flash_read_vector_ready_p;
-byte	*flash_read_vector_p;
+//flash_status_type		flash_read_status = FLASH_STATUS_WAIT;          // результат последней операции
+//flash_status_type 		flash_write_status = FLASH_STATUS_WAIT;
+//flash_status_type 		flash_verify_status = FLASH_STATUS_WAIT;
+//
+//i64 	flash_current_adress;
+//
+//u32 	flash_vectors_errors = 0;
+//u32 	flash_vectors_saved = 0;
+//
+//u16 	flash_save_size = 0;
+//byte	flash_save_buffer[FLASH_SAVE_BUFFER_SIZE];
+//byte	flash_save_repeat_counter = 0;
+//
+//flash_save_repeat_type		flash_save_repeat = FLASH_SAVE_REPEAT_NONE;
+//
+//byte	flash_read_buffer[FLASH_READ_BUFFER_SIZE];
+//u64 	flash_read_vector_adress;
+//u16 	*flash_read_vector_size_p;
+//bool	*flash_read_vector_ready_p;
+//byte	*flash_read_vector_p;
 
 
 //flash_status_operation_type 	flash_status_operation = FLASH_STATUS_OPERATION_WAIT;
@@ -3347,7 +3397,7 @@ bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector)
 void FLASH_WriteEnable()
 {
 	writeFlashEnabled = true;
-	flashStatus = FLASH_STATUS_WRITE;
+//	flashStatus = FLASH_STATUS_WRITE;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3355,14 +3405,14 @@ void FLASH_WriteEnable()
 void FLASH_WriteDisable()
 {
 	writeFlashEnabled = false;
-	flashStatus = FLASH_STATUS_WAIT;
+//	flashStatus = FLASH_STATUS_WAIT;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 byte FLASH_Status()
 {
-	return flashStatus;
+	return 0;//flashStatus;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3388,10 +3438,10 @@ void FLASH_Init()
 
 	InitCom();
 
-	__breakpoint(0);
+//	__breakpoint(0);
 
 //	cmdFullErase = true;
-	Test2();
+//	Test2();
  
 	SimpleBuildFileTable();
 

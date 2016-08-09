@@ -1290,6 +1290,8 @@ static bool UpdateSendVector()
 //	static VecData::Hdr h;
 
 	static u32 vecCount = 0;
+	static u32 fragLen = 0;
+	static u32 fragOff = 0;
 
 	static TM32 tm;
 
@@ -1316,12 +1318,20 @@ static bool UpdateSendVector()
 
 		case 1:
 
+			if (tm.Check(1000))
+			{
+				TRAP_MEMORY_SendStatus(vecCount, FLASH_STATUS_READ_VECTOR_IDLE);
+			}
+			else
+			{
+				break;
+			};
+
 			if (stop)
 			{
 				stop = false;
 
 				i = 0;
-
 			}
 			else if (!pause)
 			{
@@ -1363,16 +1373,23 @@ static bool UpdateSendVector()
 
 					vecCount += 1;
 
+					t->iph.off = 0;
+
 					t->len = sizeof(EthUdp) + sizeof(*trap) - sizeof(trap->data) + flrb.len;
 
 					SendTrap(t);
 
-					if (tm.Check(500))
+					if (flrb.hdr.dataLen > flrb.maxLen)
 					{
-						TRAP_MEMORY_SendStatus(vecCount, FLASH_STATUS_READ_VECTOR_IDLE);
-					};
+						fragOff = flrb.maxLen;
+						fragLen = flrb.hdr.dataLen - flrb.maxLen;
 
-					i = 1;
+						i = 3;
+					}
+					else
+					{
+						i = 1;
+					};
 				}
 				else
 				{
@@ -1380,6 +1397,52 @@ static bool UpdateSendVector()
 					__breakpoint(0);
 				};
 
+			};
+
+			break;
+
+		case 3:
+
+			t = GetHugeTxBuffer();
+
+			if (t != 0)
+			{
+				flrb.data = (byte*)&t->udp;
+				flrb.maxLen = (byte*)&t->exdata[ArraySize(t->exdata)] - flrb.data;
+				flrb.vecStart = false;
+
+				if (flrb.maxLen > fragLen) { flrb.maxLen = fragLen; };
+
+				RequestFlashRead(&flrb);
+
+				i++;
+			};
+
+			break;
+
+		case 4:
+
+			if (flrb.ready)
+			{
+				t->iph.off = (fragOff/8)&0x1FFF;
+
+				fragLen -= flrb.len;
+				fragOff += flrb.len;
+
+				if (fragLen > 0) { t->iph.off |= 0x2000; };
+
+				t->len = sizeof(EthIp) + flrb.len;
+
+				SendTrap(t);
+
+				if (fragLen > 0)
+				{
+					i = 3;
+				}
+				else
+				{
+					i = 1;
+				};
 			};
 
 			break;

@@ -281,14 +281,28 @@ bool TransmitIp(EthIpBuf *b)
 		return false;
 	};
 
+	b->iph.off = 0;		
+
+	return TransmitFragIp(b);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool TransmitFragIp(EthIpBuf *b)
+{
+	if (b == 0 || b->len < sizeof(EthIp))
+	{
+		return false;
+	};
+
 	b->eth.protlen = SWAP16(PROT_IP);
 
 	b->iph.hl_v = 0x45;	
 	b->iph.tos = 0;		
-	b->iph.off = 0;		
 	b->iph.ttl = 64;		
 	b->iph.sum = 0;		
 	b->iph.src = ipAdr;		
+	b->iph.off = ReverseWord(b->iph.off);		
 	b->iph.len = ReverseWord(b->len - sizeof(EthHdr));		
 
 	b->iph.sum = IpChkSum((u16*)&b->iph, 10);

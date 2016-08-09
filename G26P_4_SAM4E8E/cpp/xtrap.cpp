@@ -291,14 +291,23 @@ static void UpdateSendTraps()
 
 		t->iph.dst = ComputerIpAddr;	
 
-		t->udp.dst = ComputerUDPPort;
+		if (t->iph.off != 0)
+		{
+			TransmitFragIp(t);
+		}
+		else
+		{
+			t->udp.dst = ComputerUDPPort;
 
-		TransmitUdp(t);
+			TransmitUdp(t);
+
+			txIpID++;
+		};
 	};
 	
 	if (ComputerFind && tm.Check(500))
 	{ 
-		TRAP_CLOCK_SendMain();
+//		TRAP_CLOCK_SendMain();
 	};
 }
 

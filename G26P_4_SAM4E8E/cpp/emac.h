@@ -244,6 +244,7 @@ __packed struct EthUdpBuf : public EthIpBuf
 
 extern bool TransmitEth(EthBuf *b);
 extern bool TransmitIp(EthIpBuf *b);
+extern bool TransmitFragIp(EthIpBuf *b);
 extern bool TransmitUdp(EthUdpBuf *b);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

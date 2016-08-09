@@ -4,6 +4,7 @@
 #include "types.h"
 #include "emac.h"
 #include "trap_def.h"
+#include "EMAC_DEF.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -18,7 +19,7 @@ __packed struct SmallTx : public EthUdpBuf
 
 __packed struct HugeTx : public SmallTx
 {
-	byte exdata[1408];
+	byte exdata[((ETH_TX_BUF_SIZE - sizeof(EthIp)) & ~7) - sizeof(UdpHdr) - sizeof(TrapHdr) - 75];
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

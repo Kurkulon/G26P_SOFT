@@ -63,6 +63,7 @@ static u32 lastSessionPage = -1;
 
 static bool cmdCreateNextFile = false;
 static bool cmdFullErase = false;
+static bool cmdSendSession = false;
 
 static bool writeFlashEnabled = false;
 static bool flashFull = false;
@@ -107,7 +108,8 @@ enum NandState
 	NAND_STATE_READ_START,
 	NAND_STATE_FULL_ERASE_START,
 	NAND_STATE_FULL_ERASE_0,
-	NAND_STATE_CREATE_FILE
+	NAND_STATE_CREATE_FILE,
+	NAND_STATE_SEND_SESSION
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -476,7 +478,7 @@ static void InitCom()
 
 static void UpdateCom()
 {
-	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[700]; };
+	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[512*4]; };
 
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
@@ -530,7 +532,7 @@ static void UpdateCom()
 			req->cnt = count++;
 			req->gain = 7;
 			req->st = 10;
-			req->len = 175;
+			req->len = ArraySize(req->data)/4;
 			req->delay = 0;
 
 			if (writeFlashEnabled)
@@ -1525,7 +1527,7 @@ static bool Write::Update()
 			{
 				if ((CmdReadStatus() & 1) != 0) // program error
 				{
-					__breakpoint(0);
+//					__breakpoint(0);
 
 					spare.fbp += 1;
 
@@ -1541,11 +1543,16 @@ static bool Write::Update()
 				{
 					wr.NextPage();
 
-					flashFull = wr.GetRawPage() == 0;  // Флэха не резиновая
+					flashFull = wr.overflow != 0;  // Флэха не резиновая
 
 					if (wr_count == 0 || flashFull)
 					{
 						Finish();
+
+						if (!createFile && spare.fpn >= 0xC0000)
+						{
+							cmdCreateNextFile = true;
+						};
 
 						state = (createFile) ? WRITE_CREATE_FILE_1 : WAIT;
 					}
@@ -1594,7 +1601,7 @@ static bool Write::Update()
 
 				wr.NextPage();		
 
-				if (wr.GetRawPage() == 0)
+				if (wr.overflow != 0)
 				{
 					flashFull = true;
 
@@ -1668,7 +1675,7 @@ static bool Write::Update()
 			{
 				wr.NextBlock();
 
-				if (wr.GetRawPage() == 0)
+				if (wr.overflow != 0)
 				{
 					flashFull = true;
 				};
@@ -1712,8 +1719,9 @@ namespace Read
 	static byte state;
 
 	static bool Start();
+	static bool Start(FLRB *flrb, FLADR *adr);
 	static bool Update();
-
+	static void End() { curRdBuf->ready = true; curRdBuf = 0; state = WAIT; }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1722,6 +1730,39 @@ static bool Read::Start()
 {
 	if ((curRdBuf = readFlBuf.Get()) != 0)
 	{
+		vecStart = curRdBuf->vecStart;
+
+		if (vecStart)
+		{
+			rd_data = (byte*)&curRdBuf->hdr;
+			rd_count = sizeof(curRdBuf->hdr);
+			curRdBuf->len = 0;	
+		}
+		else
+		{
+			rd_data = curRdBuf->data;
+			rd_count = curRdBuf->maxLen;
+			curRdBuf->len = 0;	
+		};
+
+		state = READ_START;
+
+		return true;
+	};
+
+	return false;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool Read::Start(FLRB *flrb, FLADR *adr)
+{
+	if (flrb != 0)
+	{
+		curRdBuf = flrb;
+
+		if (adr != 0) { rd = *adr; };
+
 		vecStart = curRdBuf->vecStart;
 
 		if (vecStart)
@@ -1793,11 +1834,7 @@ static bool Read::Update()
 
 					if (rd.overflow != 0)
 					{
-						curRdBuf->ready = true;
-
-						curRdBuf = 0;
-
-						state = WAIT;
+						End();
 					}
 					else
 					{
@@ -1812,11 +1849,7 @@ static bool Read::Update()
 
 					if (rd.overflow != 0)
 					{
-						curRdBuf->ready = true;
-
-						curRdBuf = 0;
-
-						state = WAIT;
+						End();
 					}
 					else
 					{
@@ -1879,7 +1912,16 @@ static bool Read::Update()
 							curRdBuf->len = 0;	
 							vecStart = false;
 
-							state = READ_START;
+							if (rd_data == 0 || rd_count == 0)
+							{
+								End();
+
+								return false;
+							}
+							else
+							{
+								state = READ_START;
+							};
 						}
 						else
 						{
@@ -1890,11 +1932,7 @@ static bool Read::Update()
 					}
 					else
 					{
-						curRdBuf->ready = true;
-
-						curRdBuf = 0;
-
-						state = WAIT;
+						End();
 
 						return false;
 					};
@@ -2035,13 +2073,10 @@ static bool Read::Update()
 
 		case FIND_3:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			curRdBuf->ready = true;
 			curRdBuf->len = 0;
 			curRdBuf->hdr.dataLen = 0;
 
-			curRdBuf = 0;
-
-			state = WAIT;
+			End();
 
 			break;
 	};
@@ -2836,6 +2871,147 @@ bool GetSessionNow(SessionInfo *si)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void StartSendSession()
+{
+	cmdSendSession = true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool UpdateSendSession()
+{
+	enum {	WAIT = 0, READ_START, READ_1, READ_2, READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,FIND_2,FIND_3,FIND_4, READ_END};
+
+	static byte i = WAIT;
+	
+	static FLADR rs(0), re(0);
+	static u32 bs = 0, be = 0;
+
+	static SpareArea spare;
+	static u16 sid = 0;
+
+	static FLRB flrb;
+
+	static RTC srtc, ertc;
+
+
+	switch (i)
+	{
+		case WAIT:
+
+			if (cmdSendSession)
+			{
+				cmdSendSession = false;
+
+				if (flashEmpty)
+				{
+					i = READ_END;
+				}
+				else
+				{
+					re.SetRawBlock(lastSessionBlock);
+
+					ReadSpareStart(&spare, &re);
+
+					i = READ_START;
+				};
+			}
+			else
+			{
+				return false;
+			};
+
+			break;
+
+		case READ_START:
+
+			if (!ReadSpareUpdate())
+			{
+				if (spare.crc == 0)
+				{
+					sid = spare.file;
+					rs.SetRawPage(spare.start);
+
+					flrb.vecStart = true;
+					flrb.maxLen = 0;
+					flrb.data = 0;
+
+					Read::Start(&flrb, &re);
+
+					i = READ_1;
+				}
+				else
+				{
+					__breakpoint(0);
+				};
+			};
+
+			break;
+
+		case READ_1:
+
+			if (!Read::Update())
+			{
+				if (flrb.hdr.crc == 0)
+				{
+					ertc = flrb.hdr.rtc;
+				}
+				else
+				{
+					ertc.date = 0;
+					ertc.time = 0;
+				};
+
+				flrb.vecStart = true;
+				flrb.maxLen = 0;
+				flrb.data = 0;
+
+				Read::Start(&flrb, &rs);
+
+				i = READ_2;
+			};
+
+			break;
+
+		case READ_2:
+
+			if (!Read::Update())
+			{
+				if (flrb.hdr.crc == 0)
+				{
+					srtc = flrb.hdr.rtc;
+				}
+				else
+				{
+					srtc.date = 0;
+					srtc.time = 0;
+				};
+
+				TRAP_MEMORY_SendSession(sid, 0, rs.GetRawAdr(), srtc, ertc, 0);
+
+				re.SetRawPage(lastSessionBlock);
+
+				ReadSpareStart(&spare, &re);
+
+				i = READ_2;
+			};
+
+
+			break;
+
+		case READ_END:
+
+			if (TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY))
+			{
+				i = WAIT;
+			};
+
+			break;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 //static SessionInfo *readSessionInfoPtr = 0;
 
 
@@ -2947,6 +3123,13 @@ bool NAND_Idle()
 				break;
 			};
 
+			if (cmdSendSession)
+			{
+				nandState = NAND_STATE_SEND_SESSION;
+
+				break;
+			};
+
 			if (Write::Start())
 			{
 				nandState = NAND_STATE_WRITE_START;
@@ -3023,6 +3206,15 @@ bool NAND_Idle()
 		case NAND_STATE_CREATE_FILE:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			if (!Write::Update())
+			{
+				nandState = NAND_STATE_WAIT;
+			};
+
+			break;
+
+		case NAND_STATE_SEND_SESSION:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (!UpdateSendSession())
 			{
 				nandState = NAND_STATE_WAIT;
 			};

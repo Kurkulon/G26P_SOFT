@@ -156,7 +156,8 @@ void GetTime(RTC *t)
 
 	__disable_irq();
 
-	*t = timeBDC;
+	t->date = timeBDC.date;
+	t->time = timeBDC.time;
 
 	__enable_irq();
 }

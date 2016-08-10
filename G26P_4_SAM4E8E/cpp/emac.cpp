@@ -49,6 +49,7 @@ u32 countHNO = 0;
 
 u32 trp[4] = {-1};
 
+u16  txIpID = 0;
 
 
 /* GMAC local IO buffers descriptors. */
@@ -283,7 +284,19 @@ bool TransmitIp(EthIpBuf *b)
 
 	b->iph.off = 0;		
 
-	return TransmitFragIp(b);
+	b->eth.protlen = SWAP16(PROT_IP);
+
+	b->iph.hl_v = 0x45;	
+	b->iph.tos = 0;		
+	b->iph.ttl = 64;		
+	b->iph.sum = 0;		
+	b->iph.src = ipAdr;		
+	b->iph.off = ReverseWord(b->iph.off);		
+	b->iph.len = ReverseWord(b->len - sizeof(EthHdr));		
+
+	b->iph.sum = IpChkSum((u16*)&b->iph, 10);
+
+	return TransmitEth(b);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -325,6 +338,28 @@ bool TransmitUdp(EthUdpBuf *b)
 	b->udp.len = ReverseWord(b->len - sizeof(EthIp));
 
 	return TransmitIp(b);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool TransmitFragUdp(EthUdpBuf *b, u16 dst)
+{
+	if (b == 0 || b->len < sizeof(EthUdp))
+	{
+		return false;
+	};
+
+	b->iph.p = PROT_UDP;
+
+	if ((b->iph.off & 0x1FFF) == 0)
+	{
+		b->udp.dst = dst;
+		b->udp.src = udpOutPort;
+		b->udp.xsum = 0;
+		b->udp.len = ReverseWord((b->iph.off & 0x2000) ? b->udp.len :b->len - sizeof(EthIp));
+	};
+
+	return TransmitFragIp(b);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -495,7 +530,7 @@ static void RequestICMP(EthIcmp *h, u32 stat)
 		//t->iph.hl_v = 0x45;	
 		//t->iph.tos = 0;		
 		t->iph.len = h->iph.len;		
-		t->iph.id = h->iph.id;		
+		t->iph.id = GetIpID(); //h->iph.id;		
 		//t->iph.off = 0;		
 		//t->iph.ttl = 64;		
 		t->iph.p = PROT_ICMP;		
@@ -624,7 +659,7 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 	//t->iph.hl_v = 0x45;	
 	//t->iph.tos = 0;		
 //	t->iph.len = ReverseWord(ipLen);		
-	t->iph.id = h->iph.id;		
+	t->iph.id = GetIpID(); //h->iph.id;		
 //	t->iph.off = 0;		
 //	t->iph.ttl = 64;		
 	t->iph.p = PROT_UDP;		

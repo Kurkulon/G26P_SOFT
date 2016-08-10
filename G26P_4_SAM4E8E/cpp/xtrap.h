@@ -19,7 +19,7 @@ __packed struct SmallTx : public EthUdpBuf
 
 __packed struct HugeTx : public SmallTx
 {
-	byte exdata[((ETH_TX_BUF_SIZE - sizeof(EthIp)) & ~7) - sizeof(UdpHdr) - sizeof(TrapHdr) - 75];
+	byte exdata[IP_MTU - sizeof(UdpHdr) - sizeof(TrapHdr) - 75];
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -31,5 +31,7 @@ extern void UpdateTraps();
 extern SmallTx*	GetSmallTxBuffer();
 extern HugeTx*	GetHugeTxBuffer();
 extern void SendTrap(SmallTx *p);
+extern void SendFragTrap(SmallTx *p);
+
 
 #endif // TRAP_H__12_03_20015__11_14

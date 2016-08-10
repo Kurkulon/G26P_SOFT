@@ -33,15 +33,12 @@ static List<SmallTx> txList;
 //static List<SmallTx> txFree;
 
 static MAC ComputerEmacAddr = {0,0};	// Our Ethernet MAC address and IP address
-static u32 ComputerIpAddr	= 0;
+static u32 ComputerIpAddr	= IP32(192,168,3,254);
 static u16 ComputerUDPPort	= 0;
 static u32 ComputerOldIpAddr	= 0;
 static u16 ComputerOldUDPPort	= 0;
 static bool ComputerFind = false;
 
-
-
-static u16  txIpID = 0;
 
 
 
@@ -136,6 +133,15 @@ void FreeHugeTxBuffer(EthBuf* b)
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void SendTrap(SmallTx *p)
+{
+	p->iph.off = 0;
+
+	txList.Add(p);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SendFragTrap(SmallTx *p)
 {
 	txList.Add(p);
 }
@@ -287,22 +293,11 @@ static void UpdateSendTraps()
 	{
 		t->eth.dest = ComputerEmacAddr;
 
-		t->iph.id = ReverseWord(txIpID);		
-
 		t->iph.dst = ComputerIpAddr;	
 
-		if (t->iph.off != 0)
-		{
-			TransmitFragIp(t);
-		}
-		else
-		{
-			t->udp.dst = ComputerUDPPort;
+		if (t->iph.off == 0) { t->iph.id = GetIpID(); };
 
-			TransmitUdp(t);
-
-			txIpID++;
-		};
+		TransmitFragUdp(t, ComputerUDPPort);
 	};
 	
 	if (ComputerFind && tm.Check(500))

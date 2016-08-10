@@ -186,8 +186,6 @@ __packed struct TrapVector
 	u16 device;
 	RTC_type rtc;
 	byte flags;
-
-	byte data[1];
 };	
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

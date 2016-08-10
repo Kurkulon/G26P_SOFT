@@ -528,7 +528,7 @@ static void UpdateCom()
 			rb.maxLen = sizeof(vd->data);
 			rb.len = sizeof(*req);
 
-			req->rw = 0xAA30 + ((b & (~7))<<4) + (b & 7);
+			req->rw = 0xAA30 + ((b & (~7))<<1) + (b & 7);
 			req->cnt = count++;
 			req->gain = 7;
 			req->st = 10;
@@ -537,6 +537,8 @@ static void UpdateCom()
 
 			if (writeFlashEnabled)
 			{
+				v = 0;
+
 				for (u16 i = 0; i < ArraySize(req->data); i++)
 				{
 					req->data[i] = v++;
@@ -1318,6 +1320,12 @@ static void Write::Vector_Make(VecData *vd, u16 size)
 	vd->h.session = spare.file;
 	vd->h.device = 0;
 	GetTime(&vd->h.rtc);
+
+	//if (vd->h.rtc.msec == 0)
+	//{
+	//	__breakpoint(0);
+	//};
+
 	vd->h.prVecAdr = prWrAdr; 
 	vd->h.flags = 0;
 	vd->h.dataLen = size;
@@ -1549,10 +1557,15 @@ static bool Write::Update()
 					{
 						Finish();
 
-						if (!createFile && spare.fpn >= 0xC0000)
+						if (wr.GetRawPage() >= 0xC0000)
 						{
-							cmdCreateNextFile = true;
+							flashFull = true;
 						};
+
+						//if (!createFile && spare.fpn >= 0xC0000)
+						//{
+						//	cmdCreateNextFile = true;
+						//};
 
 						state = (createFile) ? WRITE_CREATE_FILE_1 : WAIT;
 					}
@@ -2550,7 +2563,8 @@ static void SimpleBuildFileTable()
 
 //	__breakpoint(0);
 
-	rd.SetRawBlock(-1);
+//	rd.SetRawBlock(-1);
+	rd.SetRawPage(0xC0000);
 	endBlock = rd.GetRawBlock();
 
 	bs = 0;
@@ -3625,7 +3639,9 @@ bool FLASH_Reset()
 void FLASH_Init()
 {
 	InitFlashBuffer();
+
 	NAND_Init();
+
 	FLASH_Reset();
 
 	InitCom();

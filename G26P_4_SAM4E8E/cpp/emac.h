@@ -7,6 +7,8 @@ extern bool	InitEMAC();
 extern void	UpdateEMAC();
 extern bool EMAC_SendData(void *pData, u16 length);
 
+inline u16 GetIpID() {extern u16 txIpID; return ReverseWord(txIpID++); }
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline bool EmacIsConnected()
@@ -246,6 +248,7 @@ extern bool TransmitEth(EthBuf *b);
 extern bool TransmitIp(EthIpBuf *b);
 extern bool TransmitFragIp(EthIpBuf *b);
 extern bool TransmitUdp(EthUdpBuf *b);
+extern bool TransmitFragUdp(EthUdpBuf *b, u16 dst);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

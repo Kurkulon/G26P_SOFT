@@ -11,7 +11,8 @@
 
 
 #define NUM_TX_DSC          16         /* 0x0600 for Tx                     */
-#define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
+//#define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
+#define IP_MTU				1480
 
 #define AT91C_PHY_ADDR      0
 

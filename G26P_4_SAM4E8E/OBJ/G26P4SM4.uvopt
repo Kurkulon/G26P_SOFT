@@ -138,7 +138,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name></Name>
+          <Name>/</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -161,24 +161,7 @@
           <Name>-O207 -S9 -C0 -FO7 -FD20000000 -FC800 -FN1 -FF0ATSAM4E_512 -FS0400000 -FL080000)</Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint>
-        <Bp>
-          <Number>0</Number>
-          <Type>0</Type>
-          <LineNumber>1422</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>4207908</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\trap.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\G26P4SM4\cpp/trap.cpp\1422</Expression>
-        </Bp>
-      </Breakpoint>
+      <Breakpoint/>
       <WatchWindow1>
         <Ww>
           <count>0</count>
@@ -270,12 +253,22 @@
           <WinNumber>1</WinNumber>
           <ItemText>Write::spare</ItemText>
         </Ww>
+        <Ww>
+          <count>18</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>startSendVector</ItemText>
+        </Ww>
+        <Ww>
+          <count>19</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>nandSize</ItemText>
+        </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>&amp;wr</ItemText>
+          <ItemText>0x20000120</ItemText>
         </Mm>
       </MemoryWindow1>
       <Tracepoint>

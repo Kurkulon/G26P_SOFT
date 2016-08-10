@@ -20,6 +20,9 @@
 
 #pragma diag_suppress 2548,546,550,177
 
+#pragma O0
+
+
 enum trap_status
 {
 	TRAP_WAIT = 0,
@@ -32,7 +35,6 @@ static trap_status trapStatus = TRAP_WAIT;
 
 
 static const bool __trace = true;
-
 
 char TrapTxDataBuffer[TRAP_TX_DATA_BUFFER_SIZE];
 
@@ -433,39 +435,6 @@ bool TRAP_MEMORY_SendVector(u16 session, u16 device, RTC_type rtc, byte *data, u
 	return true;
 }
 
-/******************** BATTERY ******************************/
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_BATTERY_SendMainMessage(u16 cmd)
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_BATTERY_DEVICE);
-	//TRAP_command_type c;
-	//c.command = cmd;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_BATTERY_main_type m;
-	//m.battery_voltage = Power_Battery_Voltage_Get();	
-	//m.line_voltage = Power_Line_Voltage_Get();
-	//m.status = Power_Status_Mask_Get();	
-	//m.battery_status = Power_Battery_Status_Get();	
-	//m.line_status = Power_Line_Status_Get();	
-	//COPY((char *)(&m), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(m));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(m));
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_BATTERY_SendMain()
-{
-	TRAP_BATTERY_SendMainMessage(TRAP_BATTERY_COMMAND_MAIN);
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_BATTERY_TakeMain()
-{
-	TRAP_BATTERY_SendMainMessage(TRAP_BATTERY_COMMAND_TAKE_MAIN);
-}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -486,207 +455,13 @@ void TRAP_BATTERY_SendStatusMessage(u16 cmd)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_BATTERY_SendStatus()
-{
-	TRAP_BATTERY_SendStatusMessage(TRAP_BATTERY_COMMAND_STATUS);
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_BATTERY_TakeStatus()
-{
-	TRAP_BATTERY_SendStatusMessage(TRAP_BATTERY_COMMAND_TAKE_STATUS);
-}
-
-
 /******************** SENSORS ******************************/
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_SENSORS_SendMainMessage(u16 cmd)
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_SENSORS_DEVICE);
-	//TRAP_command_type c;
-	//c.command = cmd;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_SENSORS_main_type m;
-	//m.temperature_in = Sensors_Temperature_In_Get();
-	//m.ax = Sensors_Ax_Get();
-	//m.ay = Sensors_Ay_Get();
-	//m.az = Sensors_Az_Get();	
-	//COPY((char *)(&m), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(m));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(m));
-}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void TRAP_SENSORS_SendMain()
-{
-	TRAP_SENSORS_SendMainMessage(TRAP_SENSORS_COMMAND_MAIN);
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_SENSORS_TakeMain()
-{
-	TRAP_SENSORS_SendMainMessage(TRAP_SENSORS_COMMAND_TAKE_MAIN);
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_SENSORS_Take_A_Coeffs()
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_SENSORS_DEVICE);
-	//TRAP_command_type c;
-	//c.command = TRAP_SENSORS_COMMAND_TAKE_A_COEFFS;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_SENSORS_a_coeffs_type a;
-	//FRAM_Sensors_Ax_Coeffs_Get(&a.ax_coeff_k, &a.ax_coeff_b);
-	//FRAM_Sensors_Ay_Coeffs_Get(&a.ay_coeff_k, &a.ay_coeff_b);
-	//FRAM_Sensors_Az_Coeffs_Get(&a.az_coeff_k, &a.az_coeff_b);
-	//COPY((char *)(&a), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(a));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(a));
-}
-
-/******************** PROGRAMMING ******************************/
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_PROGRAMMING_TakeInfo()
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_PROGRAMMING_DEVICE);
-	//TRAP_command_type c;
-	//c.command = TRAP_PROGRAMMING_COMMAND_TAKE_INFO;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_PROGRAMMING_info_type i;
-	//i.version = FRAM_Autonom_Version_Get();
-	//i.size = FRAM_Autonom_Size_Get();
-	//i.validation = FRAM_Autonom_Validation_Get();
-	//COPY((char *)(&i), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(i));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(i));
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_PROGRAMMING_ReadBlock(u32 offset, u32 size)
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_PROGRAMMING_DEVICE);
-	//TRAP_command_type c;
-	//c.command = TRAP_PROGRAMMING_COMMAND_TAKE_BLOCK;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_PROGRAMMING_block_type b;
-	//b.offset = offset;
-	//b.size = size;
-	//COPY((char *)(&b), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(b));
-	//FRAM_Autonom_Read_Block(offset, size, (byte *)((char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type)));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(b) +size);
-}
-
-/******************** VECTOR ******************************/
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool TRAP_VECTOR_SendVector(u16 command, u32 time_ms, int depth, int speed, byte flags, u16 size, byte *data) 
-{
-	// // для скорости хорошо бы просто указать где лежит вектор, да тогда при прикреплении эзернет заголовка попортится сам вектор, а он нужен в дальнейшем, потому тупо копируем его
-	//if(TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_vector_type) + size > sizeof(TrapTxDataBuffer)) return false;
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_VECTOR_DEVICE);
-	//TRAP_command_type c;
-	//c.command = TRAP_VECTOR_COMMAND_VECTOR;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_VECTOR_vector_type v;	
-	//v.command = command;
-	//v.time_ms = time_ms;
-	//v.depth = depth;
-	//v.speed = speed;
-	//v.size = size;
-	//v.flags = flags;
-	//memmove((char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), (char *)(&v), sizeof(TRAP_VECTOR_vector_type));
-	//memmove((char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_VECTOR_vector_type), (char *)data, size);
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_VECTOR_vector_type) + size);
-	return true;
-}
-
-/******************** ONLINE ******************************/
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_ONLINE_TakePeriod()
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_ONLINE_DEVICE);
-	//TRAP_command_type c;
-	//c.command = TRAP_ONLINE_COMMAND_TAKE_PERIOD;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_ONLINE_period_type p;
-	//p.period_ms = Mode_Online_Control_Period_MS_Get();
-	//COPY((char *)(&p), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(p));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(p));
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_ONLINE_TakeIndex()
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_ONLINE_DEVICE);
-	//TRAP_command_type c;
-	//c.command = TRAP_ONLINE_COMMAND_TAKE_INDEX;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_ONLINE_index_type i;
-	//i.device_index = Mode_Online_Control_Device_Index_Get();
-	//COPY((char *)(&i), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(i));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(i));
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_ONLINE_SendStatus(byte status)
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_ONLINE_DEVICE);
-	//TRAP_command_type c;
-	//c.command = TRAP_ONLINE_COMMAND_SEND_STATUS;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_ONLINE_status_type s;
-	//s.status = status;
-	//COPY((char *)(&s), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(s));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(s));
-}
-
-/******************** RDC ******************************/
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_RDC_SendMain(u32 time_ms, int depth_sm, int speed_mh)
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_RDC_DEVICE);
-	//TRAP_command_type c;
-	//c.command = TRAP_RDC_COMMAND_SEND_MAIN;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_RDC_main_type m;
-	//m.time_ms = time_ms;
-	//m.depth_sm = depth_sm;
-	//m.speed_mh = speed_mh;
-	//COPY((char *)(&m), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(m));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(m));
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void TRAP_RDC_SendStatus(bool messaging, bool imitation)
-{
-	//TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_RDC_DEVICE);
-	//TRAP_command_type c;
-	//c.command = TRAP_RDC_COMMAND_SEND_STATUS;
-	//COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	//TRAP_RDC_status_type s;
-	//s.status = (messaging << 6) | (imitation << 7);
-	//COPY((char *)(&s), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), sizeof(s));
-	//EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(s));
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-/******************** Common ******************************/
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -930,300 +705,6 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 				break;
 
-			//case TRAP_BATTERY_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-			//	TrapBattSetCoeffs &tbsc = (TrapBattSetCoeffs&)*t;
-			//	TrapBattSetVolt &tbsv = (TrapBattSetVolt&)*t;
-
-
-			//	switch (t->hdr.cmd)
-			//	{
-			//		case TRAP_BATTERY_COMMAND_GET_MAIN:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-			//			TRAP_BATTERY_TakeMain();
-			//			break;
-
-			//		case TRAP_BATTERY_COMMAND_GET_STATUS:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-			//			TRAP_BATTERY_TakeStatus();
-			//			break;
-
-			//		case TRAP_BATTERY_COMMAND_SET_BATTERY_COEFFS:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-
-			//			FRAM_Power_Battery_Coeffs_Set(tbsc.coeff_k, tbsc.coeff_b);
-
-			//			break;
-			//			
-			//		case TRAP_BATTERY_COMMAND_SET_LINE_COEFFS:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-			//			FRAM_Power_Line_Coeffs_Set(tbsc.coeff_k, tbsc.coeff_b);
-			//			break;
-
-			//		case TRAP_BATTERY_COMMAND_SET_BATTERY_VOLTAGES:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-			//			FRAM_Power_Battery_Voltages_Set(tbsv.setup_voltage, tbsv.min_voltage, tbsv.max_voltage);
-			//			break;
-
-			//		case TRAP_BATTERY_COMMAND_SET_LINE_VOLTAGES:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-			//			FRAM_Power_Line_Voltages_Set(tbsv.setup_voltage, tbsv.min_voltage, tbsv.max_voltage);
-			//			break;
-
-			//		case TRAP_BATTERY_COMMAND_SWITCH_ON:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-			//			Power_Switch_Set(true);
-			//			break;
-
-			//		case TRAP_BATTERY_COMMAND_SWITCH_OFF:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-			//			Power_Switch_Set(false);
-			//			break;
-
-			//		case TRAP_BATTERY_COMMAND_MAIN_ENABLE:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-			//			Power_Transmission_Set(true);
-			//			break;
-
-			//		case TRAP_BATTERY_COMMAND_MAIN_DISABLE:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_BATTERY_DEVICE, TrapRxCounter);
-			//			Power_Transmission_Set(false);
-			//			break;
-
-			//		default: 
-
-			//			TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-			//			break;
-			//	};
-
-			//	break;
-
-			//case TRAP_SENSORS_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-			//	switch (t->hdr.cmd)
-			//	{
-			//		case TRAP_SENSORS_COMMAND_GET_MAIN:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_SENSORS_DEVICE, TrapRxCounter);
-			//			TRAP_SENSORS_TakeMain();
-			//			break;
-
-			//		case TRAP_SENSORS_COMMAND_GET_A_COEFFS:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_SENSORS_DEVICE, TrapRxCounter);
-			//			TRAP_SENSORS_Take_A_Coeffs();
-			//			break;
-
-			//		case TRAP_SENSORS_COMMAND_SET_A_COEFFS:
-
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_SENSORS_DEVICE, TrapRxCounter);
-
-			//			TrapSensCoeffs &tsc = (TrapSensCoeffs&)*t;
-
-			//			FRAM_Sensors_Ax_Coeffs_Set(tsc.ax_coeff_k, tsc.ax_coeff_b);
-			//			FRAM_Sensors_Ay_Coeffs_Set(tsc.ay_coeff_k, tsc.ay_coeff_b);
-			//			FRAM_Sensors_Az_Coeffs_Set(tsc.az_coeff_k, tsc.az_coeff_b);
-			//			break;
-
-			//		default: 
-
-			//			TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-			//			break;
-			//	};
-
-			//	break;
-
-			//case TRAP_PROGRAMMING_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-			//	TrapProgBlock &tpb = (TrapProgBlock&)*t;
-
-			//	switch (t->hdr.cmd)
-			//	{
-			//	case TRAP_PROGRAMMING_COMMAND_GET_INFO:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-			//		TRAP_PROGRAMMING_TakeInfo();
-			//		break;
-
-			//	case TRAP_PROGRAMMING_COMMAND_WRITE_BEGIN:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-			//		FRAM_Autonom_Write_Begin();
-			//		break;
-
-			//	case TRAP_PROGRAMMING_COMMAND_WRITE_END:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-			//		FRAM_Autonom_Write_End();
-			//		break;
-
-			//	case TRAP_PROGRAMMING_COMMAND_WRITE_BLOCK:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-			//		FRAM_Autonom_Write_Block(tpb.offset, tpb.size, tpb.data);
-			//		break;
-
-			//	case TRAP_PROGRAMMING_COMMAND_READ_BLOCK:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_PROGRAMMING_DEVICE, TrapRxCounter);
-			//		TRAP_PROGRAMMING_ReadBlock(tpb.offset, tpb.size);
-			//		break;
-
-			//	default: 
-
-			//		TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-			//		break;
-			//	}
-			//	break;
-
-			//case TRAP_VECTOR_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-			//	switch (t->hdr.cmd)
-			//	{
-			//	case TRAP_VECTOR_COMMAND_ENABLE:
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_VECTOR_DEVICE, TrapRxCounter);
-			//		Mode_Online_Main_Enable();
-			//		break;
-			//	case TRAP_VECTOR_COMMAND_DISABLE:
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_VECTOR_DEVICE, TrapRxCounter);
-			//		Mode_Online_Main_Disable();
-			//		break;
-			//	default: 
-			//		TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-			//		break;
-			//	}
-			//	break;
-
-			//case TRAP_ONLINE_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-			//	switch (t->hdr.cmd)
-			//	{
-			//	case TRAP_ONLINE_COMMAND_GET_PERIOD:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-			//		TRAP_ONLINE_TakePeriod();
-			//		break;
-
-			//	case TRAP_ONLINE_COMMAND_SET_PERIOD:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-
-			//		TrapOnlinePeriod &top = (TrapOnlinePeriod&)*t;
-
-			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Period_MS_Set(top.period_ms));
-			//		break;
-			//	case TRAP_ONLINE_COMMAND_BEGIN:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-			//		Mode_Online_Control_Begin();
-			//		break;
-			//	case TRAP_ONLINE_COMMAND_CANCEL:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-			//		Mode_Online_Control_Cancel();
-			//		break;
-
-			//	case TRAP_ONLINE_COMMAND_END:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-			//		Mode_Online_Control_End();
-			//		break;
-
-			//	case TRAP_ONLINE_COMMAND_SET_DEVICE:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-
-			//		TrapOnlineSetDevice &tosd = (TrapOnlineSetDevice&)*t;
-
-			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Add(tosd.delay_ms, tosd.period_min_ms, tosd.command_count));
-			//		break;
-
-			//	case TRAP_ONLINE_COMMAND_SET_COMMAND:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-
-			//		TrapOnlineSetCmd &tosc = (TrapOnlineSetCmd&)*t;
-
-			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Command_Add(Mode_Online_Control_Device_Index_Get(), tosc.command_index, tosc.telemetry, tosc.mode, tosc.offset_ms, set_command->tx_flags, set_command->tx_freq_hz, set_command->tx_size, set_command->rx_flags, set_command->rx_freq_hz, set_command->rx_timeout_mks, set_command->rx_pause_mks, set_command->rx_size, set_command->tx_data));
-			//		break;
-
-			//	case TRAP_ONLINE_COMMAND_ADD_COMMAND:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-
-			//		TRAP_ONLINE_add_command_type *add_command = (TRAP_ONLINE_add_command_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type));
-			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Command_Add(add_command->device_index, add_command->command_index, add_command->telemetry, add_command->mode, add_command->offset_ms, add_command->tx_flags, add_command->tx_freq_hz, add_command->tx_size, add_command->rx_flags, add_command->rx_freq_hz, add_command->rx_timeout_mks, add_command->rx_pause_mks, add_command->rx_size, add_command->tx_data));
-			//		break;
-
-			//	case TRAP_ONLINE_COMMAND_REMOVE_COMMAND:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-
-			//		TRAP_ONLINE_remove_command_type *remove_command = (TRAP_ONLINE_remove_command_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type));
-			//		TRAP_ONLINE_SendStatus(Mode_Online_Control_Device_Command_Remove(remove_command->device_index, remove_command->command_index));
-			//		break;
-
-			//	case TRAP_ONLINE_COMMAND_GET_INDEX:
-
-			//		if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_ONLINE_DEVICE, TrapRxCounter);
-
-			//		TRAP_ONLINE_TakeIndex();
-			//		break;
-
-			//	default: 
-
-			//		TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-			//		break;
-			//	}
-			//	break;
-
-			//case TRAP_RDC_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-			//	switch (t->hdr.cmd)
-			//	{
-			//		case TRAP_RDC_COMMAND_IMITATION_ENABLE:
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-			//			Mode_Online_RDC_Imitation_Enable(((TRAP_RDC_imitation_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->depth_sm, ((TRAP_RDC_imitation_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->speed_mh);
-			//			break;
-			//		case TRAP_RDC_COMMAND_IMITATION_DISABLE:
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-			//			Mode_Online_RDC_Imitation_Disable();
-			//			break;
-			//		case TRAP_RDC_COMMAND_SET_DEPTH:
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-			//			Mode_Online_RDC_Depth_Set(((TRAP_RDC_depth_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->depth_sm);
-			//			break;
-			//		case TRAP_RDC_COMMAND_CHANGE_DEPTH:
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-			//			Mode_Online_RDC_Depth_Set(Mode_Online_RDC_Depth_Get() + ((TRAP_RDC_depth_type *)(data + TRAP_RX_HEADERS_LEN + sizeof(TRAP_command_type)))->depth_sm);
-			//			break;
-			//		case TRAP_RDC_COMMAND_MESSAGING_ENABLE:
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-			//			Mode_Online_RDC_Messaging_Enable();
-			//			break;
-			//		case TRAP_RDC_COMMAND_MESSAGING_DISABLE:
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-			//			Mode_Online_RDC_Messaging_Disable();
-			//			break;
-			//		case TRAP_RDC_COMMAND_TIME_RESET:
-			//			if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_RDC_DEVICE, TrapRxCounter);
-			//			Mode_Online_RDC_Time_Reset();
-			//			break;
-			//		default: 
-			//			TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
-			//			break;
-			//	}
-			//	break;
 
 
 			default: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1292,10 +773,44 @@ static bool UpdateSendVector()
 	static u32 vecCount = 0;
 	static u32 fragLen = 0;
 	static u32 fragOff = 0;
+	static u16 ipID = 0;
 
 	static TM32 tm;
 
-	TrapVector *trap = (TrapVector*)&t->th;
+	__packed struct TRP { EthUdp eu; TrapVector tv; byte data[IP_MTU - sizeof(UdpHdr) - sizeof(TrapVector)]; };
+	__packed struct FR  { EthIp  ei; byte data[IP_MTU]; };
+
+	//TRP &et = *((TRP*)&t->eth);
+	//FR  &ef = *((FR*)&t->eth);
+
+	//TrapVector &trap = et.tv;
+
+	//if (tm.Check(1000))
+	//{
+	//	while((t = GetHugeTxBuffer()) == 0);
+	//	while((t2 = GetHugeTxBuffer()) == 0);
+
+	//	ipID = GetIpID(); 
+
+	//	t->iph.id = ipID;
+	//	t->iph.off = 0x2000;
+	//	t->len = sizeof(EthIp) + 1480;
+
+	//	SendFragTrap(t);
+
+	//	t2->iph.id = ipID;
+	//	t2->iph.off = (1480/8);
+	//	t2->len = sizeof(EthIp) + 1480;
+
+	//	SendFragTrap(t2);
+
+	//	return true;
+	//}
+	//else
+	//{
+	//	return true;
+	//};
+
 
 	switch (i)
 	{
@@ -1322,10 +837,10 @@ static bool UpdateSendVector()
 			{
 				TRAP_MEMORY_SendStatus(vecCount, FLASH_STATUS_READ_VECTOR_IDLE);
 			}
-			else
-			{
-				break;
-			};
+			//else
+			//{
+			//	break;
+			//};
 
 			if (stop)
 			{
@@ -1339,8 +854,10 @@ static bool UpdateSendVector()
 
 				if (t != 0)
 				{
-					flrb.data = trap->data;
-					flrb.maxLen = sizeof(t->th) + sizeof(t->data) + sizeof(t->exdata) - sizeof(*trap) + sizeof(trap->data);
+					TRP &et = *((TRP*)&t->eth);
+
+					flrb.data = et.data;
+					flrb.maxLen = sizeof(et.data);
 					flrb.vecStart = true;
 
 					RequestFlashRead(&flrb);
@@ -1363,26 +880,35 @@ static bool UpdateSendVector()
 				}
 				else if (flrb.hdr.crc == 0)
 				{
-					MakePacketHeaders(&trap->hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
+					TRP &et = *((TRP*)&t->eth);
 
-					trap->hdr.cmd = TRAP_MEMORY_COMMAND_VECTOR;
-					trap->session = flrb.hdr.session;
-					trap->device = 0xAA00; //h.device;
-					trap->rtc = flrb.hdr.rtc;
-					trap->flags = flrb.hdr.flags;
+					TrapVector &trap = et.tv;
+
+					MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
+
+					trap.hdr.cmd = TRAP_MEMORY_COMMAND_VECTOR;
+					trap.session = flrb.hdr.session;
+					trap.device = 0xAA00; //h.device;
+					trap.rtc = flrb.hdr.rtc;
+					trap.flags = flrb.hdr.flags;
 
 					vecCount += 1;
 
+					ipID = GetIpID(); 
+
+					t->iph.id = ipID;
 					t->iph.off = 0;
 
-					t->len = sizeof(EthUdp) + sizeof(*trap) - sizeof(trap->data) + flrb.len;
-
-					SendTrap(t);
+					t->len = sizeof(et.eu) + sizeof(et.tv) + flrb.len;
 
 					if (flrb.hdr.dataLen > flrb.maxLen)
 					{
-						fragOff = flrb.maxLen;
+						fragOff = t->len - sizeof(EthIp); //flrb.maxLen;
 						fragLen = flrb.hdr.dataLen - flrb.maxLen;
+
+						t->iph.off |= 0x2000;
+
+						t->udp.len = sizeof(UdpHdr) + sizeof(trap) + flrb.hdr.dataLen;
 
 						i = 3;
 					}
@@ -1390,6 +916,8 @@ static bool UpdateSendVector()
 					{
 						i = 1;
 					};
+
+					SendFragTrap(t);
 				}
 				else
 				{
@@ -1407,8 +935,10 @@ static bool UpdateSendVector()
 
 			if (t != 0)
 			{
-				flrb.data = (byte*)&t->udp;
-				flrb.maxLen = (byte*)&t->exdata[ArraySize(t->exdata)] - flrb.data;
+				FR  &ef = *((FR*)&t->eth);
+
+				flrb.data = ef.data;
+				flrb.maxLen = sizeof(ef.data);
 				flrb.vecStart = false;
 
 				if (flrb.maxLen > fragLen) { flrb.maxLen = fragLen; };
@@ -1424,6 +954,9 @@ static bool UpdateSendVector()
 
 			if (flrb.ready)
 			{
+				FR  &ef = *((FR*)&t->eth);
+
+				t->iph.id = ipID;
 				t->iph.off = (fragOff/8)&0x1FFF;
 
 				fragLen -= flrb.len;
@@ -1431,9 +964,9 @@ static bool UpdateSendVector()
 
 				if (fragLen > 0) { t->iph.off |= 0x2000; };
 
-				t->len = sizeof(EthIp) + flrb.len;
+				t->len = sizeof(ef.ei) + flrb.len;
 
-				SendTrap(t);
+				SendFragTrap(t);
 
 				if (fragLen > 0)
 				{

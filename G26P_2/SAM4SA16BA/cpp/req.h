@@ -109,31 +109,42 @@ __packed struct  Rsp04	// установка периода дискретизации вектора и коэффициента
 
 __packed struct ReqMem
 {
-	byte adr;
-	byte func;
+	u16 rw; 
+	u32 cnt; 
+	u16 gain; 
+	u16 st; 
+	u16 len; 
+	u16 delay; 
+	u16 data[512*4]; 
+
+	//byte adr;
+	//byte func;
 	
-	__packed union
-	{
-		__packed struct  { word crc; } f1;  // Старт новой сессии
-		__packed struct  { word crc; } f3;  
-	};
+	//__packed union
+	//{
+	//	__packed struct  { word crc; } f1;  // Старт новой сессии
+	//	__packed struct  { word crc; } f3;  
+	//};
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct RspMem
 {
-	byte	adr;
-	byte	func;
+	u16 rw; 
+	u16 crc; 
+
+	//byte	adr;
+	//byte	func;
 	
-	__packed union
-	{
-		__packed struct  { word crc; } f1;  // Старт новой сессии
-		__packed struct  { word crc; } f2;  // Запись вектора
-		__packed struct  { word crc; } f3;  // 
-		__packed struct  { word crc; } fFE;  // Ошибка CRC
-		__packed struct  { word crc; } fFF;  // Неправильный запрос
-	};
+	//__packed union
+	//{
+	//	__packed struct  { word crc; } f1;  // Старт новой сессии
+	//	__packed struct  { word crc; } f2;  // Запись вектора
+	//	__packed struct  { word crc; } f3;  // 
+	//	__packed struct  { word crc; } fFE;  // Ошибка CRC
+	//	__packed struct  { word crc; } fFF;  // Неправильный запрос
+	//};
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -208,7 +219,7 @@ struct RMEM
 {
 	RMEM* next;
 
-	R02*	r02;
+//	R02*	r02;
 
 	ComPort::WriteBuffer	wb;
 	ComPort::ReadBuffer		rb;

@@ -892,6 +892,11 @@ static bool UpdateSendVector()
 					trap.rtc = flrb.hdr.rtc;
 					trap.flags = flrb.hdr.flags;
 
+					//if (trap.rtc.msec == 0)
+					//{
+					//	__breakpoint(0);
+					//};
+
 					vecCount += 1;
 
 					ipID = GetIpID(); 

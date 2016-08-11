@@ -80,15 +80,15 @@ const SessionInfo* GetLastSessionInfo()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//enum flash_status_type
-//{
-//	FLASH_STATUS_WAIT = 0,
-//	FLASH_STATUS_WRITE,
-//	FLASH_STATUS_READ,
+enum flash_status_type
+{
+	FLASH_STATUS_WAIT = 0,
+	FLASH_STATUS_WRITE,
+	FLASH_STATUS_READ,
 //	FLASH_STATUS_ERASE
-//};
+};
 
-//static byte flashStatus = FLASH_STATUS_WAIT;
+static byte flashStatus = FLASH_STATUS_WAIT;
 
 //enum flash_status_operation_type
 //{
@@ -524,32 +524,33 @@ static void UpdateCom()
 			vd = &fwb->vd;
 			req = (Req*)vd->data;
 
-			rb.data = req;
+			rb.data = vd->data;
 			rb.maxLen = sizeof(vd->data);
-			rb.len = sizeof(*req);
 
-			req->rw = 0xAA30 + ((b & (~7))<<1) + (b & 7);
-			req->cnt = count++;
-			req->gain = 7;
-			req->st = 10;
-			req->len = ArraySize(req->data)/4;
-			req->delay = 0;
+//			rb.len = sizeof(*req);
 
-			if (writeFlashEnabled)
-			{
-				v = 0;
+			//req->rw = 0xAA30 + ((b & (~7))<<1) + (b & 7);
+			//req->cnt = count++;
+			//req->gain = 7;
+			//req->st = 10;
+			//req->len = ArraySize(req->data)/4;
+			//req->delay = 0;
 
-				for (u16 i = 0; i < ArraySize(req->data); i++)
-				{
-					req->data[i] = v++;
-				};
-			};
+			//if (writeFlashEnabled)
+			//{
+			//	v = 0;
 
-//			com1.Read(&rb, -1, 2);
+			//	for (u16 i = 0; i < ArraySize(req->data); i++)
+			//	{
+			//		req->data[i] = v++;
+			//	};
+			//};
 
-			b += 1;
+			com1.Read(&rb, -1, 2);
 
-			if (b >= 24) { b = 0; };
+			//b += 1;
+
+			//if (b >= 24) { b = 0; };
 
 			state++;
 
@@ -557,9 +558,9 @@ static void UpdateCom()
 
 		case 2:
 
-//			if (!com1.Update())
+			if (!com1.Update())
 			{
-//				if (rb.recieved)
+				if (rb.recieved)
 				{
 					fwb->dataLen = rb.len;
 
@@ -572,10 +573,10 @@ static void UpdateCom()
 						state = 0;
 					};
 				}
-				//else
-				//{
-				//	state = 1;
-				//};
+				else
+				{
+					state = 1;
+				};
 			};
 
 			break;
@@ -584,7 +585,7 @@ static void UpdateCom()
 
 			if (!freeFlWrBuf.Empty())
 			{
-//				com1.Write(&wb);
+				com1.Write(&wb);
 
 				state++;
 			};
@@ -593,7 +594,7 @@ static void UpdateCom()
 
 		case 4:
 			
-//			if (!com1.Update())
+			if (!com1.Update())
 			{
 				state = 0;
 			};
@@ -3603,7 +3604,7 @@ bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector)
 void FLASH_WriteEnable()
 {
 	writeFlashEnabled = true;
-//	flashStatus = FLASH_STATUS_WRITE;
+	flashStatus = FLASH_STATUS_WRITE;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3611,14 +3612,14 @@ void FLASH_WriteEnable()
 void FLASH_WriteDisable()
 {
 	writeFlashEnabled = false;
-//	flashStatus = FLASH_STATUS_WAIT;
+	flashStatus = FLASH_STATUS_WAIT;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 byte FLASH_Status()
 {
-	return 0;//flashStatus;
+	flashStatus;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

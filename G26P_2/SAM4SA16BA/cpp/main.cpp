@@ -5,6 +5,10 @@
 
 #include "list.h"
 
+#include "twi.h"
+
+#include "PointerCRC.h"
+
 ComPort commem;
 ComPort comtr;
 ComPort combf;
@@ -69,6 +73,18 @@ static u32 chnlCount[4] = {0};
 static u32 crcErr02 = 0;
 static u32 crcErr03 = 0;
 static u32 crcErr04 = 0;
+
+static byte savesCount = 0;
+
+static TWI	twi;
+
+static DSCTWI dsc;
+static byte buf[100];
+
+static void SaveVars();
+
+inline void SaveParams() { savesCount = 2; }
+
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -189,7 +205,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	rb.maxLen = sizeof(rsp);
 	rb.recieved = false;
 	
-	req.adr = adr+1;
+	req.adr = 1;//adr+1;
 	req.func = 2;
 	req.n = n;
 	req.chnl = chnl;
@@ -658,24 +674,24 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	for (byte i = 0; i < 8; i++)
 	{
-		rsp.t1.g[i] = gain[0][i];
-		rsp.t2.g[i] = gain[1][i];
-		rsp.t3.g[i] = gain[2][i];
+		rsp.t1.g[i] = gain[i][0];
+		rsp.t2.g[i] = gain[i][1];
+		rsp.t3.g[i] = gain[i][2];
 	};
 
 	rsp.t1.st = sampleTime[0];
 	rsp.t1.len = sampleLen[0];
-	rsp.t1.delay = 0;
+	rsp.t1.delay = sampleDelay[0];
 	rsp.t1.voltage = 800;
 
 	rsp.t2.st = sampleTime[1];
 	rsp.t2.len = sampleLen[1];
-	rsp.t2.delay = 0;
+	rsp.t2.delay = sampleDelay[1];
 	rsp.t2.voltage = 800;
 
 	rsp.t3.st = sampleTime[2];
 	rsp.t3.len = sampleLen[2];
-	rsp.t3.delay = 0;
+	rsp.t3.delay = sampleDelay[2];
 	rsp.t3.voltage = 800;
 
 	wb->data = &rsp;
@@ -769,7 +785,7 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	if (off < hdrlen)
 	{
 		hdr.cnt = manCounter;
-		hdr.gain = gain[nf][nr];
+		hdr.gain = gain[nr][nf];
 		hdr.st = sampleTime[nf];
 		hdr.len = diglen;
 		hdr.delay = 0;
@@ -886,6 +902,7 @@ static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 			case 0xA:
 
+				sampleDelay[nf] = data[2];
 
 				break;
 
@@ -898,6 +915,7 @@ static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		qrcv.Add(CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 2));
 	};
 
+//	SaveParams();
 
 	rsp[0] = 0x5501;
 	rsp[1] = manReqWord|0x90;
@@ -915,6 +933,8 @@ static bool RequestMan_F0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	static u16 rsp[2];
 
 	if (wb == 0) return false;
+
+	SaveParams();
 
 	rsp[0] = 0x5501;
 	rsp[1] = manReqWord|0xF0;
@@ -1328,7 +1348,7 @@ static void InitNumStations()
 		UpdateADC();
 	};
 
-	numStations = resistValue / 1000;
+	numStations = 8;//resistValue / 1000;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1460,41 +1480,36 @@ static void UpdateMisc()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( UpdateBlackFin()		);
-		CALL( UpdateRcvTrm()		);
-		CALL( qmem.Update()			);
 		CALL( UpdateADC()			);
 		CALL( MainMode()			);
+		CALL( SaveVars()			);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
 
 	#undef CALL
+}
 
-	//REQ* req = CreateMemReq02(1,1,1);
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	//if (req != 0)
-	//{
-	//	qmem.Add(req);
-	//};
+static void UpdateParams()
+{
+	static byte i = 0;
 
-	//ComPort::WriteBuffer wb;
+	#define CALL(p) case (__LINE__-S): p; break;
 
-	//wb.data = &r02[0][0][0];
-	//wb.len = 1000;
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( UpdateBlackFin()		);
+		CALL( UpdateRcvTrm()		);
+		CALL( qmem.Update()			);
+		CALL( UpdateMisc()			);
+	};
 
-	////if (!commem.Update())
-	////{
-	////	commem.Write(&wb);
-	////};
+	i = (i > (__LINE__-S-3)) ? 0 : i;
 
-	//HW::PIOA->SODR = 1UL<<31;
-	//HW::UART0->CR = 0x40;
-
-	//if (HW::UART0->SR & 2)
-	//{
-	//	HW::UART0->THR = 0x55;
-	//};
+	#undef CALL
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1548,11 +1563,120 @@ static void UpdateTemp()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void LoadVars()
+{
+	twi.Init(1);
+
+	PointerCRC p(buf);
+
+	dsc.MMR = 0x500200;
+	dsc.IADR = 0;
+	dsc.CWGR = 0x7575;
+	dsc.data = buf;
+	dsc.len = sizeof(buf);
+
+	if (twi.Read(&dsc))
+	{
+		while (twi.Update());
+	};
+
+	bool c = false;
+
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(gain, sizeof(gain));
+		p.ReadArrayB(sampleTime, sizeof(sampleTime));
+		p.ReadArrayW(sampleLen, ArraySize(sampleLen));
+		p.ReadArrayW(sampleDelay, ArraySize(sampleDelay));
+		p.ReadW();
+
+		if (p.CRC.w == 0) { c = true; break; };
+	};
+
+	if (!c)
+	{
+		//for (byte i = 0; i < 16; i++)
+		//{
+		//	tr.Clear(100);
+		//	kfp.Clear(1);
+		//	kfn.Clear(0.1);
+		//};
+
+		//impSumTime.var.ResetToDefault();
+		//impMaxCount.var.ResetToDefault();
+
+		//InitImpDetector();
+
+		//spCondOR.var.ResetToDefault();
+
+		//savesCount = 2;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void SaveVars()
+{
+	PointerCRC p(buf);
+
+	static byte i = 0;
+	static RTM32 tm;
+
+	switch (i)
+	{
+		case 0:
+
+			if (/*tm.Check(MS2RT(1000)) &&*/ savesCount > 0)
+			{
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			dsc.MMR = 0x500200;
+			dsc.IADR = 0;
+			dsc.CWGR = 0x07575; 
+			dsc.data = buf;
+			dsc.len = sizeof(buf);
+
+			for (byte j = 0; j < 2; j++)
+			{
+				p.CRC.w = 0xFFFF;
+				p.WriteArrayB(gain, sizeof(gain));
+				p.WriteArrayB(sampleTime, sizeof(sampleTime));
+				p.WriteArrayW(sampleLen, ArraySize(sampleLen));
+				p.WriteArrayW(sampleDelay, ArraySize(sampleDelay));
+				p.WriteW(p.CRC.w);
+			};
+
+			i = (twi.Write(&dsc)) ? (i+1) : 0;
+
+			break;
+
+		case 2:
+
+			if (!twi.Update())
+			{
+				savesCount--;
+				i = 0;
+			};
+
+			break;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 //	static byte i = 0;
 
-	RTT_Init();
+	Init_time();
+
+	LoadVars();
 
 	InitNumStations();
 
@@ -1567,6 +1691,8 @@ int main()
 
 	InitRcv();
 
+
+
 //	com1.Write(&wb);
 
 	u32 fps = 0;
@@ -1579,14 +1705,14 @@ int main()
 	{
 //		HW::PIOA->SODR = 1UL<<31;
 
-		UpdateMisc();
+		UpdateParams();
 
 //		HW::PIOA->CODR = 1UL<<31;
 
 		fps++;
 
 
-		if (rtm.Check(MS2RT(500)))
+		if (rtm.Check(MS2RT(1000)))
 		{ 
 			UpdateTemp();
 			qtrm.Add(CreateTrmReq02());

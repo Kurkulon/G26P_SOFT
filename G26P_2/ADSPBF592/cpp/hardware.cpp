@@ -662,7 +662,7 @@ EX_INTERRUPT_HANDLER(WaitManDataSync)
 			}
 			else
 			{
-				if (t > rcvSyncPulseMin && t < rcvSyncHalf)
+				if (/*t > rcvSyncPulseMin &&*/ t < rcvSyncHalf)
 				{
 					ManPulseTmrReset();
 					rcvDataState += 2;

@@ -105,7 +105,7 @@ __packed struct SpareArea
 	u16		badPages;	// 0xFFFF - all pages good
 
 	u16		file;  		// file number
-	u32		lpn;		// logic page number
+//	u32		lpn;		// logic page number
 	u32		start;		// start page of file
 	u32		fpn;		// file page number
 	u32		prev;		// start page of previos file
@@ -119,8 +119,8 @@ __packed struct SpareArea
 	u16		vecLstOff;	// last vector header offset. 0xFFFF - no vector header 
 	u16		vecLstLen;	// last vector lenght. 0 - no vector
 
-	u32		vecPrPg;	// previos vector raw page
-	u16		vecPrOff;	// previos vector offset
+	//u32		vecPrPg;	// previos vector raw page
+	//u16		vecPrOff;	// previos vector offset
 
 	u16		fbb;		// file bad blocks count
 	u16		fbp;		// file bad pages count

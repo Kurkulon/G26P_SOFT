@@ -614,6 +614,28 @@ namespace T_HW
 	};
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	struct S_TWI
+	{
+		AT91_REG		CR;
+		AT91_REG		MMR;
+		AT91_REG		SMR;
+		AT91_REG		IADR;
+		AT91_REG		CWGR;
+		AT91_REG		zreserve[3];
+		AT91_REG		SR;
+		AT91_REG		IER;
+		AT91_REG		IDR;
+		AT91_REG		IMR;
+		AT91_REG		RHR;
+		AT91_REG		THR;
+		AT91_REG		zreserve1[50];
+		S_PDC			PDC;
+	};
+
+	typedef S_TWI S_TWI0, S_TWI1;
+
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++};
 };
 
 
@@ -659,6 +681,9 @@ namespace HW
 	MK_PTR(ADC,		0X40038000);
 
 	MK_PTR(CMCC,	0X4007C000);
+
+	MK_PTR(TWI0,	0x40018000);
+	MK_PTR(TWI1,	0x4001C000);
 
 
 //	MK_PTR(UDP,		0x400A4000);

@@ -1254,8 +1254,8 @@ namespace Write
 
 	static u16		wr_cur_col	= 0;
 	static u32 		wr_cur_pg	= -1;
-	static u16		wr_prev_col = 0;
-	static u32 		wr_prev_pg	= -1;
+	//static u16		wr_prev_col = 0;
+	//static u32 		wr_prev_pg	= -1;
 	static byte		wr_pg_error = 0;
 	static u16		wr_count	= 0;
 	static byte*	wr_data		= 0;
@@ -1290,7 +1290,7 @@ static void Write::Init(u32 bl, u32 file, u32 prfile)
 	wr.SetRawBlock(bl);
 
 	Write::spare.file = file;  
-	Write::spare.lpn = wr.GetRawPage();
+//	Write::spare.lpn = wr.GetRawPage();
 
 	Write::spare.prev = prfile;		
 
@@ -1305,8 +1305,8 @@ static void Write::Init(u32 bl, u32 file, u32 prfile)
 	Write::spare.vecLstOff = -1;
 	Write::spare.vecLstLen = 0;
 
-	Write::wr_prev_pg = -1;
-	Write::wr_prev_col = 0;
+	//Write::wr_prev_pg = -1;
+	//Write::wr_prev_col = 0;
 
 	Write::spare.fbb = 0;		
 	Write::spare.fbp = 0;		
@@ -1403,8 +1403,8 @@ static void Write::Finish()
 
 		curWrBuf = 0;
 
-		wr_prev_col = wr_cur_col;
-		wr_prev_pg = wr_cur_pg;
+		//wr_prev_col = wr_cur_col;
+		//wr_prev_pg = wr_cur_pg;
 	};
 }
 
@@ -1575,7 +1575,7 @@ static bool Write::Update()
 						state = WRITE_START;
 					}
 
-					spare.lpn += 1;
+//					spare.lpn += 1;
 					spare.fpn += 1;
 
 					spare.vecFstOff = -1;
@@ -1584,8 +1584,8 @@ static bool Write::Update()
 					spare.vecLstOff = -1;
 					spare.vecLstLen = 0;
 
-					spare.vecPrPg = wr_prev_pg;
-					spare.vecPrOff = wr_prev_col;
+					//spare.vecPrPg = wr_prev_pg;
+					//spare.vecPrOff = wr_prev_col;
 
 				};
 			};
@@ -1698,8 +1698,8 @@ static bool Write::Update()
 			spare.start = wr.GetRawPage();		
 			spare.fpn = 0;		
 
-			wr_prev_pg = -1;
-			wr_prev_col = 0;
+			//wr_prev_pg = -1;
+			//wr_prev_col = 0;
 
 			spare.fbb = 0;		
 			spare.fbp = 0;		
@@ -1963,7 +1963,7 @@ static bool Read::Update()
 
 //			__breakpoint(0);
 
-			if (spare.lpn == -1 || spare.start == -1 || spare.fpn == -1 )
+			if (/*spare.lpn == -1 ||*/ spare.start == -1 || spare.fpn == -1 )
 			{
 				if (rd.page == 0)
 				{
@@ -2590,7 +2590,7 @@ static void SimpleBuildFileTable()
 		}
 		else
 		{
-			if (spare.lpn == -1 || spare.start == -1 || spare.fpn == -1 )
+			if (/*spare.lpn == -1 ||*/ spare.start == -1 || spare.fpn == -1 )
 			{
 				be = bm-1;
 			}
@@ -2642,7 +2642,7 @@ static void SimpleBuildFileTable()
 		//Write::spare.chipMask = nandSize.mask;	
 
 	}
-	else if (spare.validBlock != 0xFFFF || spare.lpn == -1 || spare.start == -1 || spare.fpn == -1)
+	else if (spare.validBlock != 0xFFFF || /*spare.lpn == -1 ||*/ spare.start == -1 || spare.fpn == -1)
 	{
 		// Флэха пустая
 
@@ -2751,7 +2751,7 @@ static void SimpleBuildFileTable()
 		}
 		else
 		{
-			if (spare.lpn == -1 || spare.start == -1 || spare.fpn == -1 )
+			if (/*spare.lpn == -1 ||*/ spare.start == -1 || spare.fpn == -1 )
 			{
 				be = bm-1;
 			}

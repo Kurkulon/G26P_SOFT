@@ -52,7 +52,7 @@ __heap_limit
 VecTableIntSize	EQU		16*4	
 VecTableExtSize	EQU		35*4	
 
-				AREA	VTBL, NOINIT, READWRITE, ALIGN=7
+				AREA	VTBL, NOINIT, DATA, ALIGN=7
                 EXPORT  VectorTableInt
                 EXPORT  VectorTableExt
 VectorTableInt	SPACE	VecTableIntSize				

@@ -95,6 +95,10 @@
 				RelativePath=".\cpp\system_SAM4S.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\cpp\twi.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -107,6 +111,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\req.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\twi.h"
 				>
 			</File>
 		</Filter>

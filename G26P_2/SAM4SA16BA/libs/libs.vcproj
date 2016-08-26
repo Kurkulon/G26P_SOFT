@@ -108,6 +108,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\PointerCRC.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\time.cpp"
 				>
 			</File>

@@ -12,7 +12,7 @@
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//dword msec = 0;
+dword msec = 0;
 
 //static U32u __hsec(0);
 
@@ -79,27 +79,27 @@ u32 TM32::ipt = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static __irq void Timer_Handler (void)
-//{
-//	msec++;
+static __irq void Timer_Handler (void)
+{
+	msec++;
 //	__hsec.d += 6521;
-//}
-//
-////++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//
-//static void InitTimer()
-//{
-//	enum { freq = 1000 };
-//
-//	CM3::SysTick->LOAD = (MCK+freq/2)/freq;
-//	VectorTableInt[15] = Timer_Handler;
-//	CM3::SysTick->CTRL = 7;
-//	__enable_irq();
-//}
+}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void RTT_Init()
+static void InitTimer()
+{
+	enum { freq = 1000 };
+
+	CM4::SysTick->LOAD = (MCK+freq/2)/freq;
+	VectorTableInt[15] = Timer_Handler;
+	CM4::SysTick->CTRL = 7;
+	__enable_irq();
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void RTT_Init()
 {
 	using namespace HW;
 
@@ -433,30 +433,30 @@ lldiv_t lldiv(__int64 n, __int64 d)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//void Init_time()
-//{
-//	using namespace HW;
-//
-//	InitTimer();
-//	RTT_Init();
-//
-//	PMC->PCER0 = PID::RTC_M;
-//
-//	RTC->CR = 0;
-//	RTC->MR = 0;
-//
-//	timeBuf = RTC->TIMR;
-//	dateBuf = RTC->CALR;
-//
-//	VectorTableExt[PID::RTC_I] = RTC_IntHandler;
-//
-//	CM3::NVIC->ICPR[0] = PID::RTC_M;
-//	CM3::NVIC->ISER[0] = PID::RTC_M;
-//
-//	RTC->IER = 5; //SECEN ACKEN
-//
-//	__enable_irq();
-//}
+void Init_time()
+{
+	using namespace HW;
+
+	InitTimer();
+	RTT_Init();
+
+	//PMC->PCER0 = PID::RTC_M;
+
+	//RTC->CR = 0;
+	//RTC->MR = 0;
+
+	//timeBuf = RTC->TIMR;
+	//dateBuf = RTC->CALR;
+
+	//VectorTableExt[PID::RTC_I] = RTC_IntHandler;
+
+	//CM3::NVIC->ICPR[0] = PID::RTC_M;
+	//CM3::NVIC->ISER[0] = PID::RTC_M;
+
+	//RTC->IER = 5; //SECEN ACKEN
+
+	__enable_irq();
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

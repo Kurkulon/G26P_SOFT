@@ -133,12 +133,12 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=2884,393,3294,936,0)(1007=-1,-1,-1,-1,0)(1008=-1,-1,-1,-1,0)(1009=2681,219,2915,753,0)(1012=2055,165,2520,465,0)</Name>
+          <Name>(1010=3430,360,3840,903,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=2242,228,2476,762,0)(1012=2055,165,2520,465,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name></Name>
+          <Name>/</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -161,56 +161,7 @@
           <Name>UL2CM3(-O207 -O207 -S9 -C0 -FO7  -FN1 -FC800 -FD20000000 -FF0ATSAM4S_1024 -FL0100000 -FS0400000</Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint>
-        <Bp>
-          <Number>0</Number>
-          <Type>0</Type>
-          <LineNumber>109</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>4217176</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\twi.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
-        </Bp>
-        <Bp>
-          <Number>1</Number>
-          <Type>0</Type>
-          <LineNumber>29</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>4217362</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\twi.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
-        </Bp>
-        <Bp>
-          <Number>2</Number>
-          <Type>0</Type>
-          <LineNumber>1663</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>4215790</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_2\SAM4SA16BA\cpp\main.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
-        </Bp>
-      </Breakpoint>
+      <Breakpoint/>
       <WatchWindow1>
         <Ww>
           <count>0</count>
@@ -272,6 +223,11 @@
           <WinNumber>1</WinNumber>
           <ItemText>buf</ItemText>
         </Ww>
+        <Ww>
+          <count>12</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>msec,0x0A</ItemText>
+        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>
@@ -284,7 +240,7 @@
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>sp</ItemText>
+          <ItemText>0x20000000</ItemText>
         </Mm>
       </MemoryWindow1>
       <Tracepoint>
@@ -320,11 +276,7 @@
       <LintConfigFile></LintConfigFile>
       <SystemViewers>
         <Entry>
-          <Name>System Viewer\PMC</Name>
-          <WinId>35904</WinId>
-        </Entry>
-        <Entry>
-          <Name>System Viewer\TWI1</Name>
+          <Name>System Viewer\TC0</Name>
           <WinId>35905</WinId>
         </Entry>
       </SystemViewers>

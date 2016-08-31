@@ -54,7 +54,7 @@ struct Request
 		struct  { byte n; word crc; } f1;  // старт оцифровки
 		struct  { byte n; byte chnl; word crc; } f2;  // чтение вектора
 		struct  { u16 st[3]; u16 sl[3]; u16 sd[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
-		struct  { u16 ka[3]; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
+		struct  { byte ka[3]; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
 	};
 };
 
@@ -308,8 +308,43 @@ static void UpdateBlackFin()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+//#define NCoef 1
+
+//i32 iir(i16 NewSample)
+//{
+//	const i16 A0 = 0.08658549734431006400 * 32768;
+//	const i16 A1 = 0.08658549734431006400 * 32768;
+//
+////	float B0 = 1.00000000000000000000;
+//	const i16 B1 = -0.82727194597247566000 * 32768;
+//
+//	static i32 y[2]; //output samples
+//	static i16 x[2]; //input samples
+//
+//	//shift the old samples
+//	x[1] = x[0];
+//	y[1] = y[0];
+//
+//	//Calculate the new output
+//	x[0] = NewSample;
+//	y[0] = (A0 * x[0] + A1 * x[1] - B1 * y[1]) / 32768;
+//
+//	return y[0];
+//}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateSport()
 {
+	const i16 A0 = 0.24523727540750304000 * 32768;
+	const i16 A1 = 0.24523727540750304000 * 32768;
+
+//	float B0 = 1.00000000000000000000;
+	const i16 B1 = -0.50952544949442879000 * 32768;
+
+	static i32 y[2]; //output samples
+	static i16 x[2]; //input samples
+
 	static byte n = 0;
 	static byte chnl = 0;
 	static u16 len = 0;
@@ -353,9 +388,18 @@ static void UpdateSport()
 			ch = chnl>>1;
 			cl = chnl&1;
 
+			x[0] = 0;
+			y[0] = 0;
+
 			for (u16 i = 0; i < len; i++)
 			{
-				rsp.f2.data[i] = spd[ch][i*2+cl] - 0x8000;
+				x[1] = x[0];
+				y[1] = y[0];
+
+				x[0] = spd[ch][i*2+cl] - 0x8000;
+				y[0] = (A0 * x[0] + A1 * x[1] - B1 * y[1]) / 32768;
+
+				rsp.f2.data[i] = y[0];
 			};
 
 			sportState++;

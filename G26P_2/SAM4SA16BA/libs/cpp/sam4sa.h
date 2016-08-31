@@ -729,4 +729,129 @@ extern T_HW::AT91_IHP VectorTableExt[35];
 #undef MK_PTR
 #undef MKPID
 
+
+#define CLKEN	(0x1u << 0)	/**< \brief (TC_CCR) Counter Clock Enable Command */
+#define CLKDIS	(0x1u << 1)	/**< \brief (TC_CCR) Counter Clock Disable Command */
+#define SWTRG	(0x1u << 2)	/**< \brief (TC_CCR) Software Trigger Command */
+
+#define TIMER_CLOCK1 (0x0u << 0) /**< \brief (TC_CMR) Clock selected: TCLK1 */
+#define TIMER_CLOCK2 (0x1u << 0) /**< \brief (TC_CMR) Clock selected: TCLK2 */
+#define TIMER_CLOCK3 (0x2u << 0) /**< \brief (TC_CMR) Clock selected: TCLK3 */
+#define TIMER_CLOCK4 (0x3u << 0) /**< \brief (TC_CMR) Clock selected: TCLK4 */
+#define TIMER_CLOCK5 (0x4u << 0) /**< \brief (TC_CMR) Clock selected: TCLK5 */
+#define XC0 (0x5u << 0) /**< \brief (TC_CMR) Clock selected: XC0 */
+#define XC1 (0x6u << 0) /**< \brief (TC_CMR) Clock selected: XC1 */
+#define XC2 (0x7u << 0) /**< \brief (TC_CMR) Clock selected: XC2 */
+#define	CLKI (0x1u << 3) /**< \brief (TC_CMR) Clock Invert */
+#define BURST_NONE (0x0u << 4) /**< \brief (TC_CMR) The clock is not gated by an external signal. */
+#define BURST_XC0 (0x1u << 4) /**< \brief (TC_CMR) XC0 is ANDed with the selected clock. */
+#define BURST_XC1 (0x2u << 4) /**< \brief (TC_CMR) XC1 is ANDed with the selected clock. */
+#define BURST_XC2 (0x3u << 4) /**< \brief (TC_CMR) XC2 is ANDed with the selected clock. */
+#define LDBSTOP (0x1u << 6) /**< \brief (TC_CMR) Counter Clock Stopped with RB Loading */
+#define LDBDIS (0x1u << 7) /**< \brief (TC_CMR) Counter Clock Disable with RB Loading */
+#define ETRGEDG_NONE (0x0u << 8) /**< \brief (TC_CMR) The clock is not gated by an external signal. */
+#define ETRGEDG_RISING (0x1u << 8) /**< \brief (TC_CMR) Rising edge */
+#define ETRGEDG_FALLING (0x2u << 8) /**< \brief (TC_CMR) Falling edge */
+#define ETRGEDG_EDGE (0x3u << 8) /**< \brief (TC_CMR) Each edge */
+#define ABETRG (0x1u << 10) /**< \brief (TC_CMR) TIOA or TIOB External Trigger Selection */
+
+#define CPCTRG (0x1u << 14) /**< \brief (TC_CMR) RC Compare Trigger Enable */
+
+#define WAVE (0x1u << 15) /**< \brief (TC_CMR) Waveform Mode */
+#define LDRA_NONE (0x0u << 16) /**< \brief (TC_CMR) None */
+#define LDRA_RISING (0x1u << 16) /**< \brief (TC_CMR) Rising edge of TIOA */
+#define LDRA_FALLING (0x2u << 16) /**< \brief (TC_CMR) Falling edge of TIOA */
+#define LDRA_EDGE (0x3u << 16) /**< \brief (TC_CMR) Each edge of TIOA */
+#define LDRB_NONE (0x0u << 18) /**< \brief (TC_CMR) None */
+#define LDRB_RISING (0x1u << 18) /**< \brief (TC_CMR) Rising edge of TIOA */
+#define LDRB_FALLING (0x2u << 18) /**< \brief (TC_CMR) Falling edge of TIOA */
+#define LDRB_EDGE (0x3u << 18) /**< \brief (TC_CMR) Each edge of TIOA */
+#define SBSMPLR_ONE (0x0u << 20) /**< \brief (TC_CMR) Load a Capture Register each selected edge */
+#define SBSMPLR_HALF (0x1u << 20) /**< \brief (TC_CMR) Load a Capture Register every 2 selected edges */
+#define SBSMPLR_FOURTH (0x2u << 20) /**< \brief (TC_CMR) Load a Capture Register every 4 selected edges */
+#define SBSMPLR_EIGHTH (0x3u << 20) /**< \brief (TC_CMR) Load a Capture Register every 8 selected edges */
+#define SBSMPLR_SIXTEENTH (0x4u << 20) /**< \brief (TC_CMR) Load a Capture Register every 16 selected edges */
+#define CPCSTOP (0x1u << 6) /**< \brief (TC_CMR) Counter Clock Stopped with RC Compare */
+#define CPCDIS (0x1u << 7) /**< \brief (TC_CMR) Counter Clock Disable with RC Compare */
+#define EEVTEDG_NONE (0x0u << 8) /**< \brief (TC_CMR) None */
+#define EEVTEDG_RISING (0x1u << 8) /**< \brief (TC_CMR) Rising edge */
+#define EEVTEDG_FALLING (0x2u << 8) /**< \brief (TC_CMR) Falling edge */
+#define EEVTEDG_EDGE (0x3u << 8) /**< \brief (TC_CMR) Each edge */
+#define EEVT_TIOB (0x0u << 10) /**< \brief (TC_CMR) TIOB */
+#define EEVT_XC0 (0x1u << 10) /**< \brief (TC_CMR) XC0 */
+#define EEVT_XC1 (0x2u << 10) /**< \brief (TC_CMR) XC1 */
+#define EEVT_XC2 (0x3u << 10) /**< \brief (TC_CMR) XC2 */
+#define ENETRG (0x1u << 12) /**< \brief (TC_CMR) External Event Trigger Enable */
+#define WAVSEL_UP (0x0u << 13) /**< \brief (TC_CMR) UP mode without automatic trigger on RC Compare */
+#define WAVSEL_UPDOWN (0x1u << 13) /**< \brief (TC_CMR) UPDOWN mode without automatic trigger on RC Compare */
+#define WAVSEL_UP_RC (0x2u << 13) /**< \brief (TC_CMR) UP mode with automatic trigger on RC Compare */
+#define WAVSEL_UPDOWN_RC (0x3u << 13) /**< \brief (TC_CMR) UPDOWN mode with automatic trigger on RC Compare */
+#define ACPA_NONE (0x0u << 16) /**< \brief (TC_CMR) None */
+#define ACPA_SET (0x1u << 16) /**< \brief (TC_CMR) Set */
+#define ACPA_CLEAR (0x2u << 16) /**< \brief (TC_CMR) Clear */
+#define ACPA_TOGGLE (0x3u << 16) /**< \brief (TC_CMR) Toggle */
+#define   ACPC_NONE (0x0u << 18) /**< \brief (TC_CMR) None */
+#define   ACPC_SET (0x1u << 18) /**< \brief (TC_CMR) Set */
+#define   ACPC_CLEAR (0x2u << 18) /**< \brief (TC_CMR) Clear */
+#define   ACPC_TOGGLE (0x3u << 18) /**< \brief (TC_CMR) Toggle */
+#define   AEEVT_NONE (0x0u << 20) /**< \brief (TC_CMR) None */
+#define   AEEVT_SET (0x1u << 20) /**< \brief (TC_CMR) Set */
+#define   AEEVT_CLEAR (0x2u << 20) /**< \brief (TC_CMR) Clear */
+#define   AEEVT_TOGGLE (0x3u << 20) /**< \brief (TC_CMR) Toggle */
+#define   ASWTRG_NONE (0x0u << 22) /**< \brief (TC_CMR) None */
+#define   ASWTRG_SET (0x1u << 22) /**< \brief (TC_CMR) Set */
+#define   ASWTRG_CLEAR (0x2u << 22) /**< \brief (TC_CMR) Clear */
+#define   ASWTRG_TOGGLE (0x3u << 22) /**< \brief (TC_CMR) Toggle */
+#define   BCPB_NONE (0x0u << 24) /**< \brief (TC_CMR) None */
+#define   BCPB_SET (0x1u << 24) /**< \brief (TC_CMR) Set */
+#define   BCPB_CLEAR (0x2u << 24) /**< \brief (TC_CMR) Clear */
+#define   BCPB_TOGGLE (0x3u << 24) /**< \brief (TC_CMR) Toggle */
+#define   BCPC_NONE (0x0u << 26) /**< \brief (TC_CMR) None */
+#define   BCPC_SET (0x1u << 26) /**< \brief (TC_CMR) Set */
+#define   BCPC_CLEAR (0x2u << 26) /**< \brief (TC_CMR) Clear */
+#define   BCPC_TOGGLE (0x3u << 26) /**< \brief (TC_CMR) Toggle */
+#define   BEEVT_NONE (0x0u << 28) /**< \brief (TC_CMR) None */
+#define   BEEVT_SET (0x1u << 28) /**< \brief (TC_CMR) Set */
+#define   BEEVT_CLEAR (0x2u << 28) /**< \brief (TC_CMR) Clear */
+#define   BEEVT_TOGGLE (0x3u << 28) /**< \brief (TC_CMR) Toggle */
+#define   BSWTRG_NONE (0x0u << 30) /**< \brief (TC_CMR) None */
+#define   BSWTRG_SET (0x1u << 30) /**< \brief (TC_CMR) Set */
+#define   BSWTRG_CLEAR (0x2u << 30) /**< \brief (TC_CMR) Clear */
+#define   BSWTRG_TOGGLE (0x3u << 30) /**< \brief (TC_CMR) Toggle */
+/* -------- TC_SMMR : (TC Offset: N/A) Stepper Motor Mode Register -------- */
+#define TC_SMMR_GCEN (0x1u << 0) /**< \brief (TC_SMMR) Gray Count Enable */
+#define TC_SMMR_DOWN (0x1u << 1) /**< \brief (TC_SMMR) DOWN Count */
+/* -------- TC_RAB : (TC Offset: N/A) Register AB -------- */
+#define TC_RAB_RAB_Pos 0
+#define TC_RAB_RAB_Msk (0xffffffffu << TC_RAB_RAB_Pos) /**< \brief (TC_RAB) Register A or Register B */
+/* -------- TC_CV : (TC Offset: N/A) Counter Value -------- */
+#define TC_CV_CV_Pos 0
+#define TC_CV_CV_Msk (0xffffffffu << TC_CV_CV_Pos) /**< \brief (TC_CV) Counter Value */
+/* -------- TC_RA : (TC Offset: N/A) Register A -------- */
+#define TC_RA_RA_Pos 0
+#define TC_RA_RA_Msk (0xffffffffu << TC_RA_RA_Pos) /**< \brief (TC_RA) Register A */
+#define TC_RA_RA(value) ((TC_RA_RA_Msk & ((value) << TC_RA_RA_Pos)))
+/* -------- TC_RB : (TC Offset: N/A) Register B -------- */
+#define TC_RB_RB_Pos 0
+#define TC_RB_RB_Msk (0xffffffffu << TC_RB_RB_Pos) /**< \brief (TC_RB) Register B */
+#define TC_RB_RB(value) ((TC_RB_RB_Msk & ((value) << TC_RB_RB_Pos)))
+/* -------- TC_RC : (TC Offset: N/A) Register C -------- */
+#define TC_RC_RC_Pos 0
+#define TC_RC_RC_Msk (0xffffffffu << TC_RC_RC_Pos) /**< \brief (TC_RC) Register C */
+#define TC_RC_RC(value) ((TC_RC_RC_Msk & ((value) << TC_RC_RC_Pos)))
+/* -------- TC_SR : (TC Offset: N/A) Status Register -------- */
+#define COVFS	(0x1u << 0)		/**< \brief (TC_SR) Counter Overflow Status */
+#define LOVRS	(0x1u << 1)		/**< \brief (TC_SR) Load Overrun Status */
+#define CPAS 	(0x1u << 2)		/**< \brief (TC_SR) RA Compare Status */
+#define CPBS 	(0x1u << 3)		/**< \brief (TC_SR) RB Compare Status */
+#define CPCS 	(0x1u << 4)		/**< \brief (TC_SR) RC Compare Status */
+#define LDRAS 	(0x1u << 5)		/**< \brief (TC_SR) RA Loading Status */
+#define LDRBS 	(0x1u << 6)		/**< \brief (TC_SR) RB Loading Status */
+#define ETRGS 	(0x1u << 7)		/**< \brief (TC_SR) External Trigger Status */
+#define ENDRX 	(0x1u << 8)		/**< \brief (TC_SR) End of Receiver Transfer */
+#define RXBUFF 	(0x1u << 9)		/**< \brief (TC_SR) Reception Buffer Full */
+#define CLKSTA 	(0x1u << 16) 	/**< \brief (TC_SR) Clock Enabling Status */
+#define MTIOA 	(0x1u << 17) 	/**< \brief (TC_SR) TIOA Mirror */
+#define MTIOB 	(0x1u << 18) 	/**< \brief (TC_SR) TIOB Mirror */
+
 #endif // SAM4SA_H__27_08_2014__11_07

@@ -1062,9 +1062,75 @@ static void UpdateBlackFin()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static __irq void FireHandler()
+{
+	using namespace HW;
+
+//	USART0->CR = 0x40;
+	USART0->THR = 0;
+
+//	PIOA->SODR = 1<<7;
+
+	TC0->C1.CCR = CLKDIS|SWTRG;
+	TC0->C1.IDR = CPCS;
+
+	u32 tmp = TC0->C1.SR;
+
+//	PIOA->CODR = 1<<7;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+static void StartTrmFire(u16 delay)
+{
+	using namespace HW;
+
+	PMC->PCER0 = PID::TC1_M;
+
+	VectorTableExt[HW::PID::TC1_I] = FireHandler;
+	CM4::NVIC->ICPR[0] = HW::PID::TC1_M;
+	CM4::NVIC->ISER[0] = HW::PID::TC1_M;
+
+	TC0->C1.CCR = CLKDIS|SWTRG;
+	TC0->C1.IER = CPCS;
+	TC0->C1.RC = MCK/2/1000000*delay;
+	TC0->C1.CMR = 0;
+
+//	UART1->CR = 0xA0;	// Disable transmit and receive
+
+	PIOB->SODR = 1<<13;
+	PIOA->SODR = 1<<4;
+
+	UART1->CR = 0x40;
+	USART0->CR = 0x40;
+
+
+	if (delay != 0)
+	{
+		__enable_irq();
+		UART1->THR = 0;
+		TC0->C1.CCR = CLKEN|SWTRG;
+	}
+	else
+	{
+		UART1->THR = 0;
+		USART0->THR = 0;
+	};
+
+//	while ((_SU->CSR & 0x200) == 0);
+
+//	PIOB->CODR = 1<<13;
+
+//	UART1->CR = 0xA0;	// Disable transmit and receive
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateRcvTrm()
 {
 	static byte i = 0, n = 0;
+	static u16 sd = 0;
 	static 	RTM32 rtm;
 //	static RTM32 rt2;
 
@@ -1096,6 +1162,8 @@ static void UpdateRcvTrm()
 			qrcv.Stop();
 			qtrm.Stop();
 			n = fireType;
+			sd = sampleDelay[n];
+
 			i++;
 
 			break;
@@ -1140,8 +1208,11 @@ static void UpdateRcvTrm()
 
 			if (rtm.Check(3))
 			{
-				comrcv.TransmitByte(0);
-				comtr.TransmitByte(0);
+				StartTrmFire(sd);
+
+				//comrcv.TransmitByte(0);
+				//comtr.TransmitByte(0);
+
 				i++;
 			};
 

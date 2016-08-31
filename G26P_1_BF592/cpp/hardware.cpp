@@ -196,7 +196,7 @@ void SyncReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv, bool 
 	*pPORTFIO_CLEAR = 1<<12;
 	*pPORTFIO_MASKA = 1<<12;
 
-	*TIMER0_CONFIG
+//	*TIMER0_CONFIG
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

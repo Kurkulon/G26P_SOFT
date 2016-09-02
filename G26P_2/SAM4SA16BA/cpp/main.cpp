@@ -847,7 +847,16 @@ static bool RequestMan_80(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
 	static u16 rsp[2];
 
-	if (wb == 0) return false;
+	if (wb == 0 || len < 3) return false;
+
+	switch (data[1])
+	{
+		case 1:
+
+			numDevice = data[2];
+
+			break;
+	};
 
 	rsp[0] = 0x5501;
 	rsp[1] = manReqWord|0x80;
@@ -915,7 +924,7 @@ static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		qrcv.Add(CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 2));
 	};
 
-//	SaveParams();
+	SaveParams();
 
 	rsp[0] = 0x5501;
 	rsp[1] = manReqWord|0x90;
@@ -1439,13 +1448,29 @@ static void MainMode()
 	{
 		case 0:
 
-			startFire = true;
-			
-			mainModeState++;
+			req = CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 0);
+
+			if (req != 0)
+			{
+				qrcv.Add(req);
+
+				mainModeState++;
+			};
 
 			break;
 
 		case 1:
+
+			if (req->ready)
+			{
+				startFire = true;
+				
+				mainModeState++;
+			};
+
+			break;
+
+		case 2:
 
 			if (!startFire)
 			{
@@ -1456,7 +1481,7 @@ static void MainMode()
 
 			break;
 
-		case 2:
+		case 3:
 
 			req = CreateRcvReq02(rcv, fireType, chnl, 1);
 
@@ -1469,7 +1494,7 @@ static void MainMode()
 
 			break;
 
-		case 3:
+		case 4:
 
 			if (req->ready)
 			{
@@ -1477,7 +1502,7 @@ static void MainMode()
 				{
 					chnl += 1;
 
-					mainModeState = 2;
+					mainModeState = 3;
 				}
 				else
 				{
@@ -1486,7 +1511,7 @@ static void MainMode()
 
 				break;
 
-		case 4:
+		case 5:
 
 				rm = CreateMemReq02(rcv, fireType);
 
@@ -1505,7 +1530,8 @@ static void MainMode()
 				}
 				else
 				{
-					mainModeState = 6;
+					rcv = 1;
+					mainModeState = 7;
 				};
 
 				rt.Reset();
@@ -1513,27 +1539,52 @@ static void MainMode()
 
 			break;
 
-		case 5:
+		case 6:
 
 			if (rt.Check(US2RT(1)))
 			{
-				mainModeState = 2;
-			};
-
-			break;
-
-		case 6:
-
-			if (rt.Check(MS2RT(100)))
-			{
-				fireType = (fireType+1) % 3; 
-
-				mainModeState = 0;
+				mainModeState = 3;
 			};
 
 			break;
 
 		case 7:
+
+			req = CreateRcvReq04(rcv, gain[rcv-1], 2);
+
+			if (req != 0)
+			{
+				qrcv.Add(req);
+
+				mainModeState++;
+			};
+
+		case 8:
+
+			if (req->ready)
+			{
+				if (rcv < numStations)
+				{
+					rcv++;
+
+					mainModeState -= 1;
+				}
+				else
+				{
+					mainModeState++;
+				};
+			};
+
+			break;
+
+		case 9:
+
+			if (rt.Check(MS2RT(50)))
+			{
+				fireType = (fireType+1) % 3; 
+
+				mainModeState = 0;
+			};
 
 			break;
 
@@ -1656,6 +1707,7 @@ static void LoadVars()
 	for (byte i = 0; i < 2; i++)
 	{
 		p.CRC.w = 0xFFFF;
+		numDevice = p.ReadW();
 		p.ReadArrayB(gain, sizeof(gain));
 		p.ReadArrayB(sampleTime, sizeof(sampleTime));
 		p.ReadArrayW(sampleLen, ArraySize(sampleLen));
@@ -1667,21 +1719,28 @@ static void LoadVars()
 
 	if (!c)
 	{
-		//for (byte i = 0; i < 16; i++)
-		//{
-		//	tr.Clear(100);
-		//	kfp.Clear(1);
-		//	kfn.Clear(0.1);
-		//};
+		numDevice = 0;
 
-		//impSumTime.var.ResetToDefault();
-		//impMaxCount.var.ResetToDefault();
+		for (byte i = 0; i < 8; i++)
+		{
+			gain[i][0] = 0;
+			gain[i][1] = 7;
+			gain[i][2] = 7;
+		};
 
-		//InitImpDetector();
+		sampleTime[0] = 10;
+		sampleTime[1] = 20;
+		sampleTime[2] = 20;
 
-		//spCondOR.var.ResetToDefault();
+		sampleLen[0] = 512;
+		sampleLen[1] = 512;
+		sampleLen[2] = 512;
 
-		//savesCount = 2;
+		sampleDelay[0] = 0;
+		sampleDelay[1] = 0;
+		sampleDelay[2] = 0;
+
+		savesCount = 2;
 	};
 }
 
@@ -1716,6 +1775,7 @@ static void SaveVars()
 			for (byte j = 0; j < 2; j++)
 			{
 				p.CRC.w = 0xFFFF;
+				p.WriteW(numDevice);
 				p.WriteArrayB(gain, sizeof(gain));
 				p.WriteArrayB(sampleTime, sizeof(sampleTime));
 				p.WriteArrayW(sampleLen, ArraySize(sampleLen));

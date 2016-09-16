@@ -3652,7 +3652,7 @@ void FLASH_Init()
 //	cmdFullErase = true;
 //	Test2();
  
-	SimpleBuildFileTable();
+//	SimpleBuildFileTable();
 
 	//static SessionInfo si;
 

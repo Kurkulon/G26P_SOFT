@@ -451,7 +451,7 @@ static REQ* CreateTrmReq03()
 	wb.len = sizeof(req);
 	
 	req.f = 3;
-	req.hv = 400;
+	req.hv = 800;
 	req.crc = GetCRC16(&req, sizeof(req)-2);
 
 	return &q;
@@ -1604,7 +1604,7 @@ static void UpdateMisc()
 	{
 		CALL( UpdateADC()			);
 		CALL( MainMode()			);
-		CALL( SaveVars()			);
+//		CALL( SaveVars()			);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -1807,7 +1807,7 @@ int main()
 
 	Init_time();
 
-	LoadVars();
+//	LoadVars();
 
 	InitNumStations();
 

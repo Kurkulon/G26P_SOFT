@@ -164,6 +164,7 @@ __packed struct SessionInfo
 	RTC_type	stop_rtc;  
 	i64			last_adress; 
 	byte		flags;
+	u16			crc;
 };	
 
 

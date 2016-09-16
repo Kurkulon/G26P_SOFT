@@ -160,6 +160,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\twi.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\vector.cpp"
 				>
 			</File>
@@ -263,6 +267,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\trap_def.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\twi.h"
 				>
 			</File>
 			<File

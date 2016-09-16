@@ -7,12 +7,15 @@
 #include "flash.h"
 #include "vector.h"
 #include "list.h"
+#include "fram.h"
+#include "twi.h"
+#include "PointerCRC.h"
 
 #pragma diag_suppress 546,550,177
 
 u32 fps = 0;
 
-extern byte Heap_Mem[10];
+//extern byte Heap_Mem[10];
 
 u32 manRcvData[10];
 u16 manTrmData[50];
@@ -28,6 +31,18 @@ static const u16 manReqMask = 0xFF00;
 static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
 
 static i16 temperature = 0;
+
+static NVV nvv;
+
+static byte buf[sizeof(nvv)*2+2];
+
+static byte savesCount = 0;
+
+static TWI	twi;
+
+static void SaveVars();
+
+inline void SaveParams() { savesCount = 2; }
 
 //static bool ReqMan00(u16 *buf, u16 len, MTB* mtb);
 //static bool ReqMan01(u16 *buf, u16 len, MTB* mtb);
@@ -200,6 +215,8 @@ static bool ReqMan90(u16 *buf, u16 len, MTB* mtb)
 static bool ReqManF0(u16 *buf, u16 len, MTB* mtb)
 {
 	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	SaveParams();
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0xF0;
 
@@ -411,15 +428,142 @@ static void UpdateTemp()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void LoadVars()
+{
+	twi.Init(1);
+
+	PointerCRC p(buf);
+
+	static DSCTWI dsc;
+
+	dsc.MMR = 0x500200;
+	dsc.IADR = 0;
+	dsc.CWGR = 0x7575;
+	dsc.data = buf;
+	dsc.len = sizeof(buf);
+
+	if (twi.Read(&dsc))
+	{
+		while (twi.Update());
+	};
+
+	bool c = false;
+
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(&nvv, sizeof(nvv));
+
+		if (p.CRC.w == 0) { c = true; break; };
+	};
+
+	if (!c)
+	{
+		nvv.numDevice = 0;
+		nvv.index = 0;
+
+		nvv.si.session = 0;
+		nvv.si.size = 0;
+		nvv.si.last_adress = 0;
+		GetTime(&nvv.si.start_rtc);
+		GetTime(&nvv.si.stop_rtc);
+		nvv.si.flags = 0;
+
+		savesCount = 2;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void SaveVars()
+{
+	PointerCRC p(buf);
+
+	static DSCTWI dsc;
+
+	static byte i = 0;
+	static RTM32 tm;
+
+	switch (i)
+	{
+		case 0:
+
+			if (/*tm.Check(MS2RT(1000)) ||*/ savesCount > 0)
+			{
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			dsc.MMR = 0x500200;
+			dsc.IADR = 0;
+			dsc.CWGR = 0x07575; 
+			dsc.data = buf;
+			dsc.len = sizeof(buf);
+
+			for (byte j = 0; j < 2; j++)
+			{
+				p.CRC.w = 0xFFFF;
+				p.WriteArrayB(&nvv, sizeof(nvv)-sizeof(nvv.crc));
+				p.WriteW(p.CRC.w);
+			};
+
+			i = (twi.Write(&dsc)) ? (i+1) : 0;
+
+			break;
+
+		case 2:
+
+			if (!twi.Update())
+			{
+				savesCount--;
+				i = 0;
+			};
+
+			break;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateMisc()
+{
+	static byte i = 0;
+
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( UpdateTraps();	);
+		CALL( NAND_Idle();		);
+		CALL( UpdateMan();		);
+		CALL( SaveVars();		);
+	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 	InitHardware();
+
+	__breakpoint(0);
+
+	LoadVars();
 
 	InitEMAC();
 
 	InitTraps();
 
 	FLASH_Init();
+
 
 //	InitTemp();
 
@@ -431,7 +575,6 @@ int main()
 
 
 
-//	__breakpoint(0);
 
 	HW::PIOB->PER = 1<<13;
 	HW::PIOB->OER = 1<<13;
@@ -448,9 +591,7 @@ int main()
 		switch(i++)
 		{
 			CALL( UpdateEMAC();		);
-			CALL( UpdateTraps();	);
-			CALL( NAND_Idle();		);
-			CALL( UpdateMan();		);
+			CALL( UpdateMisc();		);
 		};
 
 		i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -468,6 +609,7 @@ int main()
 			fps = f;
 			f = 0;
 
+			savesCount++;
 		};
 
 		HW::ResetWDT();

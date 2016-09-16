@@ -1,15 +1,33 @@
-#ifndef MEMORY_AT91SAM7X256_FRAM_H
-#define MEMORY_AT91SAM7X256_FRAM_H
+#ifndef FRAM_H__12_09_2016__10_25
+#define FRAM_H__12_09_2016__10_25
 
 #include "rtc.h"
+#include "trap_def.h"
 
-/*************************/
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct NVV // NonVolatileVars  
+{
+	u16 numDevice;
+
+	SessionInfo si;
+
+	u16 index;
+
+	u16 crc;
+};
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 __packed struct fram_linear_coeffs_type  
 {
 	float k;
 	float b;
 } ;
-/*************************/
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 __packed enum  fram_main_device_type 
 {
 	FRAM_MAIN_DEVICE_TYPE_MODULE_MEMORY = 0,
@@ -219,4 +237,4 @@ extern bool	FRAM_Autonom_Result_Error_Get(byte session, byte device, byte comman
 
 /*****************************************************************************/
 
-#endif
+#endif // FRAM_H__12_09_2016__10_25

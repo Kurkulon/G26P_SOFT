@@ -2,6 +2,7 @@
 #include "ComPort.h"
 #include "CRC16.h"
 
+#include "at25df021.h"
 
 static ComPort com;
 //static ComPort::WriteBuffer wb;
@@ -39,6 +40,9 @@ static U32u fadc = 0;
 static byte sportState = 0;
 static byte fireN = 0;
 
+static u16 flashCRC = 0;
+static u32 flashLen = 0;
+
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -55,6 +59,8 @@ struct Request
 		struct  { byte n; byte chnl; word crc; } f2;  // чтение вектора
 		struct  { u16 st[3]; u16 sl[3]; u16 sd[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
 		struct  { byte ka[3]; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
+
+//		struct  { byte subfunc; ka[3]; word crc; } fAD;  // Перепрошивка флэшки
 	};
 };
 
@@ -224,6 +230,25 @@ bool RequestFunc04(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+bool RequestFuncAD(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
+{
+	const Request *req = (Request*)rb->data;
+	Response &rsp = *((Response*)rspBuf);
+
+	if (req->adr == 0) return  false;
+
+	rsp.adr = req->adr;
+	rsp.func = req->func;
+	rsp.f3.crc = GetCRC16(&rsp, 2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp.f4)+2;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 bool RequestFunc(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
 {
 	if (rb == 0 || rb->len < 2 || rb->len > sizeof(Request)) return false;
@@ -246,6 +271,8 @@ bool RequestFunc(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
 		case 2: result = RequestFunc02 (rb, wb, crcok); break;
 		case 3: result = RequestFunc03 (rb, wb, crcok); break;
 		case 4: result = RequestFunc04 (rb, wb, crcok); break;
+
+		case 0xAD: result = RequestFuncAD (rb, wb, crcok); break;
 	};
 
 	return result;
@@ -441,11 +468,11 @@ static const i16 RC[100] = {
 
 static void UpdateSport()
 {
-	const i16 A0 = 0.05921059165970496400 * 32768;
-	const i16 A1 = 0.05921059165970496400 * 32768;
+	const i16 A0 = 0.96952119255082503000 * 32768;
+	const i16 A1 = -0.9695211925508250300 * 32768;
 
 //	float B0 = 1.00000000000000000000;
-	const i16 B1 = -0.88161859236318907000 * 32768;
+	const i16 B1 = -0.93906250582030759000 * 32768;
 
 	const u16 freq0 = 4000;
 
@@ -518,18 +545,18 @@ static void UpdateSport()
 
 			for (u16 i = 0; i < len; i++)
 			{
-				//x[1] = x[0];
-				//y[1] = y[0];
+				x[1] = x[0];
+				y[1] = y[0];
 
-				//x[0] = spd[ch][i*2+cl] - 0x8000;
-				//y[0] = (A0 * x[0] + A1 * x[1] - B1 * y[1]) / 32768;
+				x[0] = spd[ch][i*2+cl] - 0x8000;
+				y[0] = (A0 * x[0] + A1 * x[1] - B1 * y[1]) / 32768;
 
-				//rsp.f2.data[i] = y[0];
+				rsp.f2.data[i] = y[0];
 
-				F0 += ((spd[ch][i*2+cl] - 0x8000) - F0/32768) * C0;
-				rsp.f2.data[i] = F0/32768;
+				//F0 += ((spd[ch][i*2+cl] - 0x8000) - F0/32768) * C0;
+				//rsp.f2.data[i] = F0/32768;
 
-//				rsp.f2.data[i] = x[0];
+				//rsp.f2.data[i] = x[0];
 			};
 
 			*pPORTFIO_CLEAR = 1<<8;
@@ -584,17 +611,88 @@ static void InitNetAdr()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+//static word GetFlashCRC16(u32 count)
+//{
+//	DataCRC CRC = { 0xFFFF };
+//
+//	byte buf[256];
+//
+//	u32 adr = 0;
+//
+//	while (count > 0)
+//	{
+//		u16 len = (count > sizeof(buf)) ? sizeof(buf) : count;
+//
+//		at25df021_Read(buf, adr, len);
+//
+//		adr += len;
+//
+//		byte *s = buf;
+//
+//		for ( ; len > 0; len--)
+//		{
+//			CRC.w = tableCRC[CRC.b[0] ^ *(s++)] ^ CRC.b[1];
+//		};
+//	};
+//
+//	return CRC.w;
+//}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void CheckFlash()
+{
+	static BOOT_HEADER bh;
+
+	byte *p = (byte*)&bh;
+
+	u32 count = 0;
+	u32 adr = 0;
+
+	bool ready = false;
+
+	while (1)
+	{
+		at25df021_Read_IRQ(p, adr, sizeof(bh), &ready);
+
+		while(!ready) {};
+
+		adr += sizeof(bh);
+
+		if ((bh.blockCode & BFLAG_FILL) == 0)
+		{
+			adr += bh.byteCount;	
+		};
+
+		if (bh.blockCode & BFLAG_FINAL)
+		{
+			break;
+		};
+	};
+
+	flashLen = adr;
+
+	at25df021_GetCRC16_IRQ(0, adr, &ready, &flashCRC);
+
+	while(!ready) {};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void main( void )
 {
 //	static byte s = 0;
 
 //	static u32 pt = 0;
 
+
 	InitHardware();
 
 	com.Connect(6250000, 0);
 
 	InitNetAdr();
+
+	CheckFlash();
 
 	while (1)
 	{

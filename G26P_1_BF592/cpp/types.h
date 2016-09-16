@@ -30,6 +30,7 @@ typedef signed long long int i64;
 typedef unsigned long long int u64;
 
 #define ArraySize(x) (sizeof(x)/sizeof(x[0]))
+#define GB(adr,i) (*(((byte*)adr)+i))
 
 #ifndef NAN
 static const dword __NAN_dword = 0xFFFFFFFF;

@@ -104,12 +104,12 @@ static void InitSPORT()
 
 	*pEVT9 = (void*)SPORT_ISR;
 	*pIMASK |= EVT_IVG9; 
-	*pSIC_IMASK |= 1<<9;
+	*pSIC_IMASK |= IRQ_DMA1;
 
 
 	*pEVT11 = (void*)StartSPORT_ISR;
-	*pSIC_IMASK |= IRQ_PFA_PORTF;
 	*pIMASK |= EVT_IVG11; 
+	*pSIC_IMASK |= IRQ_PFA_PORTF;
 
 	*pPORTFIO_INEN = 1<<12;
 	*pPORTFIO_EDGE = 1<<12;
@@ -220,8 +220,8 @@ static void LowLevelInit()
 
 	*pPORTGIO_SET = 3<<11;
 
-	*pWDOG_CNT = MS2SCLK(10);
-	*pWDOG_CTL = WDEV_RESET|WDEN;
+	//*pWDOG_CNT = MS2SCLK(10);
+	//*pWDOG_CTL = WDEV_RESET|WDEN;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

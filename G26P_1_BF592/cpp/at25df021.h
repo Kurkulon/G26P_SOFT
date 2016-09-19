@@ -55,17 +55,18 @@ struct BOOT_HEADER
 
 #define COMMON_SPI_DMA_SETTINGS (MSTR|CPOL|CPHA)  /* settings to the SPI_CTL */
 
-#define BAUD_RATE_DIVISOR 	5
+#define BAUD_RATE_DIVISOR 	2
 #define PE4 0x0010
 
 
-extern ERROR_CODE at25df021_Read(byte *data, u32 stAdr, u32 count );
+extern ERROR_CODE at25df021_Read(byte *data, u32 stAdr, u16 count );
 extern ERROR_CODE at25df021_Read_DMA(byte *data, u32 stAdr, u16 count, bool *ready);
 extern ERROR_CODE at25df021_Read_IRQ(byte *data, u32 stAdr, u16 count, bool *ready);
 
 extern ERROR_CODE at25df021_Write(byte *data, u32 stAdr, u32 count, bool verify);
 
 extern ERROR_CODE at25df021_GetCRC16_IRQ(u32 stAdr, u16 count, bool *ready, u16 *crc);
+extern u16 at25df021_GetCRC16(u32 stAdr, u16 count);
 
 
 extern ERROR_CODE GetCodes(int *pnManCode, int *pnDevCode);

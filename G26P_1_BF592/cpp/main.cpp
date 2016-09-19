@@ -653,9 +653,9 @@ static void CheckFlash()
 
 	while (1)
 	{
-		at25df021_Read_IRQ(p, adr, sizeof(bh), &ready);
+		at25df021_Read(p, adr, sizeof(bh));
 
-		while(!ready) {};
+//		while(!ready) {};
 
 		adr += sizeof(bh);
 
@@ -672,9 +672,7 @@ static void CheckFlash()
 
 	flashLen = adr;
 
-	at25df021_GetCRC16_IRQ(0, adr, &ready, &flashCRC);
-
-	while(!ready) {};
+	flashCRC = at25df021_GetCRC16(0, adr);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

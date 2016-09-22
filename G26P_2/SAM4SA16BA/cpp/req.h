@@ -51,18 +51,14 @@ __packed struct Req02	// чтение вектора
 
 __packed struct Rsp02	// чтение вектора
 {
-	byte 	adr;
-	byte 	func;
-	byte 	n; 
-	byte 	chnl; 
-	u32		count;
-	byte 	time; 
-	byte 	gain; 
-	byte 	delay; 
-	byte 	filtr;
-	u16		len;
-	u16		data[512]; 
-	word	crc; 
+	u16 rw; 
+	u32 cnt; 
+	u16 gain; 
+	u16 st; 
+	u16 len; 
+	u16 delay; 
+	u16 data[1024*4]; 
+	u16 crc;
 };  
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -115,7 +111,8 @@ __packed struct ReqMem
 	u16 st; 
 	u16 len; 
 	u16 delay; 
-	u16 data[512*4]; 
+	u16 data[1024*4]; 
+	u16 crc;
 
 	//byte adr;
 	//byte func;

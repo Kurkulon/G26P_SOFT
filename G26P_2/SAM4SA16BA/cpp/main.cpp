@@ -32,10 +32,16 @@ static RequestQuery qrcv(&comrcv);
 static RequestQuery qtrm(&comtr);
 static RequestQuery qmem(&commem);
 
-static R02 r02[8][3][4];
+static R02 r02[8];
+
+static Rsp02 manVec[6];
+
+static byte curRcv[3] = {0};
+static byte curVec[3] = {0};
+
 
 static RMEM rmem[4];
-static List<RMEM> lstRmem;
+//static List<RMEM> lstRmem;
 static List<RMEM> freeRmem;
 
 static byte fireType = 0;
@@ -80,6 +86,8 @@ static TWI	twi;
 
 static DSCTWI dsc;
 static byte buf[100];
+
+static u16 maxOff = 0;
 
 static void SaveVars();
 
@@ -152,11 +160,11 @@ void CallBackRcvReq02(REQ *q)
 
 	if (crcOK)
 	{
-		rcvStatus |= 1 << (rsp.adr - 1);
+		rcvStatus |= 1 << (rsp.rw & 7);
 	}
 	else
 	{
-		rcvStatus &= ~(1 << (rsp.adr - 1));
+		rcvStatus &= ~(1 << (rsp.rw & 7));
 	};
 
 	if (!crcOK && q->tryCount > 0)
@@ -174,7 +182,7 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	adr = (adr-1)&7; 
 	chnl &= 3; n %= 3;
 
-	R02 &r = r02[adr][n][chnl];
+	R02 &r = r02[adr];
 
 	if (r.memNeedSend)
 	{
@@ -184,10 +192,10 @@ REQ* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	Req02 &req = r.req;
 	Rsp02 &rsp = r.rsp;
 	
-	ComPort::WriteBuffer &wb = r02[adr][n][chnl].wb;
-	ComPort::ReadBuffer	 &rb = r02[adr][n][chnl].rb;
+	ComPort::WriteBuffer &wb = r.wb;
+	ComPort::ReadBuffer	 &rb = r.rb;
 	
-	REQ &q = r02[adr][n][chnl].q;
+	REQ &q = r.q;
 
 
 	q.CallBack = CallBackRcvReq02;
@@ -557,7 +565,7 @@ void CallBackMemReq02(REQ *q)
 
 u32 countMemReq = 0;
 
-RMEM reqMem;
+//RMEM reqMem;
 
 REQ* CreateMemReq02(byte adr, byte n)
 {
@@ -571,50 +579,7 @@ REQ* CreateMemReq02(byte adr, byte n)
 	ReqMem &req = rm->req;
 	RspMem &rsp = rm->rsp;
 
-	R02 &r = r02[adr][n][0];
-
-	req.rw = 0xAA30 + (n<<4) + adr;
-	req.cnt = countMemReq++;
-
-	req.gain = r.rsp.gain; 
-	req.st = r.rsp.time; 
-	req.len = r.rsp.len; 
-	req.delay = r.rsp.delay;
-
-	u16 l = 512;//req.len;
-	u16 v = 0;
-
-	if (l > (ArraySize(req.data)/4)) { l = ArraySize(req.data)/4; req.len = l; };
-
-	__packed u16 *d = req.data;
-	
-	__packed u16 *s = r.rsp.data;
-
-	for (u16 i = 0; i < l; i++)
-	{
-		*d++ = *s++;
-	};
-
-	s = r02[adr][n][1].rsp.data;
-
-	for (u16 i = 0; i < l; i++)
-	{
-		*d++ = *s++;
-	};
-
-	s = r02[adr][n][2].rsp.data;
-
-	for (u16 i = 0; i < l; i++)
-	{
-		*d++ = *s++;
-	};
-
-	s = r02[adr][n][3].rsp.data;
-
-	for (u16 i = 0; i < l; i++)
-	{
-		*d++ = *s++;
-	};
+	R02 &r = r02[adr];
 
 	ComPort::WriteBuffer &wb = rm->wb;
 	ComPort::ReadBuffer	 &rb = rm->rb;
@@ -630,7 +595,7 @@ REQ* CreateMemReq02(byte adr, byte n)
 	q.ptr = rm;
 	
 	wb.data = &req;
-	wb.len = l*4*2 + sizeof(req) - sizeof(req.data);
+	wb.len = r.rb.len;// l*4*2 + sizeof(req) - sizeof(req.data);
 
 	//rb.data = &rsp;
 	//rb.maxLen = sizeof(rsp);
@@ -729,18 +694,19 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
 	__packed struct Req { u16 rw; u16 off; u16 len; };
 
-	__packed struct Hdr { u32 cnt; u16 gain; u16 st; u16 len; u16 delay; };
+//	__packed struct Hdr { u32 cnt; u16 gain; u16 st; u16 len; u16 delay; };
 
-	__packed struct St { Hdr h; u16 data[2000]; };
+//	__packed struct St { Hdr h;  };
 
-	__packed struct Rsp { u16 hdr; u16 rw; St st; };
+	struct Rsp { u16 hdr; u16 rw; u16 data[128]; };
 	
 	static Rsp rsp; 
 
-	Hdr hdr;
+//	Hdr hdr;
+
+	static u16 max = 0;
 
 
-	const u16 sz = sizeof(rsp.st)/2;
 
 	Req &req = *((Req*)data);
 
@@ -752,12 +718,24 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	byte nf = ((req.rw>>4)-3)&3;
 	byte nr = req.rw & 7;
 
-	u16 *p = (u16*)&rsp.st;
+	curRcv[nf] = nr;
 
 	u16 c = 0;
 	u16 off = 0;
-	u16 diglen = 500;
-	u16 hdrlen = (sizeof(hdr)/2);
+	//u16 diglen = 500;
+	//u16 hdrlen = (sizeof(hdr)/2);
+
+	u16 sz = 6 + sampleLen[nf]*4;
+
+	//manVec[nf].len = 29;
+	//manVec[nf].gain = 0;
+	//manVec[nf].st = 10;
+	//manVec[nf].delay = 0;
+
+	if (req.off == 0)
+	{
+		curVec[nf] = (curVec[nf] + 1) & 1;
+	};
 
 	if (len == 1)
 	{
@@ -769,6 +747,11 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		off = req.off;
 		c = req.len;
 
+		if (off > maxOff)
+		{
+			maxOff = off;
+		};
+
 		if (off >= sz)
 		{
 			c = 0; off = 0;
@@ -779,60 +762,19 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		};
 	};
 
+
 	wb->data = &rsp;
 	wb->len = (c+2)<<1;
 
-	if (off < hdrlen)
-	{
-		hdr.cnt = manCounter;
-		hdr.gain = gain[nr][nf];
-		hdr.st = sampleTime[nf];
-		hdr.len = diglen;
-		hdr.delay = 0;
+	u16 *p = rsp.data;
 
-		u16 *s = ((u16*)&hdr) + off;
+	u16 *s = (u16*)&manVec[nf*2 + ((curVec[nf] + 1) & 1)];
 
-		u16 l = hdrlen - off;
-
-		c -= l;
-		off = 0;
-
-		while (l-- > 0) { *p++ = *s++;};
-	}
-	else
-	{
-		off -= hdrlen;
-	};
-
-	byte chnl = off / diglen;
-
-//	u16 i = 0;
-
-	u16 j = off % diglen;
+	s += off + 1;
 
 	while (c > 0)
 	{
-		chnlCount[chnl]++;
-
-		u16 k = diglen - j;
-
-		if (c < k)
-		{
-			k = c;
-			c = 0;
-		}
-		else
-		{
-			c -= k;
-		};
-
-		while (k-- > 0)
-		{
-			*p++ = r02[nr][nf][chnl].rsp.data[j++];// + chnl*15000; 
-		};
-
-		j = 0;
-		chnl++;
+		*p++ = *s++; c--;
 	};
 
 	rsp.hdr = 0x5501;
@@ -904,7 +846,7 @@ static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 			case 0x9:
 
 				sl = data[2];
-				if (sl > 512) sl = 512;
+				if (sl > 1024) sl = 1024;
 				sampleLen[nf] = sl;
 
 				break;
@@ -1018,7 +960,7 @@ static void UpdateBlackFin()
 	static byte i = 0;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
-	static byte buf[1024];
+	static byte buf[32];
 
 	switch(i)
 	{
@@ -1140,7 +1082,10 @@ static void UpdateRcvTrm()
 {
 	static byte i = 0, n = 0;
 	static u16 sd = 0;
-	static 	RTM32 rtm;
+	static RTM32 rtm;
+
+	static u32 fireTime = MS2RT(15);
+
 //	static RTM32 rt2;
 
 //	static Request req;
@@ -1222,6 +1167,10 @@ static void UpdateRcvTrm()
 				//comrcv.TransmitByte(0);
 				//comtr.TransmitByte(0);
 
+				u32 t = (u32)sampleLen[n]*sampleTime[n]+sampleDelay[n] + 5000;
+
+				fireTime = MS2RT(t/1000);
+
 				i++;
 			};
 
@@ -1229,7 +1178,7 @@ static void UpdateRcvTrm()
 
 		case 7:
 
-			if (rtm.Check(MS2RT(15)))
+			if (rtm.Check(fireTime))
 			{
 				i++;
 			};
@@ -1498,20 +1447,19 @@ static void MainMode()
 
 			if (req->ready)
 			{
-				if (chnl < 3)
+				if (curRcv[fireType] == (rcv-1))
 				{
-					chnl += 1;
+					u16 *s = (u16*)&r02[curRcv[fireType]].rsp;
+					u16 *d = (u16*)&manVec[fireType*2 + curVec[fireType]];
+					u16 c = req->rb->len/2;
 
-					mainModeState = 3;
-				}
-				else
-				{
-					mainModeState++;
+					while (c-- > 0)
+					{
+						*d++ = *s++;
+					};
+
+					manVec[fireType].cnt = manCounter;
 				};
-
-				break;
-
-		case 5:
 
 				rm = CreateMemReq02(rcv, fireType);
 
@@ -1531,7 +1479,7 @@ static void MainMode()
 				else
 				{
 					rcv = 1;
-					mainModeState = 7;
+					mainModeState = 6;
 				};
 
 				rt.Reset();
@@ -1539,7 +1487,7 @@ static void MainMode()
 
 			break;
 
-		case 6:
+		case 5:
 
 			if (rt.Check(US2RT(1)))
 			{
@@ -1548,7 +1496,7 @@ static void MainMode()
 
 			break;
 
-		case 7:
+		case 6:
 
 			req = CreateRcvReq04(rcv, gain[rcv-1], 2);
 
@@ -1559,7 +1507,9 @@ static void MainMode()
 				mainModeState++;
 			};
 
-		case 8:
+			break;
+
+		case 7:
 
 			if (req->ready)
 			{
@@ -1577,7 +1527,7 @@ static void MainMode()
 
 			break;
 
-		case 9:
+		case 8:
 
 			if (rt.Check(MS2RT(50)))
 			{
@@ -1587,7 +1537,6 @@ static void MainMode()
 			};
 
 			break;
-
 	};
 }
 
@@ -1604,7 +1553,7 @@ static void UpdateMisc()
 	{
 		CALL( UpdateADC()			);
 		CALL( MainMode()			);
-//		CALL( SaveVars()			);
+		CALL( SaveVars()			);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -1807,7 +1756,7 @@ int main()
 
 	Init_time();
 
-//	LoadVars();
+	LoadVars();
 
 	InitNumStations();
 

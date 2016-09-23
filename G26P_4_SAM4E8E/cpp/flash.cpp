@@ -399,7 +399,7 @@ static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
 {
 	VecData &vd = fwb->vd;
 
-	Req &req = *((Req*)vd.data);
+//	Req &req = *((Req*)vd.data);
 
 
 	if (!RequestFlashWrite(fwb))
@@ -3023,6 +3023,8 @@ bool UpdateSendSession()
 
 			break;
 	};
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3619,7 +3621,7 @@ void FLASH_WriteDisable()
 
 byte FLASH_Status()
 {
-	flashStatus;
+	return flashStatus;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3652,7 +3654,7 @@ void FLASH_Init()
 //	cmdFullErase = true;
 //	Test2();
  
-//	SimpleBuildFileTable();
+	SimpleBuildFileTable();
 
 	//static SessionInfo si;
 

@@ -6,7 +6,7 @@
 #include "trap_def.h"
 
 
-#define FLWB_LEN (4096+256)
+#define FLWB_LEN (8192+32)
 #define FLRB_LEN 1536
 
 enum  

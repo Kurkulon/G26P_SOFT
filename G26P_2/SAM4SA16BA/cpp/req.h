@@ -201,7 +201,9 @@ public:
 
 struct R02
 {
-	bool memNeedSend;
+	R02* next;
+
+//	bool memNeedSend;
 	ComPort::WriteBuffer	wb;
 	ComPort::ReadBuffer		rb;
 	REQ		q;

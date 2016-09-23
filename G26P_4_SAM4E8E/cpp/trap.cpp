@@ -913,12 +913,14 @@ static bool UpdateSendVector()
 
 						t->iph.off |= 0x2000;
 
-						t->udp.len = sizeof(UdpHdr) + sizeof(trap) + flrb.hdr.dataLen;
+						t->udp.len = sizeof(UdpHdr) + sizeof(trap) + flrb.hdr.dataLen - 2;
 
 						i = 3;
 					}
 					else
 					{
+						t->len -= 2;
+
 						i = 1;
 					};
 

@@ -142,6 +142,7 @@ REQ* CreateRcvReqFire(byte adr, byte n, u16 tryCount)
 void CallBackRcvReq02(REQ *q)
 {
 	Rsp02 &rsp = *((Rsp02*)q->rb->data);
+	Req02 &req = *((Req02*)q->wb->data);
 	
 	bool crcOK;
 
@@ -165,7 +166,7 @@ void CallBackRcvReq02(REQ *q)
 	}
 	else
 	{
-		rcvStatus &= ~(1 << (rsp.rw & 7));
+		rcvStatus &= ~(1 << ((req.adr-1) & 7)); 
 	};
 
 	if (!crcOK && q->tryCount > 0)
@@ -212,7 +213,7 @@ R02* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	rb.maxLen = sizeof(rsp);
 	rb.recieved = false;
 	
-	req.adr = 1;//adr+1;
+	req.adr = adr+1;
 	req.func = 2;
 	req.n = n;
 	req.chnl = chnl;

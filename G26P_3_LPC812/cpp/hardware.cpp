@@ -217,7 +217,10 @@ void(*FireMode)() = FireXX;
 
 static __irq void SyncFireHandler()
 {
-	FireMode();
+//	FireMode();
+
+	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
+
 	HW::PIN_INT->IST = 1;
 	HW::PIN_INT->CIENF = 1;
 	syncActive = false;
@@ -231,9 +234,12 @@ void WaitFireSync(byte t)
 
 	switch(t)
 	{
-		case 0: FireMode = FireXX; break;
-		case 1: FireMode = FireYY; break;
-		case 2: FireMode = FireM;  break;
+		case 0:	HW::SWM->CTOUT_0 = 17;	HW::SWM->CTOUT_1 = 13;	break;
+		case 1: HW::SWM->CTOUT_0 = 4;	HW::SWM->CTOUT_1 = 12;	break;
+		case 2: HW::SWM->CTOUT_0 = 7;	HW::SWM->CTOUT_1 = -1;	break;
+		//case 0: FireMode = FireXX; break;
+		//case 1: FireMode = FireYY; break;
+		//case 2: FireMode = FireM;  break;
 	};
 
 	syncActive = true;
@@ -242,7 +248,6 @@ void WaitFireSync(byte t)
 	HW::PIN_INT->SIENF = 1;
 	HW::PIN_INT->FALL = 1;
 	HW::PIN_INT->IST = 1;
-
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

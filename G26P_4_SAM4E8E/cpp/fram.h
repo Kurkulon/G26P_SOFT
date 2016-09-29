@@ -13,10 +13,17 @@ __packed struct NVV // NonVolatileVars
 	SessionInfo si;
 
 	u16 index;
+};
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct NVSI // NonVolatileSessionInfo  
+{
+	SessionInfo si;
 
 	u16 crc;
 };
-
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -32,7 +39,7 @@ __packed enum  fram_main_device_type
 {
 	FRAM_MAIN_DEVICE_TYPE_MODULE_MEMORY = 0,
 	FRAM_MAIN_DEVICE_TYPE_MODULE_AUTONOM,
-} ;
+};
 
 enum
 {

@@ -34,7 +34,9 @@ static i16 temperature = 0;
 
 static NVV nvv;
 
-static byte buf[sizeof(nvv)*2+2];
+static NVSI nvsi[128];
+
+static byte buf[sizeof(nvv)*2+4];
 
 static byte savesCount = 0;
 
@@ -452,7 +454,7 @@ static void LoadVars()
 	for (byte i = 0; i < 2; i++)
 	{
 		p.CRC.w = 0xFFFF;
-		p.ReadArrayB(&nvv, sizeof(nvv));
+		p.ReadArrayB(&nvv, sizeof(nvv)+2);
 
 		if (p.CRC.w == 0) { c = true; break; };
 	};
@@ -506,7 +508,7 @@ static void SaveVars()
 			for (byte j = 0; j < 2; j++)
 			{
 				p.CRC.w = 0xFFFF;
-				p.WriteArrayB(&nvv, sizeof(nvv)-sizeof(nvv.crc));
+				p.WriteArrayB(&nvv, sizeof(nvv));
 				p.WriteW(p.CRC.w);
 			};
 
@@ -523,6 +525,58 @@ static void SaveVars()
 			};
 
 			break;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void LoadSessions()
+{
+	PointerCRC p(buf);
+
+	static DSCTWI dsc;
+
+	const u16 sa = 0x100;
+
+	for (u16 i = 0; i < ArraySize(nvsi); i++)
+	{
+		NVSI &si = nvsi[i];
+
+		u32 adr = sa+sizeof(si)*i;
+
+		dsc.MMR = 0x500200;
+		dsc.IADR = adr;
+		dsc.CWGR = 0x7575;
+		dsc.data = &si;
+		dsc.len = sizeof(si);
+
+		if (twi.Read(&dsc))
+		{
+			while (twi.Update());
+		};
+
+		if (GetCRC16(&si, sizeof(si)) != 0)
+		{
+			si.si.session = 1;
+			si.si.size = 2;
+			si.si.last_adress = 3;
+			si.si.flags = 4;
+			si.si.start_rtc.date = 5;
+			si.si.start_rtc.time = 6;
+			si.si.stop_rtc.date = 7;
+			si.si.stop_rtc.time = 8;
+			si.crc = GetCRC16(&si, sizeof(si.si));
+
+			dsc.MMR = 0x500200;
+			dsc.IADR = adr;
+			dsc.CWGR = 0x07575; 
+			dsc.data = &si;
+			dsc.len = sizeof(si);
+
+			twi.Write(&dsc);
+
+			while (twi.Update());
+		};
 	};
 }
 
@@ -554,9 +608,11 @@ int main()
 {
 	InitHardware();
 
-//	__breakpoint(0);
+	__breakpoint(0);
 
 	LoadVars();
+
+	LoadSessions();
 
 	InitEMAC();
 

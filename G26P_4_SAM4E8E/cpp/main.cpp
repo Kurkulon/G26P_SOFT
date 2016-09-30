@@ -8,8 +8,6 @@
 #include "vector.h"
 #include "list.h"
 #include "fram.h"
-#include "twi.h"
-#include "PointerCRC.h"
 
 #pragma diag_suppress 546,550,177
 
@@ -32,19 +30,6 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
 
 static i16 temperature = 0;
 
-static NVV nvv;
-
-static NVSI nvsi[128];
-
-static byte buf[sizeof(nvv)*2+4];
-
-static byte savesCount = 0;
-
-static TWI	twi;
-
-static void SaveVars();
-
-inline void SaveParams() { savesCount = 2; }
 
 //static bool ReqMan00(u16 *buf, u16 len, MTB* mtb);
 //static bool ReqMan01(u16 *buf, u16 len, MTB* mtb);
@@ -356,58 +341,6 @@ static void UpdateMan()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-static void UpdateWriteFlash()
-{
-	static FLWB *fb = 0;
-	static byte i = 0;
-	static byte cnt = 1;
-	static u32  w = 0;
-	static bool ready;
-
-	switch (i)
-	{
-		case 0:
-
-			if ((fb = AllocFlashWriteBuffer()) != 0)
-			{
-				fb->ready = &ready;
-
-//				fb->hdrLen = 0;
-				fb->dataLen = 2048;
-
-				for (u32 n = 0; n < fb->dataLen; n++)
-				{
-	//				fb->data[n] = cnt;
-				};
-
-				cnt++;
-				w++;
-
-				RequestFlashWrite(fb);
-
-				i++;
-			};
-
-			break;
-
-		case 1:
-
-			if (ready)
-			{
-				if (w >= 50000)
-				{
-					w = 0;
-					NAND_NextSession();
-				};
-
-				i = 0;
-			};
-
-			break;
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void InitTemp()
 {
@@ -430,155 +363,6 @@ static void UpdateTemp()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void LoadVars()
-{
-	twi.Init(1);
-
-	PointerCRC p(buf);
-
-	static DSCTWI dsc;
-
-	dsc.MMR = 0x500200;
-	dsc.IADR = 0;
-	dsc.CWGR = 0x7575;
-	dsc.data = buf;
-	dsc.len = sizeof(buf);
-
-	if (twi.Read(&dsc))
-	{
-		while (twi.Update());
-	};
-
-	bool c = false;
-
-	for (byte i = 0; i < 2; i++)
-	{
-		p.CRC.w = 0xFFFF;
-		p.ReadArrayB(&nvv, sizeof(nvv)+2);
-
-		if (p.CRC.w == 0) { c = true; break; };
-	};
-
-	if (!c)
-	{
-		nvv.numDevice = 0;
-		nvv.index = 0;
-
-		nvv.si.session = 0;
-		nvv.si.size = 0;
-		nvv.si.last_adress = 0;
-		GetTime(&nvv.si.start_rtc);
-		GetTime(&nvv.si.stop_rtc);
-		nvv.si.flags = 0;
-
-		savesCount = 2;
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void SaveVars()
-{
-	PointerCRC p(buf);
-
-	static DSCTWI dsc;
-
-	static byte i = 0;
-	static RTM32 tm;
-
-	switch (i)
-	{
-		case 0:
-
-			if (/*tm.Check(MS2RT(1000)) ||*/ savesCount > 0)
-			{
-				i++;
-			};
-
-			break;
-
-		case 1:
-
-			dsc.MMR = 0x500200;
-			dsc.IADR = 0;
-			dsc.CWGR = 0x07575; 
-			dsc.data = buf;
-			dsc.len = sizeof(buf);
-
-			for (byte j = 0; j < 2; j++)
-			{
-				p.CRC.w = 0xFFFF;
-				p.WriteArrayB(&nvv, sizeof(nvv));
-				p.WriteW(p.CRC.w);
-			};
-
-			i = (twi.Write(&dsc)) ? (i+1) : 0;
-
-			break;
-
-		case 2:
-
-			if (!twi.Update())
-			{
-				savesCount--;
-				i = 0;
-			};
-
-			break;
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void LoadSessions()
-{
-	PointerCRC p(buf);
-
-	static DSCTWI dsc;
-
-	const u16 sa = 0x100;
-
-	for (u16 i = 0; i < ArraySize(nvsi); i++)
-	{
-		NVSI &si = nvsi[i];
-
-		u32 adr = sa+sizeof(si)*i;
-
-		dsc.MMR = 0x500200;
-		dsc.IADR = adr;
-		dsc.CWGR = 0x7575;
-		dsc.data = &si;
-		dsc.len = sizeof(si);
-
-		if (twi.Read(&dsc))
-		{
-			while (twi.Update());
-		};
-
-		if (GetCRC16(&si, sizeof(si)) != 0)
-		{
-			si.si.session = 1;
-			si.si.size = 2;
-			si.si.last_adress = 3;
-			si.si.flags = 4;
-			si.si.start_rtc.date = 5;
-			si.si.start_rtc.time = 6;
-			si.si.stop_rtc.date = 7;
-			si.si.stop_rtc.time = 8;
-			si.crc = GetCRC16(&si, sizeof(si.si));
-
-			dsc.MMR = 0x500200;
-			dsc.IADR = adr;
-			dsc.CWGR = 0x07575; 
-			dsc.data = &si;
-			dsc.len = sizeof(si);
-
-			twi.Write(&dsc);
-
-			while (twi.Update());
-		};
-	};
-}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -592,9 +376,8 @@ static void UpdateMisc()
 	switch(i++)
 	{
 		CALL( UpdateTraps();	);
-		CALL( NAND_Idle();		);
+		CALL( FLASH_Update();	);
 		CALL( UpdateMan();		);
-		CALL( SaveVars();		);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -609,10 +392,6 @@ int main()
 	InitHardware();
 
 	__breakpoint(0);
-
-	LoadVars();
-
-	LoadSessions();
 
 	InitEMAC();
 
@@ -664,8 +443,6 @@ int main()
 //			UpdateTemp();
 			fps = f;
 			f = 0;
-
-			savesCount++;
 		};
 
 		HW::ResetWDT();

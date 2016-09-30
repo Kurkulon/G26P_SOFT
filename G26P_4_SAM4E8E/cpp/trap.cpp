@@ -144,12 +144,12 @@ bool TRAP_INFO_SendInfo()
 	trap.hdr.cmd = TRAP_INFO_COMMAND_INFO;
 
 	trap.version = VERSION;
-	trap.number = FRAM_Main_Device_Number_Get();
+	trap.number = 0; //FRAM_Main_Device_Number_Get();
 	trap.memory_mask = FLASH_Chip_Mask_Get();
 	trap.memory_size = FLASH_Full_Size_Get();
 	trap.devices_mask = TRAP_DEVICES_MASK;
-	trap.device_type = FRAM_Main_Device_Type_Get();
-	trap.device_telemetry = FRAM_Main_Device_Telemetry_Get();
+	trap.device_type = 0;//FRAM_Main_Device_Type_Get();
+	trap.device_telemetry = 0;//FRAM_Main_Device_Telemetry_Get();
 	
 	buf->len = sizeof(EthUdp) + sizeof(trap);
 
@@ -546,19 +546,19 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 					case TRAP_INFO_COMMAND_SET_NUMBER:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
-						FRAM_Main_Device_Number_Set(ts.number);
+//						FRAM_Main_Device_Number_Set(ts.number);
 						break;
 
 					case TRAP_INFO_COMMAND_SET_TYPE:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
-						FRAM_Main_Device_Type_Set(ts.type);
+//						FRAM_Main_Device_Type_Set(ts.type);
 						break;
 
 					case TRAP_INFO_COMMAND_SET_TELEMETRY:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
-						FRAM_Main_Device_Telemetry_Set(ts.telemetry);
+//						FRAM_Main_Device_Telemetry_Set(ts.telemetry);
 						break;
 
 					default: 

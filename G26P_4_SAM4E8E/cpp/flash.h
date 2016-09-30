@@ -141,17 +141,18 @@ extern void		FreeFlashReadBuffer(FLRB* b);
 extern bool		RequestFlashRead(FLRB* b);
 extern bool		RequestFlashWrite(FLWB* b);
 
-extern bool NAND_Idle();
+//extern bool NAND_Idle();
 extern void NAND_FullErase();
-extern void NAND_NextSession();
+//extern void NAND_NextSession();
 
 extern const SessionInfo* GetLastSessionInfo();
 
+inline void SaveParams() { extern byte savesCount; savesCount = 1; }
 
 /*************************/
 extern void FLASH_Init();
 extern bool FLASH_Reset();
-extern void FLASH_Idle();
+extern void FLASH_Update();
 extern bool FLASH_Busy();
 
 extern void FLASH_WriteEnable();
@@ -159,10 +160,10 @@ extern void FLASH_WriteDisable();
 extern byte FLASH_Status();
 
 /*****************************************************************************/
-extern bool FLASH_Erase_Full();
-extern bool FLASH_UnErase_Full();
-extern bool FLASH_Write_Vector(u16 session, u16 device, RTC_type rtc, byte flags, byte *data, u16 size, flash_save_repeat_type repeat);
-extern bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector);
+//extern bool FLASH_Erase_Full();
+//extern bool FLASH_UnErase_Full();
+//extern bool FLASH_Write_Vector(u16 session, u16 device, RTC_type rtc, byte flags, byte *data, u16 size, flash_save_repeat_type repeat);
+//extern bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector);
 
 extern u32 FLASH_Vectors_Errors_Get();
 extern u32 FLASH_Vectors_Saved_Get();
@@ -173,10 +174,12 @@ extern u32 FLASH_Session_Get();
 
 //extern void FLASH_Vectors_Errors_Reset();
 //extern void FLASH_Vectors_Saved_Reset();
+
 extern u64 FLASH_Current_Adress_Get();
 extern u64 FLASH_Full_Size_Get();
 extern u16 FLASH_Chip_Mask_Get();
 extern u64 FLASH_Used_Size_Get();
+
 //extern i64 FLASH_Empty_Size_Get();
 
 

@@ -8,6 +8,9 @@
 #include "ComPort.h"
 #include "trap_def.h"
 #include "trap.h"
+#include "twi.h"
+#include "PointerCRC.h"
+
 
 #pragma diag_suppress 550,177
 
@@ -70,6 +73,41 @@ static bool flashFull = false;
 static bool flashEmpty = false;
 
 static SessionInfo lastSessionInfo;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct NVV // NonVolatileVars  
+{
+	u16 numDevice;
+
+	SessionInfo si;
+
+	u16 index;
+};
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct NVSI // NonVolatileSessionInfo  
+{
+	SessionInfo si;
+
+	u16 crc;
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static NVV nvv;
+
+static NVSI nvsi[128];
+
+static byte buf[sizeof(nvv)*2+4];
+
+byte savesCount = 0;
+
+static TWI	twi;
+
+static void SaveVars();
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1354,6 +1392,11 @@ static bool Write::Start()
 
 //		curWrBuf->dataLen += sizeof(curWrBuf->vd.vec);
 //		curWrBuf->hdrLen = 0;
+
+		nvv.si.size += curWrBuf->vd.h.dataLen;
+		nvv.si.stop_rtc = curWrBuf->vd.h.rtc;
+
+		SaveParams();
 		
 		prWrAdr = wr.GetRawAdr();
 
@@ -3111,7 +3154,7 @@ bool UpdateSendSession()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool NAND_Idle()
+static bool NAND_Idle()
 {
 //	register u32 t;
 
@@ -3239,14 +3282,12 @@ bool NAND_Idle()
 			break;
 	};
 
-	UpdateCom();
-
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void NAND_Init()
+static void NAND_Init()
 {
 	nandSize.shPg = 0;
 	nandSize.shBl = 0;
@@ -3476,11 +3517,13 @@ u64 FLASH_Full_Size_Get()
 u64 FLASH_Used_Size_Get()
 {
 	i64 size = FLASH_Full_Size_Get();
-	if(FRAM_Memory_Start_Adress_Get() != -1)
-	{
-		size = FRAM_Memory_Current_Adress_Get() - FRAM_Memory_Start_Adress_Get();
-		if(size < 0) size += FLASH_Full_Size_Get();
-	}
+
+	//if(FRAM_Memory_Start_Adress_Get() != -1)
+	//{
+	//	size = FRAM_Memory_Current_Adress_Get() - FRAM_Memory_Start_Adress_Get();
+	//	if(size < 0) size += FLASH_Full_Size_Get();
+	//}
+
 	return size;
 }
 
@@ -3605,6 +3648,12 @@ bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector)
 
 void FLASH_WriteEnable()
 {
+	if (!writeFlashEnabled)
+	{
+		nvv.si.size = 0;
+		GetTime(&nvv.si.start_rtc);
+	};
+
 	writeFlashEnabled = true;
 	flashStatus = FLASH_STATUS_WRITE;
 }
@@ -3613,7 +3662,13 @@ void FLASH_WriteEnable()
 
 void FLASH_WriteDisable()
 {
+	if (writeFlashEnabled)
+	{
+		Write::CreateNextFile();
+	};
+
 	writeFlashEnabled = false;
+
 	flashStatus = FLASH_STATUS_WAIT;
 }
 
@@ -3639,8 +3694,164 @@ bool FLASH_Reset()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void LoadVars()
+{
+	twi.Init(1);
+
+	PointerCRC p(buf);
+
+	static DSCTWI dsc;
+
+	dsc.MMR = 0x500200;
+	dsc.IADR = 0;
+	dsc.CWGR = 0x7575;
+	dsc.data = buf;
+	dsc.len = sizeof(buf);
+
+	if (twi.Read(&dsc))
+	{
+		while (twi.Update());
+	};
+
+	bool c = false;
+
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(&nvv, sizeof(nvv)+2);
+
+		if (p.CRC.w == 0) { c = true; break; };
+	};
+
+	if (!c)
+	{
+		nvv.numDevice = 0;
+		nvv.index = 0;
+
+		nvv.si.session = 0;
+		nvv.si.size = 0;
+		nvv.si.last_adress = 0;
+		GetTime(&nvv.si.start_rtc);
+		GetTime(&nvv.si.stop_rtc);
+		nvv.si.flags = 0;
+
+		savesCount = 2;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void SaveVars()
+{
+	PointerCRC p(buf);
+
+	static DSCTWI dsc;
+
+	static byte i = 0;
+	static RTM32 tm;
+
+	switch (i)
+	{
+		case 0:
+
+			if (/*tm.Check(MS2RT(1000)) ||*/ savesCount > 0)
+			{
+				savesCount--;
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			dsc.MMR = 0x500200;
+			dsc.IADR = 0;
+			dsc.CWGR = 0x07575; 
+			dsc.data = buf;
+			dsc.len = sizeof(buf);
+
+			for (byte j = 0; j < 2; j++)
+			{
+				p.CRC.w = 0xFFFF;
+				p.WriteArrayB(&nvv, sizeof(nvv));
+				p.WriteW(p.CRC.w);
+			};
+
+			i = (twi.Write(&dsc)) ? (i+1) : 0;
+
+			break;
+
+		case 2:
+
+			if (!twi.Update())
+			{
+				i = 0;
+			};
+
+			break;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void LoadSessions()
+{
+	PointerCRC p(buf);
+
+	static DSCTWI dsc;
+
+	const u16 sa = 0x100;
+
+	for (u16 i = 0; i < ArraySize(nvsi); i++)
+	{
+		NVSI &si = nvsi[i];
+
+		u32 adr = sa+sizeof(si)*i;
+
+		dsc.MMR = 0x500200;
+		dsc.IADR = adr;
+		dsc.CWGR = 0x7575;
+		dsc.data = &si;
+		dsc.len = sizeof(si);
+
+		if (twi.Read(&dsc))
+		{
+			while (twi.Update());
+		};
+
+		if (GetCRC16(&si, sizeof(si)) != 0)
+		{
+			si.si.session = 1;
+			si.si.size = 2;
+			si.si.last_adress = 3;
+			si.si.flags = 4;
+			si.si.start_rtc.date = 5;
+			si.si.start_rtc.time = 6;
+			si.si.stop_rtc.date = 7;
+			si.si.stop_rtc.time = 8;
+			si.crc = GetCRC16(&si, sizeof(si.si));
+
+			dsc.MMR = 0x500200;
+			dsc.IADR = adr;
+			dsc.CWGR = 0x07575; 
+			dsc.data = &si;
+			dsc.len = sizeof(si);
+
+			twi.Write(&dsc);
+
+			while (twi.Update());
+		};
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void FLASH_Init()
 {
+	LoadVars();
+
+	LoadSessions();
+
 	InitFlashBuffer();
 
 	NAND_Init();
@@ -3661,213 +3872,25 @@ void FLASH_Init()
 	//GetSessionNow(&si);
 }
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//void FLASH_Idle()
-//{
-//	switch (GetNandState())	// сделано так, чтобы можно было отсюда дублировать запись в случае неудачи
-//	{
-//		//case NAND_STATE_WAIT:	// для скорости
-//		//	break;
-//		//case NAND_STATE_READ_READY: 
-//		//	flash_read_status = FLASH_STATUS_READY;
-//		//	ResetNandState();	
-//		//	break;
-//		//case NAND_STATE_READ_ERROR: 
-//		//	flash_read_status = FLASH_STATUS_ERROR;
-//		//	ResetNandState();	
-//		//	break;
-//		//case NAND_STATE_WRITE_READY: 
-//		//	flash_write_status = FLASH_STATUS_READY;
-//		//	ResetNandState();
-//		//	break;
-//		//case NAND_STATE_WRITE_ERROR: 
-//		//	flash_write_status = FLASH_STATUS_ERROR;
-//		//	ResetNandState();	
-//		//	break;
-//		//case NAND_STATE_VERIFY_READY: 
-//		//	flash_verify_status = FLASH_STATUS_READY;
-//		//	ResetNandState();
-//		//	break;
-//		//case NAND_STATE_VERIFY_ERROR: 
-//		//	flash_verify_status = FLASH_STATUS_ERROR;
-//		//	ResetNandState();	
-//		//	break;
-//	}
-//
-//	if(GetNandState() == NAND_STATE_WAIT) flash_current_adress = GetNandAdr();	
-//
-//	// операция записи вектора
-//	i64 current_adress_old = FRAM_Memory_Current_Adress_Get();
-//	if(flash_status_operation == FLASH_STATUS_OPERATION_SAVE_WRITE)
-//	{
-//		if(FLASH_Write_Is_Ready()) 
-//		{
-//			flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//			u64 adr = FRAM_Memory_Current_Adress_Get();
-//			if(FLASH_Verify(&adr, flash_save_buffer, flash_save_size))
-//			{
-//				flash_status_operation = FLASH_STATUS_OPERATION_SAVE_VERIFY;
-//			}
-//			else
-//			{	
-//				FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());
-//				flash_vectors_errors ++;
-//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//			}
-//		}
-//		if(FLASH_Write_Is_Error())
-//		{
-//			FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());
-//			flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WAIT;		
-//		}
-//	}
-//	else
-//		if(flash_status_operation == FLASH_STATUS_OPERATION_SAVE_VERIFY)
-//		{
-//			if(FLASH_Verify_Is_Ready()) 
-//			{
-//				FRAM_Memory_Current_Vector_Adress_Set(FRAM_Memory_Current_Adress_Get());
-//				FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());	
-//				flash_vectors_saved ++;
-//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//			}
-//			if(FLASH_Verify_Is_Error())
-//			{
-//				FRAM_Memory_Current_Adress_Set(FLASH_Current_Adress_Get());
-//				flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WAIT;		
-//			}
-//		}
-//
-//		if(flash_status_operation == FLASH_STATUS_OPERATION_SAVE_WAIT)
-//		{
-//			if(flash_save_repeat_counter <= 1)	// певичный, повтор по сл.адресу
-//			{
-//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//				u64 adr = FRAM_Memory_Current_Adress_Get();
-//				if(FLASH_Write(&adr, flash_save_buffer, flash_save_size))
-//				{
-//					FRAM_Memory_Current_Adress_Set(adr);
-//					flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WRITE;		
-//				} 
-//				else
-//				{
-//					flash_vectors_errors ++;
-//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//				}
-//			}
-//			else
-//				if(flash_save_repeat_counter <= flash_save_repeat)
-//				{
-//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//					u64 adr = FRAM_Memory_Current_Adress_Get();
-//					if(FLASH_Write_Next(&adr, flash_save_buffer, flash_save_size))
-//					{
-//						FRAM_Memory_Current_Adress_Set(adr);
-//						flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WRITE;		
-//					} 
-//					else
-//					{
-//						flash_vectors_errors ++;
-//						flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//					}
-//				}
-//				else
-//				{
-//					flash_vectors_errors ++;
-//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//				}
-//				flash_save_repeat_counter ++;
-//		}	
-//		if(FRAM_Memory_Start_Adress_Get() != -1) 	//check full size
-//		{
-//			u64 current_adress_new = FRAM_Memory_Current_Adress_Get();
-//			if(current_adress_old != current_adress_new) // чтобы не считать за зря
-//			{
-//				i64 size_old = current_adress_old - FRAM_Memory_Start_Adress_Get();
-//				if(size_old < 0) size_old += FLASH_Full_Size_Get();
-//				i64 size_new = current_adress_new - FRAM_Memory_Start_Adress_Get();
-//				if(size_new < 0) size_new += FLASH_Full_Size_Get();
-//				if(size_new < size_old) FRAM_Memory_Start_Adress_Set(-1);
-//			}
-//		}
-//
-//		// операция чтения вектора
-//		if(flash_status_operation == FLASH_STATUS_OPERATION_READ_HEADER)
-//		{
-//			if(FLASH_Read_Is_Ready()) 
-//			{
-//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//				u16 size_vector;
-//				if(Vector_Check_Header(flash_read_buffer, &size_vector))
-//				{
-//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;
-//					
-//					if((size_vector <= FLASH_READ_BUFFER_SIZE) && (FLASH_Read(&flash_read_vector_adress, flash_read_buffer, size_vector)))
-//					{
-//						*flash_read_vector_size_p = size_vector;
-//						flash_status_operation = FLASH_STATUS_OPERATION_READ_DATA;		
-//					}      	
-//					else
-//					{
-//						*flash_read_vector_size_p = 0;
-//						*flash_read_vector_ready_p = true;
-//						flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//					}
-//				}
-//				else
-//				{	
-//					*flash_read_vector_size_p = 0;
-//					*flash_read_vector_ready_p = true;
-//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//				}
-//			}
-//			if(FLASH_Read_Is_Error())
-//			{
-//				*flash_read_vector_size_p = 0;
-//				*flash_read_vector_ready_p = true;
-//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//			}
-//		}
-//		else if(flash_status_operation == FLASH_STATUS_OPERATION_READ_DATA)
-//		{
-//			if(FLASH_Read_Is_Ready()) 
-//			{
-//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//				if(Vector_Check_Data(flash_read_buffer))
-//				{
-//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;
-//					*flash_read_vector_ready_p = true;
-//				}
-//				else
-//				{	
-//					*flash_read_vector_size_p = 0;
-//					*flash_read_vector_ready_p = true;
-//					flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//				}
-//			}
-//			if(FLASH_Read_Is_Error())
-//			{
-//				*flash_read_vector_size_p = 0;
-//				*flash_read_vector_ready_p = true;
-//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//			}
-//		}
-//
-//		if(flash_status_operation == FLASH_STATUS_OPERATION_READ_WAIT)
-//		{
-//			flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//			if(FLASH_Read(&flash_read_vector_adress, flash_read_buffer, sizeof(vector_header_type)))
-//			{
-//				*flash_read_vector_size_p = 0;
-//				*flash_read_vector_ready_p = false;
-//				flash_status_operation = FLASH_STATUS_OPERATION_READ_HEADER;		
-//			} 
-//			else
-//			{
-//				*flash_read_vector_size_p = 0;
-//				*flash_read_vector_ready_p = true;
-//				flash_status_operation = FLASH_STATUS_OPERATION_WAIT;		
-//			}
-//		}	
-//}
+void FLASH_Update()
+{
+	static byte i = 0;
+
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( NAND_Idle();	);
+		CALL( UpdateCom();	);
+		CALL( SaveVars();	);
+	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

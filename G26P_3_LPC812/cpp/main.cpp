@@ -173,6 +173,15 @@ int main()
 		//	HW::GPIO->CLR0 = 1<<7;
 		//};
 
+		//if (tm.Check(200))
+		//{
+		//	WaitFireSync(i++);
+
+		//	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
+
+		//	if (i > 2) { i = 0; };
+		//};
+
 		UpdateHardware();
 		UpdateCom();
 

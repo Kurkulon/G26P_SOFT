@@ -179,39 +179,63 @@ static void UpdateCharge()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void FireM()
+static void InitFireM()
 {
+	using namespace HW;
+
+	SCT->MATCH_L[0] = 0; 
+	SCT->MATCH_L[1] = 25*1;
+	SCT->MATCH_L[2] = 25*21; //335
+	SCT->MATCH_L[3] = 25*22; //345
+	SCT->MATCH_L[4] = 0;
+
 	HW::SWM->CTOUT_0 = 7;
 	HW::SWM->CTOUT_1 = -1;
 
-	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
+//	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 
 	charge = true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void FireXX()
+static void InitFireXX()
 {
+	using namespace HW;
+
+	SCT->MATCH_L[0] = 0; 
+	SCT->MATCH_L[1] = 25*10;
+	SCT->MATCH_L[2] = 25*250; //335
+	SCT->MATCH_L[3] = 25*260; //345
+	SCT->MATCH_L[4] = 0;
+
 	HW::SWM->CTOUT_0 = 17;
 	HW::SWM->CTOUT_1 = 13;
 
-	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
+//	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void FireYY()
+static void InitFireYY()
 {
+	using namespace HW;
+
+	SCT->MATCH_L[0] = 0; 
+	SCT->MATCH_L[1] = 25*10;
+	SCT->MATCH_L[2] = 25*250; //335
+	SCT->MATCH_L[3] = 25*260; //345
+	SCT->MATCH_L[4] = 0;
+
 	HW::SWM->CTOUT_0 = 4;
 	HW::SWM->CTOUT_1 = 12;
 
-	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
+	//W::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void(*FireMode)() = FireXX;
+//void(*FireMode)() = FireXX;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -234,12 +258,9 @@ void WaitFireSync(byte t)
 
 	switch(t)
 	{
-		case 0:	HW::SWM->CTOUT_0 = 17;	HW::SWM->CTOUT_1 = 13;	break;
-		case 1: HW::SWM->CTOUT_0 = 4;	HW::SWM->CTOUT_1 = 12;	break;
-		case 2: HW::SWM->CTOUT_0 = 7;	HW::SWM->CTOUT_1 = -1;	break;
-		//case 0: FireMode = FireXX; break;
-		//case 1: FireMode = FireYY; break;
-		//case 2: FireMode = FireM;  break;
+		case 0: InitFireXX(); break;
+		case 1: InitFireYY(); break;
+		case 2: InitFireM();  break;
 	};
 
 	syncActive = true;

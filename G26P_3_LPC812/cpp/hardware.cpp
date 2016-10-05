@@ -187,7 +187,7 @@ static void InitFireM()
 	SCT->MATCH_L[1] = 25*1;
 	SCT->MATCH_L[2] = 25*21; //335
 	SCT->MATCH_L[3] = 25*22; //345
-	SCT->MATCH_L[4] = 0;
+	//SCT->MATCH_L[4] = 0;
 
 	HW::SWM->CTOUT_0 = 7;
 	HW::SWM->CTOUT_1 = -1;
@@ -207,7 +207,7 @@ static void InitFireXX()
 	SCT->MATCH_L[1] = 25*10;
 	SCT->MATCH_L[2] = 25*250; //335
 	SCT->MATCH_L[3] = 25*260; //345
-	SCT->MATCH_L[4] = 0;
+	//SCT->MATCH_L[4] = 0;
 
 	HW::SWM->CTOUT_0 = 17;
 	HW::SWM->CTOUT_1 = 13;
@@ -225,7 +225,7 @@ static void InitFireYY()
 	SCT->MATCH_L[1] = 25*10;
 	SCT->MATCH_L[2] = 25*250; //335
 	SCT->MATCH_L[3] = 25*260; //345
-	SCT->MATCH_L[4] = 0;
+	//SCT->MATCH_L[4] = 0;
 
 	HW::SWM->CTOUT_0 = 4;
 	HW::SWM->CTOUT_1 = 12;
@@ -243,7 +243,7 @@ static __irq void SyncFireHandler()
 {
 //	FireMode();
 
-	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
+	HW::SCT->CTRL_L = (1<<3);//(HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 
 	HW::PIN_INT->IST = 1;
 	HW::PIN_INT->CIENF = 1;
@@ -290,7 +290,7 @@ static void InitFire()
 	SCT->MATCH_L[1] = 25*10;
 	SCT->MATCH_L[2] = 25*250; //335
 	SCT->MATCH_L[3] = 25*260; //345
-	SCT->MATCH_L[4] = 0;
+//	SCT->MATCH_L[4] = 0;
 
 	SCT->OUT[0].SET = 0x0002;
 	SCT->OUT[0].CLR = 0x0005;
@@ -322,7 +322,7 @@ static void InitFire()
 
 	SCT->START_L = 0;
 	SCT->STOP_L = 1<<3;
-	SCT->HALT_L = 0;
+	SCT->HALT_L = 1<<3;
 
 	SCT->CONFIG = 1<<7; 
 

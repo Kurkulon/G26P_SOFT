@@ -391,7 +391,7 @@ int main()
 {
 	InitHardware();
 
-	__breakpoint(0);
+//	__breakpoint(0);
 
 	InitEMAC();
 

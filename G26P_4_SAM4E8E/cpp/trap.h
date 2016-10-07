@@ -2,7 +2,7 @@
 #define MEMORY_AT91SAM7X256_TRAP_H
 
 #include "rtc.h"
-#include "power.h"
+//#include "power.h"
 #include "trap_def.h"
 
 

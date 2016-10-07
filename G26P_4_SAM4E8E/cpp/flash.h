@@ -141,7 +141,7 @@ extern void		FreeFlashReadBuffer(FLRB* b);
 extern bool		RequestFlashRead(FLRB* b);
 extern bool		RequestFlashWrite(FLWB* b);
 
-//extern bool NAND_Idle();
+extern void NAND_Idle();
 extern void NAND_FullErase();
 //extern void NAND_NextSession();
 

@@ -186,7 +186,7 @@
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>Read::rd,0x10</ItemText>
+          <ItemText>Read::rd,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
@@ -278,12 +278,22 @@
           <WinNumber>1</WinNumber>
           <ItemText>nvv</ItemText>
         </Ww>
+        <Ww>
+          <count>23</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>Write::rcvVec</ItemText>
+        </Ww>
+        <Ww>
+          <count>24</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>vecCount</ItemText>
+        </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>si</ItemText>
+          <ItemText>0x2000088</ItemText>
         </Mm>
       </MemoryWindow1>
       <Tracepoint>

@@ -1,6 +1,6 @@
 //#include "common.h"
 #include "flash.h"
-#include "fram.h"
+//#include "fram.h"
 #include "vector.h"
 #include "core.h"
 #include "list.h"
@@ -72,7 +72,21 @@ static bool writeFlashEnabled = false;
 static bool flashFull = false;
 static bool flashEmpty = false;
 
+//__packed struct SI
+//{
+//	u16			session;
+//	i64			size; //если 0 то сессия немного порченная
+//	RTC_type	start_rtc; //если 0 то сессия немного порченная
+//	RTC_type	stop_rtc;  
+//	FLADR		start_adress; 
+//	FLADR		last_adress; 
+//	byte		flags;
+////	u16			crc;
+//};	
+
 static SessionInfo lastSessionInfo;
+
+//static u32 vecCount[8] = {0};
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -439,6 +453,9 @@ static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
 
 //	Req &req = *((Req*)vd.data);
 
+	//byte n = vd.data[0] & 7;
+
+	//vecCount[n] += 1;
 
 	if (!RequestFlashWrite(fwb))
 	{
@@ -688,6 +705,16 @@ bool RequestFlashRead(FLRB* b)
 		b->len = 0;
 
 		readFlBuf.Add(b);
+
+		//b->ready = true;
+		//
+		//if (b->vecStart)
+		//{
+		//	b->hdr.crc = 0;
+		//	b->hdr.dataLen = 4112;
+		//};
+
+		//b->len = b->maxLen;
 
 		return true;
 	}
@@ -3154,7 +3181,7 @@ bool UpdateSendSession()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool NAND_Idle()
+void NAND_Idle()
 {
 //	register u32 t;
 
@@ -3281,8 +3308,6 @@ static bool NAND_Idle()
 
 			break;
 	};
-
-	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3883,7 +3908,6 @@ void FLASH_Update()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( NAND_Idle();	);
 		CALL( UpdateCom();	);
 		CALL( SaveVars();	);
 	};

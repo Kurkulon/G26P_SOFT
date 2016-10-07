@@ -7,7 +7,7 @@
 #include "flash.h"
 #include "vector.h"
 #include "list.h"
-#include "fram.h"
+//#include "fram.h"
 
 #pragma diag_suppress 546,550,177
 
@@ -375,9 +375,10 @@ static void UpdateMisc()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
+		CALL( UpdateEMAC();		);
 		CALL( UpdateTraps();	);
-		CALL( FLASH_Update();	);
 		CALL( UpdateMan();		);
+		CALL( FLASH_Update();	);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -418,20 +419,23 @@ int main()
 	{
 		HW::PIOB->SODR = 1<<13;
 
-		static byte i = 0;
+		NAND_Idle();
+		UpdateMisc();		
 
-		#define CALL(p) case (__LINE__-S): p; break;
+		//static byte i = 0;
 
-		enum C { S = (__LINE__+3) };
-		switch(i++)
-		{
-			CALL( UpdateEMAC();		);
-			CALL( UpdateMisc();		);
-		};
+		//#define CALL(p) case (__LINE__-S): p; break;
 
-		i = (i > (__LINE__-S-3)) ? 0 : i;
+		//enum C { S = (__LINE__+3) };
+		//switch(i++)
+		//{
+		//	CALL( UpdateEMAC();		);
+		//	CALL( UpdateMisc();		);
+		//};
 
-		#undef CALL
+		//i = (i > (__LINE__-S-3)) ? 0 : i;
+
+		//#undef CALL
 
 	
 		HW::PIOB->CODR = 1<<13;

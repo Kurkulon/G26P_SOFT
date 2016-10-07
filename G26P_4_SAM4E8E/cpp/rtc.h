@@ -18,7 +18,7 @@
 //extern void RTC_Idle();
 //extern RTC_type RTC_Get();
 //extern bool RTC_Check(RTC_type d_t);
-inline u16 RTC_Get_Millisecond() { return GetMillisecondsLow(); }
+//inline u16 RTC_Get_Millisecond() { return GetMillisecondsLow(); }
 //inline void RTC_Set(const RTC &x) { SetTime(x); }
 //extern short RTC_Get_Temperature();
 

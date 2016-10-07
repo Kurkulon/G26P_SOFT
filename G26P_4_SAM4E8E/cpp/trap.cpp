@@ -5,13 +5,13 @@
 #include "common.h"
 #include "trap.h"
 #include "main.h"
-#include "power.h"
-#include "fram.h"
+//#include "power.h"
+//#include "fram.h"
 #include "flash.h"
-#include "sensors.h"
+//#include "sensors.h"
 #include "emac.h"
-#include "mode_online.h"
-#include "mode_ethernet.h"
+//#include "mode_online.h"
+//#include "mode_ethernet.h"
 #include "bootloader.h"
 
 #include "trap_def.h"
@@ -413,27 +413,27 @@ static bool TRAP_MEMORY_SendNullSession()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool TRAP_MEMORY_SendVector(u16 session, u16 device, RTC_type rtc, byte *data, u16 size, byte flags) 
-{
-	 // для скорости хорошо бы просто указать где лежит вектор, да тогда при прикреплении эзернет заголовка попортится сам вектор, а он нужен в дальнейшем, потому тупо копируем его
-	if(TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_vector_type) + size > sizeof(TrapTxDataBuffer)) return false;
-	TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
-	TRAP_command_type c;
-	c.command = TRAP_MEMORY_COMMAND_VECTOR;
-	COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
-	TRAP_MEMORY_vector_type v;	
-	v.session = session;
-	v.device = device;
-	v.rtc = rtc;
-	v.flags = flags;
-	memmove((char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), (char *)(&v.session), sizeof(TRAP_MEMORY_vector_type));
-	memmove((char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_vector_type), (char *)data, size);
-	EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_vector_type) + size);
-
-	if (__trace) { TRAP_TRACE_PrintString(__func__); };
-
-	return true;
-}
+//bool TRAP_MEMORY_SendVector(u16 session, u16 device, RTC_type rtc, byte *data, u16 size, byte flags) 
+//{
+//	 // для скорости хорошо бы просто указать где лежит вектор, да тогда при прикреплении эзернет заголовка попортится сам вектор, а он нужен в дальнейшем, потому тупо копируем его
+//	if(TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_vector_type) + size > sizeof(TrapTxDataBuffer)) return false;
+//	TRAP_MakePacketHeaders((char *)TrapTxDataBuffer, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
+//	TRAP_command_type c;
+//	c.command = TRAP_MEMORY_COMMAND_VECTOR;
+//	COPY((char *)(&c.command), (char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN, sizeof(TRAP_command_type));
+//	TRAP_MEMORY_vector_type v;	
+//	v.session = session;
+//	v.device = device;
+//	v.rtc = rtc;
+//	v.flags = flags;
+//	memmove((char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type), (char *)(&v.session), sizeof(TRAP_MEMORY_vector_type));
+//	memmove((char *)(TrapTxDataBuffer) + TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_vector_type), (char *)data, size);
+//	EMAC_SendData((char *)TrapTxDataBuffer, TRAP_TX_HEADERS_LEN + sizeof(TRAP_command_type) + sizeof(TRAP_MEMORY_vector_type) + size);
+//
+//	if (__trace) { TRAP_TRACE_PrintString(__func__); };
+//
+//	return true;
+//}
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -742,16 +742,16 @@ static void MakePacketHeaders(TrapHdr *p, bool need_ask, bool is_ask, char devic
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void TRAP_MakePacketHeaders(char *data, bool need_ask, bool is_ask, char device)
-{
-	TRAP_TX_PACKET_type p;
-	p.counter = TrapTxCounter++;
-	p.errors = (u16)TrapRxLost;
-	p.version = TRAP_PACKET_VERSION;
-	p.status = ((is_ask&0x1)<<2) | ((need_ask&0x1)<<3);
-	p.device = device;
-        COPY((char *)(&p.counter), (char *)data, sizeof(TRAP_TX_PACKET_type));
-}
+//static void TRAP_MakePacketHeaders(char *data, bool need_ask, bool is_ask, char device)
+//{
+//	TRAP_TX_PACKET_type p;
+//	p.counter = TrapTxCounter++;
+//	p.errors = (u16)TrapRxLost;
+//	p.version = TRAP_PACKET_VERSION;
+//	p.status = ((is_ask&0x1)<<2) | ((need_ask&0x1)<<3);
+//	p.device = device;
+//        COPY((char *)(&p.counter), (char *)data, sizeof(TRAP_TX_PACKET_type));
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

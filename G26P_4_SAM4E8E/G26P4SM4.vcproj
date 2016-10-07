@@ -84,15 +84,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\cpp\adc.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\bootloader.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ds32c35.cpp"
 				>
 			</File>
 			<File
@@ -104,15 +96,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\fram.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\hardware.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\k9k8g08U.cpp"
 				>
 			</File>
 			<File
@@ -120,39 +104,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\mode_autonom.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\mode_ethernet.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\mode_online.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\nand.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\power.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\rtc.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\sensors.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\system_SAM4E.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\telemetry.cpp"
 				>
 			</File>
 			<File
@@ -161,10 +113,6 @@
 			</File>
 			<File
 				RelativePath=".\cpp\twi.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\vector.cpp"
 				>
 			</File>
 			<File
@@ -178,19 +126,11 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\cpp\adc.h"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\bootloader.h"
 				>
 			</File>
 			<File
 				RelativePath=".\cpp\common.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ds32c35.h"
 				>
 			</File>
 			<File
@@ -206,19 +146,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\fram.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\gmac.h"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\hardware.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\k9k8g08U.h"
 				>
 			</File>
 			<File
@@ -230,35 +158,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\mode_autonom.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\mode_ethernet.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\mode_online.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\nand.h"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\power.h"
 				>
 			</File>
 			<File
 				RelativePath=".\cpp\rtc.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\sensors.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\telemetry.h"
 				>
 			</File>
 			<File

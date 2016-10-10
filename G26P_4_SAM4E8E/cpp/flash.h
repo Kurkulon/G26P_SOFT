@@ -145,6 +145,8 @@ extern void NAND_Idle();
 extern void NAND_FullErase();
 //extern void NAND_NextSession();
 
+extern void StartSendSession();
+
 extern const SessionInfo* GetLastSessionInfo();
 
 inline void SaveParams() { extern byte savesCount; savesCount = 1; }

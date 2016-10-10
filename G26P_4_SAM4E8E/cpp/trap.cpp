@@ -611,8 +611,10 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
 
-						TRAP_MEMORY_SendLastSession(GetLastSessionInfo());
-						TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY);
+						StartSendSession();
+
+						//TRAP_MEMORY_SendLastSession(GetLastSessionInfo());
+						//TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY);
 
 //						TRAP_MEMORY_SendNullSession();
 

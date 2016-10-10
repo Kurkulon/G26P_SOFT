@@ -97,6 +97,8 @@ __packed struct NVV // NonVolatileVars
 	SessionInfo si;
 
 	u16 index;
+
+	u32 prevFilePage;
 };
 
 
@@ -119,9 +121,14 @@ static byte buf[sizeof(nvv)*2+4];
 
 byte savesCount = 0;
 
+byte savesSessionsCount = 0;
+
 static TWI	twi;
 
 static void SaveVars();
+
+static bool loadVarsOk = false;
+static bool loadSessionsOk = false;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -239,6 +246,8 @@ struct FLADR
 	void	SetRawBlock(u32 b) { raw = (u64)(b & NAND_RAWBLOCK_MASK) << (NAND_COL_BITS+NAND_PAGE_BITS); };
 
 	u64		GetRawAdr()	{ return raw & NAND_RAWADR_MASK; };
+	void	SetRawAdr(u64 a) { raw  = a & NAND_RAWADR_MASK; };
+
 	void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; }
 	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS);}
 	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS;col = 0;	}
@@ -1228,18 +1237,18 @@ static bool Erase::Update()
 																																
 					er.NextBlock();	
 
-					if (er.GetRawBlock() == 0)
-					{
-						flashFull = true;
+					//if (er.GetRawBlock() == 0)
+					//{
+					//	flashFull = true;
 
-						state = WAIT;		
+					//	state = WAIT;		
 
-						return false;
-					}
-					else
-					{
+					//	return false;
+					//}
+					//else
+					//{
 						state = ERASE_START; 
-					};
+					//};
 				}																												
 				else																											
 				{																												
@@ -1289,18 +1298,18 @@ static bool Erase::Update()
 			{																													
 				er.NextBlock();	
 
-				if (er.GetRawBlock() == 0)
-				{
-					flashFull = true;
+				//if (er.GetRawBlock() == 0)
+				//{
+				//	flashFull = true;
 
-					state = WAIT;		
+				//	state = WAIT;		
 
-					return false;
-				}
-				else
-				{
+				//	return false;
+				//}
+				//else
+				//{
 					state = ERASE_START; 
-				};
+				//};
 			};
 
 			break;
@@ -1344,9 +1353,38 @@ namespace Write
 	static void CreateNextFile();
 	static void	Vector_Make(VecData *vd, u16 size);
 	static void Finish();
+	static void Init();
 	static void Init(u32 bl, u32 file, u32 prfile);
 
+	static void SaveSession();
 };
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Write::Init()
+{
+	wr.SetRawAdr(nvv.si.last_adress+nvv.si.size);
+
+	Write::spare.file = nvv.si.session;  
+
+	Write::spare.prev = nvv.prevFilePage;		
+
+	Write::spare.start = nvv.si.last_adress;		
+	Write::spare.fpn = 0;	
+
+	Write::spare.vectorCount = 0;
+
+	Write::spare.vecFstOff = -1;
+	Write::spare.vecFstLen = 0;
+
+	Write::spare.vecLstOff = -1;
+	Write::spare.vecLstLen = 0;
+
+	Write::spare.fbb = 0;		
+	Write::spare.fbp = 0;		
+
+	Write::spare.chipMask = nandSize.mask;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1377,6 +1415,30 @@ static void Write::Init(u32 bl, u32 file, u32 prfile)
 	Write::spare.fbp = 0;		
 
 	Write::spare.chipMask = nandSize.mask;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Write::SaveSession()
+{
+	nvv.index = (nvv.index+1) & 127;
+
+	SessionInfo &s = nvv.si;
+	SessionInfo &d = nvsi[nvv.index].si;
+
+	d = nvv.si;
+
+	nvsi[nvv.index].crc = GetCRC16(&d, sizeof(d));
+
+	s.session = spare.file;
+	s.last_adress = wr.GetRawAdr();
+	s.size = 0;
+	GetTime(&s.start_rtc);
+	s.stop_rtc = s.start_rtc;
+	s.flags = 0;
+
+	SaveParams();
+	savesSessionsCount = 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1622,16 +1684,21 @@ static bool Write::Update()
 				{
 					wr.NextPage();
 
-					flashFull = wr.overflow != 0;  // Флэха не резиновая
+//					flashFull = wr.overflow != 0;  // Флэха не резиновая
 
-					if (wr_count == 0 || flashFull)
+					if (wr_count == 0/* || flashFull*/)
 					{
 						Finish();
 
-						if (wr.GetRawPage() >= 0xC0000)
+						if (!createFile && (nvv.si.size >= 1024*1024*1536))
 						{
-							flashFull = true;
+							NAND_NextSession();
 						};
+
+						//if (wr.GetRawPage() >= 0xC0000)
+						//{
+						//	flashFull = true;
+						//};
 
 						//if (!createFile && spare.fpn >= 0xC0000)
 						//{
@@ -1685,14 +1752,14 @@ static bool Write::Update()
 
 				wr.NextPage();		
 
-				if (wr.overflow != 0)
-				{
-					flashFull = true;
+				//if (wr.overflow != 0)
+				//{
+				//	flashFull = true;
 
-					Finish();
+				//	Finish();
 
-					state = WAIT;
-				};
+				//	state = WAIT;
+				//};
 			};																													
 
 			break;
@@ -1710,13 +1777,13 @@ static bool Write::Update()
 					
 			if (!Erase::Update())
 			{
-				if (flashFull)
-				{
-					Finish();
+				//if (flashFull)
+				//{
+				//	Finish();
 
-					state = WAIT;
-				}
-				else
+				//	state = WAIT;
+				//}
+				//else
 				{
 					wr.block = er.block;
 					wr.chip = er.chip;
@@ -1759,10 +1826,10 @@ static bool Write::Update()
 			{
 				wr.NextBlock();
 
-				if (wr.overflow != 0)
-				{
-					flashFull = true;
-				};
+				//if (wr.overflow != 0)
+				//{
+				//	flashFull = true;
+				//};
 			};
 
 			spare.start = wr.GetRawPage();		
@@ -1775,6 +1842,8 @@ static bool Write::Update()
 			spare.fbp = 0;		
 
 			spare.chipMask = nandSize.mask;	
+
+			SaveSession();
 
 			state = WAIT;
 
@@ -2611,6 +2680,18 @@ static void Test2()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void InitSessions()
+{
+	Write::Init();
+
+	if (nvv.si.size > 0)
+	{
+		NAND_NextSession();
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void SimpleBuildFileTable()
 {
 	FLADR rd(0, 0, 0, 0);
@@ -2979,27 +3060,23 @@ bool UpdateSendSession()
 
 	static RTC srtc, ertc;
 
+	static u16 ind = 0;
+	static u32 prgrss = 0;
+	static u16 count = 0;
+
+	SessionInfo &s = nvsi[ind].si;
 
 	switch (i)
 	{
-		case WAIT:
+		case 0:
 
 			if (cmdSendSession)
 			{
-				cmdSendSession = false;
+				ind = nvv.index;
+				prgrss = 0;
+				count = 128;
 
-				if (flashEmpty)
-				{
-					i = READ_END;
-				}
-				else
-				{
-					re.SetRawBlock(lastSessionBlock);
-
-					ReadSpareStart(&spare, &re);
-
-					i = READ_START;
-				};
+				i++;
 			}
 			else
 			{
@@ -3008,87 +3085,44 @@ bool UpdateSendSession()
 
 			break;
 
-		case READ_START:
+		case 1:
 
-			if (!ReadSpareUpdate())
+			if (TRAP_MEMORY_SendSession(s.session, s.size, s.last_adress, s.start_rtc, s.stop_rtc, s.flags))
 			{
-				if (spare.crc == 0)
+				ind = (ind-1)&127;
+
+				prgrss += 0x100000000/128;
+
+				count--;
+
+				i++;
+			};
+
+			break;
+
+		case 2:
+
+			if (TRAP_MEMORY_SendStatus(prgrss, FLASH_STATUS_READ_SESSION_IDLE))
+			{
+				if (s.size > 0 && count > 0)
 				{
-					sid = spare.file;
-					rs.SetRawPage(spare.start);
-
-					flrb.vecStart = true;
-					flrb.maxLen = 0;
-					flrb.data = 0;
-
-					Read::Start(&flrb, &re);
-
-					i = READ_1;
+					i = 1;
 				}
 				else
 				{
-					__breakpoint(0);
+					i++;
 				};
 			};
 
 			break;
 
-		case READ_1:
-
-			if (!Read::Update())
-			{
-				if (flrb.hdr.crc == 0)
-				{
-					ertc = flrb.hdr.rtc;
-				}
-				else
-				{
-					ertc.date = 0;
-					ertc.time = 0;
-				};
-
-				flrb.vecStart = true;
-				flrb.maxLen = 0;
-				flrb.data = 0;
-
-				Read::Start(&flrb, &rs);
-
-				i = READ_2;
-			};
-
-			break;
-
-		case READ_2:
-
-			if (!Read::Update())
-			{
-				if (flrb.hdr.crc == 0)
-				{
-					srtc = flrb.hdr.rtc;
-				}
-				else
-				{
-					srtc.date = 0;
-					srtc.time = 0;
-				};
-
-				TRAP_MEMORY_SendSession(sid, 0, rs.GetRawAdr(), srtc, ertc, 0);
-
-				re.SetRawPage(lastSessionBlock);
-
-				ReadSpareStart(&spare, &re);
-
-				i = READ_2;
-			};
-
-
-			break;
-
-		case READ_END:
+		case 3:
 
 			if (TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY))
 			{
-				i = WAIT;
+				cmdSendSession = false;
+
+				i = 0;
 			};
 
 			break;
@@ -3599,8 +3633,8 @@ bool FLASH_UnErase_Full()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector)
-{
+//bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector)
+//{
 	//if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT)
 	//{
 	//	return false;
@@ -3612,8 +3646,8 @@ bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector)
 	//*flash_read_vector_ready_p = false;
 	//*vector = flash_read_buffer;
 	//flash_status_operation = FLASH_STATUS_OPERATION_READ_WAIT;
-	return true;
-}
+//	return true;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // проверяет по указанному адресу
@@ -3689,7 +3723,7 @@ void FLASH_WriteDisable()
 {
 	if (writeFlashEnabled)
 	{
-		Write::CreateNextFile();
+		NAND_NextSession();
 	};
 
 	writeFlashEnabled = false;
@@ -3738,20 +3772,23 @@ static void LoadVars()
 		while (twi.Update());
 	};
 
-	bool c = false;
+//	bool c = false;
+
+	loadVarsOk = false;
 
 	for (byte i = 0; i < 2; i++)
 	{
 		p.CRC.w = 0xFFFF;
 		p.ReadArrayB(&nvv, sizeof(nvv)+2);
 
-		if (p.CRC.w == 0) { c = true; break; };
+		if (p.CRC.w == 0) { loadVarsOk = true; break; };
 	};
 
-	if (!c)
+	if (!loadVarsOk)
 	{
 		nvv.numDevice = 0;
 		nvv.index = 0;
+		nvv.prevFilePage = -1;
 
 		nvv.si.session = 0;
 		nvv.si.size = 0;
@@ -3768,6 +3805,8 @@ static void LoadVars()
 
 static void SaveVars()
 {
+	const u16 sa = 0x100;
+
 	PointerCRC p(buf);
 
 	static DSCTWI dsc;
@@ -3779,10 +3818,15 @@ static void SaveVars()
 	{
 		case 0:
 
-			if (/*tm.Check(MS2RT(1000)) ||*/ savesCount > 0)
+			if (savesCount > 0)
 			{
 				savesCount--;
 				i++;
+			}
+			else if (savesSessionsCount > 0)
+			{
+				savesSessionsCount--;
+				i = 3;
 			};
 
 			break;
@@ -3814,6 +3858,26 @@ static void SaveVars()
 			};
 
 			break;
+
+		case 3:
+
+			NVSI &si = nvsi[nvv.index];
+
+			u32 adr = sa+sizeof(si)*nvv.index;
+
+			dsc.MMR = 0x500200;
+			dsc.IADR = adr;
+			dsc.CWGR = 0x7575;
+			dsc.data = buf;
+			dsc.len = sizeof(si);
+
+			p.CRC.w = 0xFFFF;
+			p.WriteArrayB(&si, sizeof(si.si));
+			p.WriteW(p.CRC.w);
+
+			i = (twi.Write(&dsc)) ? 2 : 0;
+
+			break;
 	};
 }
 
@@ -3826,6 +3890,8 @@ static void LoadSessions()
 	static DSCTWI dsc;
 
 	const u16 sa = 0x100;
+
+	loadSessionsOk = true;
 
 	for (u16 i = 0; i < ArraySize(nvsi); i++)
 	{
@@ -3846,14 +3912,16 @@ static void LoadSessions()
 
 		if (GetCRC16(&si, sizeof(si)) != 0)
 		{
-			si.si.session = 1;
-			si.si.size = 2;
-			si.si.last_adress = 3;
-			si.si.flags = 4;
-			si.si.start_rtc.date = 5;
-			si.si.start_rtc.time = 6;
-			si.si.stop_rtc.date = 7;
-			si.si.stop_rtc.time = 8;
+			loadSessionsOk = false;
+
+			si.si.session = 0;
+			si.si.size = 0;
+			si.si.last_adress = 0;
+			si.si.flags = 0;
+			si.si.start_rtc.date = 0;
+			si.si.start_rtc.time = 0;
+			si.si.stop_rtc.date = 0;
+			si.si.stop_rtc.time = 0;
 			si.crc = GetCRC16(&si, sizeof(si.si));
 
 			dsc.MMR = 0x500200;
@@ -3890,7 +3958,9 @@ void FLASH_Init()
 //	cmdFullErase = true;
 //	Test2();
  
-	SimpleBuildFileTable();
+	InitSessions();
+
+//	SimpleBuildFileTable();
 
 	//static SessionInfo si;
 

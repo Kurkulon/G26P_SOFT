@@ -76,9 +76,12 @@ inline void ManZero()		{ HW::PIOB->ODSR = 0x06; __nop(); __nop(); __nop(); HW::P
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static byte invertManRxd = 0;
+
+
 #define BOUD2CLK(x) ((u32)((MCK/2.0)/x+0.5))
 #define ManTmr HW::TC0->C1
-#define ManRxd ((HW::PIOE->PDSR>>3)&1)
+#define ManRxd (((HW::PIOE->PDSR>>3)^invertManRxd)&1)
 
 static const u16 manboud[4] = { BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
 
@@ -105,7 +108,7 @@ const u16 rcvPeriod = BOUD2CLK(20833);
 const u16 rcvHalfPeriod = rcvPeriod/2;
 const u16 rcvQuartPeriod = rcvPeriod/4;
 const u16 rcvSyncPulse = rcvPeriod * 1.5;
-const u16 rcvSyncPulseMin = rcvSyncPulse * 0.9;
+const u16 rcvSyncPulseMin = rcvSyncPulse * 0.8;
 const u16 rcvSyncPulseMax = rcvSyncPulse * 1.2;
 const u16 rcvSyncHalf = rcvSyncPulseMax + rcvHalfPeriod;
 const u16 rcvPeriodMin = rcvPeriod * 0.8;
@@ -319,6 +322,11 @@ static void ManRcvEnd(bool ok)
 	manRB->ready = true;
 	manRB->len = manRB->maxLen - rcvManCount;
 	ManTmr.CCR = CLKDIS;
+
+	//if (manRB->len == 0)
+	//{
+	//	invertManRxd ^= 1;
+	//};
 	
 	rcvBusy = false;
 }
@@ -394,14 +402,15 @@ static __irq void ManRcvIRQ()
 
 static __irq void WaitManCmdSync()
 {
-	
+//	static bool inv = false;
+
 	u32 t = ManTmr.CV;
 
 	switch (rcvSyncState)
 	{
 		case 0:
 
-			if (HW::PIOE->PDSR & 8)
+			if (ManRxd)
 			{
 				ManTmr.CCR = CLKEN|SWTRG;
 				rcvSyncState++;
@@ -411,17 +420,18 @@ static __irq void WaitManCmdSync()
 
 		case 1:
 
-	HW::PIOE->SODR = 1;
+			HW::PIOE->SODR = 1;
 
 			if (t < rcvSyncPulseMin || t > rcvSyncHalf)
 			{
-	HW::PIOE->SODR = 2;
+				HW::PIOE->SODR = 2;
 
 				rcvSyncState = 0;
 				ManTmr.CCR = CLKDIS|SWTRG;
 			}
 			else if (t > rcvSyncPulseMax)
 			{
+//				inv = false;
 
 				VectorTableExt[HW::PID::PIOE_I] = ManRcvSync;
 
@@ -430,7 +440,11 @@ static __irq void WaitManCmdSync()
 				ManTmr.CCR = CLKEN|SWTRG;
 				ManTmr.IER = CPCS;
 				rcvSyncState = 0;
-			};
+			}
+			//else
+			//{
+			//	invertManRxd ^= 1;
+			//};
 
 			break;
 	};
@@ -452,7 +466,7 @@ static __irq void WaitManDataSync()
 	{
 		case 0:
 
-			if (HW::PIOE->PDSR & 8)
+			if (ManRxd)
 			{
 				if (t < rcvHalfPeriod)
 				{

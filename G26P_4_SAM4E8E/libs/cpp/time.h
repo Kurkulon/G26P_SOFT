@@ -40,6 +40,7 @@ __packed struct RTC
 		u32 date;
 	};
 
+	inline void operator=(const RTC &r) { time = r.time; date = r.date; }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

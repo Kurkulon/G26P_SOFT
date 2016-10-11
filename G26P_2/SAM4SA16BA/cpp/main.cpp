@@ -49,7 +49,7 @@ static byte fireType = 0;
 
 static byte gain[8][3] = { { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 } };
 static byte sampleTime[3] = { 5, 20, 20};
-static u16 sampleLen[3] = { 512, 512, 512};
+static u16 sampleLen[3] = { 64, 64, 64};
 static u16 sampleDelay[3] = { 10, 10, 10};
 
 

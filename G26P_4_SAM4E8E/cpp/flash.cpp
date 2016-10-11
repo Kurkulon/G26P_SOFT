@@ -27,15 +27,6 @@
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define NAND_MAX_CHIP		8
-#define NAND_CHIP_MASK		7
-#define NAND_CHIP_BITS		3
-#define NAND_COL_BITS		11
-#define NAND_BLOCK_BITS		13
-#define NAND_PAGE_BITS		6
-#define NAND_RAWPAGE_MASK	((1 << (NAND_PAGE_BITS + NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
-#define NAND_RAWBLOCK_MASK	((1 << (NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
-#define NAND_RAWADR_MASK	(((u64)1 << (NAND_COL_BITS + NAND_PAGE_BITS + NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
 
 #define FLASH_SAVE_BUFFER_SIZE		8400
 #define FLASH_READ_BUFFER_SIZE		8400
@@ -211,50 +202,6 @@ static NandMemSize nandSize;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct FLADR
-{
-	union
-	{
-		struct
-		{
-			u64		col		: NAND_COL_BITS;
-			u64 	page	: NAND_PAGE_BITS;
-			u64		chip	: NAND_CHIP_BITS;
-			u64 	block	: NAND_BLOCK_BITS;
-
-			u64		overflow : (64-(NAND_COL_BITS+NAND_PAGE_BITS+NAND_CHIP_BITS+NAND_BLOCK_BITS));
-		};
-
-		u64	raw;
-	};
-
-	enum { pg = (1<<NAND_COL_BITS) };
-//	u32		rawpage;
-
-//	const NandMemSize& sz;
-
-	FLADR() : raw(0) {}
-	FLADR(u32 bl, u16 pg, u16 cl, byte ch) : block(bl), page(pg), col(cl), chip(ch) {}
-	FLADR(u32 pg) : col(0) { SetRawPage(pg); }
-
-	u32		GetRawPage() { return raw >> NAND_COL_BITS; }
-
-	void	SetRawPage(u32 p) { raw = (u64)(p & NAND_RAWPAGE_MASK) << NAND_COL_BITS; };
-
-	u32		GetRawBlock() { return raw >> (NAND_COL_BITS+NAND_PAGE_BITS); }
-
-	void	SetRawBlock(u32 b) { raw = (u64)(b & NAND_RAWBLOCK_MASK) << (NAND_COL_BITS+NAND_PAGE_BITS); };
-
-	u64		GetRawAdr()	{ return raw & NAND_RAWADR_MASK; };
-	void	SetRawAdr(u64 a) { raw  = a & NAND_RAWADR_MASK; };
-
-	void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; }
-	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS);}
-	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS;col = 0;	}
-	void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0;}
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static FLADR wr(0, 0, 0, 0);
 static FLADR er(-1, -1, -1, -1);
@@ -293,380 +240,6 @@ static byte		wrBuf[2112];
 static ComPort com1;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct Req
-{
-	byte	adr;
-	byte	func;
-	
-	__packed union
-	{
-		__packed struct  { word crc; } f1;  // Старт новой сессии
-		__packed struct  { byte n; byte chnl; byte count[4]; byte time; byte gain; byte delay; byte filtr; u16 data[500]; word crc; } f2;  // Запись вектора
-//		struct  { word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
-	};
-};
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct Rsp
-{
-	byte	adr;
-	byte	func;
-	
-	__packed union
-	{
-		__packed struct  { word crc; } f1;  // Старт новой сессии
-		__packed struct  { word crc; } f2;  // Запись вектора
-		__packed struct  { word crc; } f3;  // 
-		__packed struct  { word crc; } fFE;  // Ошибка CRC
-		__packed struct  { word crc; } fFF;  // Неправильный запрос
-	};
-};
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static Rsp rspData;
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool CreateRsp01(ComPort::WriteBuffer *wb)
-{
-	static Rsp rsp;
-
-	if (wb == 0)
-	{
-		return false;
-	};
-
-	rsp.adr = 1;
-	rsp.func = 1;
-	rsp.f1.crc = GetCRC16(&rsp, sizeof(rsp)-2);
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool CreateRsp02(ComPort::WriteBuffer *wb)
-{
-	static Rsp rsp;
-
-	if (wb == 0)
-	{
-		return false;
-	};
-
-	rsp.adr = 1;
-	rsp.func = 2;
-	rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp)-2);
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool CreateRsp03(ComPort::WriteBuffer *wb)
-{
-	static Rsp rsp;
-
-	if (wb == 0)
-	{
-		return false;
-	};
-
-	rsp.adr = 1;
-	rsp.func = 3;
-	rsp.f3.crc = GetCRC16(&rsp, sizeof(rsp)-2);
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool CreateRspErrCRC(ComPort::WriteBuffer *wb)
-{
-	static Rsp rsp;
-
-	if (wb == 0)
-	{
-		return false;
-	};
-
-	rsp.adr = 1;
-	rsp.func = 0xFE;
-	rsp.fFE.crc = GetCRC16(&rsp, sizeof(rsp)-2);
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool CreateRspErrReq(ComPort::WriteBuffer *wb)
-{
-	static Rsp rsp;
-
-	if (wb == 0)
-	{
-		return false;
-	};
-
-	rsp.adr = 1;
-	rsp.func = 0xFF;
-	rsp.fFF.crc = GetCRC16(&rsp, sizeof(rsp)-2);
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestFunc01(FLWB *fwb, ComPort::WriteBuffer *wb)
-{
-	VecData &vd = fwb->vd;
-
-	Req &req = *((Req*)vd.data);
-
-
-
-
-
-
-
-
-
-	freeFlWrBuf.Add(fwb);
-
-	return CreateRsp01(wb);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
-{
-	VecData &vd = fwb->vd;
-
-//	Req &req = *((Req*)vd.data);
-
-	//byte n = vd.data[0] & 7;
-
-	//vecCount[n] += 1;
-
-	if (!RequestFlashWrite(fwb))
-	{
-		freeFlWrBuf.Add(fwb);
-//		return false;
-	};
-
-
-	return CreateRsp02(wb);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestFunc03(FLWB *fwb, ComPort::WriteBuffer *wb)
-{
-	VecData &vd = fwb->vd;
-
-	Req &req = *((Req*)vd.data);
-
-
-
-
-
-
-	freeFlWrBuf.Add(fwb);
-
-	return CreateRsp03(wb);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
-{
-	bool result = false;
-
-	VecData &vd = fwb->vd;
-
-	Req &req = *((Req*)vd.data);
-
-	if (fwb == 0)
-	{
-//		freeReqList.Add(req);
-	}
-	else if (fwb->dataLen < 2)
-	{
-		result = CreateRspErrReq(wb);
-		
-		freeFlWrBuf.Add(fwb);
-	}
-	else
-	{
-		switch(req.func)
-		{
-			case 1: result = RequestFunc01 (fwb, wb); break;
-			case 2: result = RequestFunc02 (fwb, wb); break;
-			case 3: result = RequestFunc03 (fwb, wb); break;
-			
-			default: result = RequestFunc02 (fwb, wb);
-//			default: freeFlWrBuf.Add(fwb); result = CreateRspErrReq(wb);
-		};
-
-	};
-
-	return result;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void InitCom()
-{
-	com1.Connect(1, 6250000, 0);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void UpdateCom()
-{
-	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[512*4]; };
-
-	static ComPort::WriteBuffer wb;
-	static ComPort::ReadBuffer rb;
-
-	static byte state = 0;
-
-	static FLWB *fwb;
-	static Req *req;
-	static VecData *vd;
-
-	static u32 count = 0;
-	static u16 v = 0;
-	static byte b = 0;
-
-	//static byte buf[100];
-
-	//wb.data = buf;
-	//wb.len = sizeof(buf);
-
-	//HW::PIOA->SODR = 1<<27;
-
-	//if (!com1.Update())
-	//{
-	//	com1.Write(&wb);
-	//};
-
-
-	switch (state)
-	{
-		case 0:
-
-			fwb = freeFlWrBuf.Get();
-
-			if (fwb != 0)
-			{
-				state++;
-			};
-
-			break;
-
-		case 1:
-
-			vd = &fwb->vd;
-			req = (Req*)vd->data;
-
-			rb.data = vd->data;
-			rb.maxLen = sizeof(vd->data);
-
-//			rb.len = sizeof(*req);
-
-			//req->rw = 0xAA30 + ((b & (~7))<<1) + (b & 7);
-			//req->cnt = count++;
-			//req->gain = 7;
-			//req->st = 10;
-			//req->len = ArraySize(req->data)/4;
-			//req->delay = 0;
-
-			//if (writeFlashEnabled)
-			//{
-			//	v = 0;
-
-			//	for (u16 i = 0; i < ArraySize(req->data); i++)
-			//	{
-			//		req->data[i] = v++;
-			//	};
-			//};
-
-			com1.Read(&rb, -1, 2);
-
-			//b += 1;
-
-			//if (b >= 24) { b = 0; };
-
-			state++;
-
-			break;
-
-		case 2:
-
-			if (!com1.Update())
-			{
-				if (rb.recieved)
-				{
-					fwb->dataLen = rb.len;
-
-					if (RequestFunc(fwb, &wb))
-					{
-						state++;
-					}
-					else
-					{
-						state = 0;
-					};
-				}
-				else
-				{
-					state = 1;
-				};
-			};
-
-			break;
-
-		case 3:
-
-			if (!freeFlWrBuf.Empty())
-			{
-				com1.Write(&wb);
-
-				state++;
-			};
-
-			break;
-
-		case 4:
-			
-			if (!com1.Update())
-			{
-				state = 0;
-			};
-
-			break;
-	};
-
-}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1872,7 +1445,7 @@ namespace Read
 	static byte state;
 
 	static bool Start();
-	static bool Start(FLRB *flrb, FLADR *adr);
+//	static bool Start(FLRB *flrb, FLADR *adr);
 	static bool Update();
 	static void End() { curRdBuf->ready = true; curRdBuf = 0; state = WAIT; }
 };
@@ -1883,6 +1456,8 @@ static bool Read::Start()
 {
 	if ((curRdBuf = readFlBuf.Get()) != 0)
 	{
+		if (curRdBuf->useAdr) { rd.SetRawAdr(curRdBuf->adr); };
+
 		vecStart = curRdBuf->vecStart;
 
 		if (vecStart)
@@ -1908,36 +1483,36 @@ static bool Read::Start()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool Read::Start(FLRB *flrb, FLADR *adr)
-{
-	if (flrb != 0)
-	{
-		curRdBuf = flrb;
-
-		if (adr != 0) { rd = *adr; };
-
-		vecStart = curRdBuf->vecStart;
-
-		if (vecStart)
-		{
-			rd_data = (byte*)&curRdBuf->hdr;
-			rd_count = sizeof(curRdBuf->hdr);
-			curRdBuf->len = 0;	
-		}
-		else
-		{
-			rd_data = curRdBuf->data;
-			rd_count = curRdBuf->maxLen;
-			curRdBuf->len = 0;	
-		};
-
-		state = READ_START;
-
-		return true;
-	};
-
-	return false;
-}
+//static bool Read::Start(FLRB *flrb, FLADR *adr)
+//{
+//	if (flrb != 0)
+//	{
+//		curRdBuf = flrb;
+//
+//		if (adr != 0) { rd = *adr; };
+//
+//		vecStart = curRdBuf->vecStart;
+//
+//		if (vecStart)
+//		{
+//			rd_data = (byte*)&curRdBuf->hdr;
+//			rd_count = sizeof(curRdBuf->hdr);
+//			curRdBuf->len = 0;	
+//		}
+//		else
+//		{
+//			rd_data = curRdBuf->data;
+//			rd_count = curRdBuf->maxLen;
+//			curRdBuf->len = 0;	
+//		};
+//
+//		state = READ_START;
+//
+//		return true;
+//	};
+//
+//	return false;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1985,11 +1560,11 @@ static bool Read::Update()
 				{
 					rd.NextBlock();
 
-					if (rd.overflow != 0)
-					{
-						End();
-					}
-					else
+					//if (rd.overflow != 0)
+					//{
+					//	End();
+					//}
+					//else
 					{
 						CmdReadPage(rd.pg, rd.block, rd.page);
 
@@ -2000,11 +1575,11 @@ static bool Read::Update()
 				{
 					rd.NextPage();
 
-					if (rd.overflow != 0)
-					{
-						End();
-					}
-					else
+					//if (rd.overflow != 0)
+					//{
+					//	End();
+					//}
+					//else
 					{
 						CmdReadPage(rd.pg, rd.block, rd.page);
 
@@ -2121,11 +1696,11 @@ static bool Read::Update()
 
 					rd.NextPage();
 
-					if (rd.overflow != 0)
-					{
-						state = FIND_3;
-						break;
-					};
+					//if (rd.overflow != 0)
+					//{
+					//	state = FIND_3;
+					//	break;
+					//};
 
 					CmdReadPage(rd.pg, rd.block, rd.page);
 
@@ -2136,11 +1711,11 @@ static bool Read::Update()
 			{
 				rd.NextPage();
 
-				if (rd.overflow != 0)
-				{
-					state = FIND_3;
-					break;
-				};
+				//if (rd.overflow != 0)
+				//{
+				//	state = FIND_3;
+				//	break;
+				//};
 
 				CmdReadPage(rd.pg, rd.block, rd.page);
 
@@ -2189,11 +1764,11 @@ static bool Read::Update()
 				{
 					rd.NextBlock();
 
-					if (rd.overflow != 0)
-					{
-						state = FIND_3;
-						break;
-					};
+					//if (rd.overflow != 0)
+					//{
+					//	state = FIND_3;
+					//	break;
+					//};
 
 					CmdReadPage(rd.pg, rd.block, rd.page);
 
@@ -2203,11 +1778,11 @@ static bool Read::Update()
 				{
 					rd.NextPage();
 
-					if (rd.overflow != 0)
-					{
-						state = FIND_3;
-						break;
-					};
+					//if (rd.overflow != 0)
+					//{
+					//	state = FIND_3;
+					//	break;
+					//};
 
 					CmdReadPage(rd.pg, rd.block, rd.page);
 
@@ -2636,11 +2211,11 @@ static void Test()
 
 			rd.NextPage();
 
-			if (rd.overflow != 0)
-			{
-				__breakpoint(0);
-				break;
-			};
+			//if (rd.overflow != 0)
+			//{
+			//	__breakpoint(0);
+			//	break;
+			//};
 		};
 	};
 
@@ -2669,11 +2244,11 @@ static void Test2()
 
 		rd.NextPage();
 
-		if (rd.overflow != 0)
-		{
-			__breakpoint(0);
-			break;
-		};
+		//if (rd.overflow != 0)
+		//{
+		//	__breakpoint(0);
+		//	break;
+		//};
 	};
 
 }
@@ -3702,6 +3277,391 @@ bool FLASH_UnErase_Full()
 //	flash_save_repeat_counter = 0;
 //	return true;
 //}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct Req
+{
+	u16 rw; 
+	u32 cnt; 
+	u16 gain; 
+	u16 st; 
+	u16 len; 
+	u16 delay; 
+	u16 data[1024*4]; 
+	u16 crc;
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct Rsp
+{
+	byte	adr;
+	byte	func;
+	
+	__packed union
+	{
+		__packed struct  { word crc; } f1;  // Старт новой сессии
+		__packed struct  { word crc; } f2;  // Запись вектора
+		__packed struct  { word crc; } f3;  // 
+		__packed struct  { word crc; } fFE;  // Ошибка CRC
+		__packed struct  { word crc; } fFF;  // Неправильный запрос
+	};
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static Rsp rspData;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRsp01(ComPort::WriteBuffer *wb)
+{
+	static Rsp rsp;
+
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 1;
+	rsp.f1.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRsp02(ComPort::WriteBuffer *wb)
+{
+	static Rsp rsp;
+
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 2;
+	rsp.f2.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRsp03(ComPort::WriteBuffer *wb)
+{
+	static Rsp rsp;
+
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 3;
+	rsp.f3.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRspErrCRC(ComPort::WriteBuffer *wb)
+{
+	static Rsp rsp;
+
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 0xFE;
+	rsp.fFE.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CreateRspErrReq(ComPort::WriteBuffer *wb)
+{
+	static Rsp rsp;
+
+	if (wb == 0)
+	{
+		return false;
+	};
+
+	rsp.adr = 1;
+	rsp.func = 0xFF;
+	rsp.fFF.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp);
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//static bool RequestFunc01(FLWB *fwb, ComPort::WriteBuffer *wb)
+//{
+//	VecData &vd = fwb->vd;
+//
+//	Req &req = *((Req*)vd.data);
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//	freeFlWrBuf.Add(fwb);
+//
+//	return CreateRsp01(wb);
+//}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
+{
+	VecData &vd = fwb->vd;
+
+//	Req &req = *((Req*)vd.data);
+
+	//byte n = vd.data[0] & 7;
+
+	//vecCount[n] += 1;
+
+	if (!RequestFlashWrite(fwb))
+	{
+		freeFlWrBuf.Add(fwb);
+//		return false;
+	};
+
+
+	return CreateRsp02(wb);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//static bool RequestFunc03(FLWB *fwb, ComPort::WriteBuffer *wb)
+//{
+//	VecData &vd = fwb->vd;
+//
+//	Req &req = *((Req*)vd.data);
+//
+//
+//
+//
+//
+//
+//	freeFlWrBuf.Add(fwb);
+//
+//	return CreateRsp03(wb);
+//}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
+{
+	bool result = false;
+
+	VecData &vd = fwb->vd;
+
+	Req &req = *((Req*)vd.data);
+
+	if (fwb == 0)
+	{
+//		freeReqList.Add(req);
+	}
+	else if (fwb->dataLen < 2)
+	{
+		result = CreateRspErrReq(wb);
+		
+		freeFlWrBuf.Add(fwb);
+	}
+	else
+	{
+		if (GetCRC16(&flwb->vd, flwb->dataLen) == 0)//((req.rw & 0xFF00) == 0xAA00)
+		{
+			result = RequestFunc02 (fwb, wb);
+		}
+		else
+		{
+			freeFlWrBuf.Add(fwb);
+			Write::rejVec++;
+		};
+	};
+
+	return result;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitCom()
+{
+	com1.Connect(1, 6250000, 0);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateCom()
+{
+	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[512*4]; };
+
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+
+	static byte state = 0;
+
+	static FLWB *fwb;
+	static Req *req;
+	static VecData *vd;
+
+	static u32 count = 0;
+	static u16 v = 0;
+	static byte b = 0;
+
+	//static byte buf[100];
+
+	//wb.data = buf;
+	//wb.len = sizeof(buf);
+
+	//HW::PIOA->SODR = 1<<27;
+
+	//if (!com1.Update())
+	//{
+	//	com1.Write(&wb);
+	//};
+
+
+//	HW::PIOB->SODR = 1<<13;
+
+	switch (state)
+	{
+		case 0:
+
+			fwb = freeFlWrBuf.Get();
+
+			if (fwb != 0)
+			{
+				state++;
+			};
+
+			break;
+
+		case 1:
+
+			vd = &fwb->vd;
+			req = (Req*)vd->data;
+
+			rb.data = vd->data;
+			rb.maxLen = sizeof(vd->data);
+
+//			rb.len = sizeof(*req);
+
+			//req->rw = 0xAA30 + ((b & (~7))<<1) + (b & 7);
+			//req->cnt = count++;
+			//req->gain = 7;
+			//req->st = 10;
+			//req->len = ArraySize(req->data)/4;
+			//req->delay = 0;
+
+			//if (writeFlashEnabled)
+			//{
+			//	v = 0;
+
+			//	for (u16 i = 0; i < ArraySize(req->data); i++)
+			//	{
+			//		req->data[i] = v++;
+			//	};
+			//};
+
+			HW::PIOB->SODR = 1<<13;
+
+			com1.Read(&rb, -1, 100);
+
+			//b += 1;
+
+			//if (b >= 24) { b = 0; };
+
+			state++;
+
+			break;
+
+		case 2:
+
+			if (!com1.Update())
+			{
+				HW::PIOB->CODR = 1<<13;
+
+				if (rb.recieved)
+				{
+					fwb->dataLen = rb.len;
+
+					HW::PIOB->SODR = 1<<13;
+
+					if (RequestFunc(fwb, &wb))
+					{
+						state++;
+					}
+					else
+					{
+						state = 0;
+					};
+
+					HW::PIOB->CODR = 1<<13;
+				}
+				else
+				{
+					state = 1;
+				};
+			};
+
+			break;
+
+		case 3:
+
+			if (!freeFlWrBuf.Empty())
+			{
+				com1.Write(&wb);
+
+				state++;
+			};
+
+			break;
+
+		case 4:
+			
+			if (!com1.Update())
+			{
+				state = 0;
+			};
+
+			break;
+	};
+
+//	HW::PIOB->CODR = 1<<13;
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

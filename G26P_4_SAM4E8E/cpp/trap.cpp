@@ -43,6 +43,9 @@ u32 TrapTxCounter;
 u32 TrapRxLost;
 
 static bool startSendVector = false;
+static u16  startSession = 0;
+static u64	startAdr = 0;
+
 static bool startSendSession = false;
 static bool stop = false;
 static bool pause = false;
@@ -760,6 +763,8 @@ static void MakePacketHeaders(TrapHdr *p, bool need_ask, bool is_ask, char devic
 static void StartSendVector(u16 session, u64 adr)
 {
 	startSendVector = true;
+	startSession = session;
+	startAdr = adr;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -778,6 +783,10 @@ static bool UpdateSendVector()
 	static u16 ipID = 0;
 
 	static TM32 tm;
+
+	static u16 ses = 0;
+	static u64 adr = 0;
+	static bool useadr = false;
 
 	__packed struct TRP { EthUdp eu; TrapVector tv; byte data[IP_MTU - sizeof(UdpHdr) - sizeof(TrapVector)]; };
 	__packed struct FR  { EthIp  ei; byte data[IP_MTU]; };
@@ -821,6 +830,9 @@ static bool UpdateSendVector()
 			if (startSendVector)
 			{
 				startSendVector = false;
+				adr = startAdr;
+				ses = startSession;
+				useadr = true;
 
 				vecCount = 0;
 
@@ -861,8 +873,12 @@ static bool UpdateSendVector()
 					flrb.data = et.data;
 					flrb.maxLen = sizeof(et.data);
 					flrb.vecStart = true;
+					flrb.useAdr = useadr;
+					flrb.adr = adr;
 
 					RequestFlashRead(&flrb);
+
+					useadr = false;
 
 					i++;
 				};
@@ -874,7 +890,7 @@ static bool UpdateSendVector()
 
 			if (flrb.ready)
 			{
-				if (flrb.len == 0)
+				if (flrb.len == 0 || flrb.hdr.session != ses)
 				{
 					TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_VECTOR_READY);
 

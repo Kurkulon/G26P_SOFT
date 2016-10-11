@@ -417,7 +417,7 @@ int main()
 
 	while(1)
 	{
-		HW::PIOB->SODR = 1<<13;
+//		HW::PIOB->SODR = 1<<13;
 
 		NAND_Idle();
 		UpdateMisc();		
@@ -438,7 +438,7 @@ int main()
 		//#undef CALL
 
 	
-		HW::PIOB->CODR = 1<<13;
+//		HW::PIOB->CODR = 1<<13;
 		
 		f++;
 

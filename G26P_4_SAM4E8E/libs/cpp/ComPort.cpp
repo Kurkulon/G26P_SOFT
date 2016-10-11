@@ -309,12 +309,12 @@ bool ComPort::Update()
 
 		case READING:
 
-			if (_SU->CSR & 0xE4) 
-			{
-				DisableReceive();
-				_status485 = READ_END;
-				return false;
-			};
+			//if (_SU->CSR & 0xE4) 
+			//{
+			//	DisableReceive();
+			//	_status485 = READ_END;
+			//	return false;
+			//};
 
 			if ((_prevDmaCounter-_SU->PDC.RCR) == 0)
 			{

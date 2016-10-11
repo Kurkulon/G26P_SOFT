@@ -1043,7 +1043,7 @@ static bool Write::Start()
 
 		if (!writeFlashEnabled || flashFull)
 		{
-			rejVec += 1;
+//			rejVec += 1;
 
 			curWrBuf->ready[0] = true;
 			freeFlWrBuf.Add(curWrBuf);
@@ -3501,7 +3501,7 @@ static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
 	}
 	else
 	{
-		if (GetCRC16(&flwb->vd, flwb->dataLen) == 0)//((req.rw & 0xFF00) == 0xAA00)
+		if ((req.rw & 0xFF00) == 0xAA00) //(GetCRC16(flwb->vd.data, flwb->dataLen) == 0)
 		{
 			result = RequestFunc02 (fwb, wb);
 		}

@@ -321,6 +321,7 @@ static void UpdateMan()
 
 			if (tm.Check(US2RT(500)))
 			{
+//				SetTrmBoudRate(3); /*mtb.data = tableCRC;*/ mtb.len = 5; SendMLT3(&mtb);
 				SendManData(&mtb);
 
 				i++;
@@ -339,6 +340,52 @@ static void UpdateMan()
 
 	};
 }
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//static void UpdateMan()
+//{
+//	static MTB mtb;
+//	static MRB mrb;
+//
+//	static byte i = 0;
+//
+//	static RTM32 tm;
+//
+//	bool parityErr;
+//	u32 *s;
+//	u16 *d;
+//
+//	u16 c;
+//
+//	switch (i)
+//	{
+//		case 0:
+//
+//			if (tm.Check(MS2RT(100)))
+//			{
+//				mtb.data = tableCRC;
+//				mtb.len = 70;
+//
+//				SetTrmBoudRate(2); SendMLT3(&mtb);
+////				SetTrmBoudRate(0); SendManData(&mtb);
+//
+//				i++;
+//			};
+//
+//			break;
+//
+//		case 1:
+//
+//			if (mtb.ready)
+//			{
+//				i = 0;
+//			};
+//
+//			break;
+//
+//	};
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

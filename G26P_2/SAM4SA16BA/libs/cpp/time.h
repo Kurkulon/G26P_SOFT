@@ -36,7 +36,7 @@ extern time_bdc timeBDC;
 //extern time_utc mktime_utc(time_bdc *t);
 //extern bool mktime_bdc(time_utc t, time_bdc *tbdc);
 extern void Init_time();
-//extern void RTT_Init();
+extern void RTT_Init();
 
 //extern bool SetTime(time_utc t);
 extern bool SetTime(const time_bdc &t);

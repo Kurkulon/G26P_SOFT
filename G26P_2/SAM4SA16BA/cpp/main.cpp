@@ -61,6 +61,9 @@ static u16 verDevice = 1;
 
 static u32 manCounter = 0;
 
+static const u16 reqVoltage = 900;
+static const byte reqFireCount = 1;
+
 static u16 adcValue = 0;
 static U32u filtrValue;
 static u16 resistValue = 0;
@@ -92,7 +95,7 @@ static u16 maxOff = 0;
 
 static void SaveVars();
 
-inline void SaveParams() { savesCount = 2; }
+inline void SaveParams() { savesCount = 1; }
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -379,6 +382,10 @@ static REQ* CreateTrmReqFire(byte n)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static bool readyTrmreq02 = true;
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void CallBackTrmReq02(REQ *q)
 {
 	__packed struct Rsp { byte f; u16 hv; u16 crc; };
@@ -390,6 +397,7 @@ static void CallBackTrmReq02(REQ *q)
 	if (crcOK)
 	{
 		voltage = rsp->hv;
+		readyTrmreq02 = true;
 	};
 }
 
@@ -425,6 +433,21 @@ static REQ* CreateTrmReq02()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateTrmReq02()
+{
+	static RTM32 rt;
+
+	if (readyTrmreq02 || rt.Check(MS2RT(100)))
+	{
+		qtrm.Add(CreateTrmReq02());
+
+		readyTrmreq02 = false;
+		rt.Reset();
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void CallBackTrmReq03(REQ *q)
 {
 	__packed struct Rsp { byte f; u16 crc; };
@@ -438,8 +461,8 @@ static void CallBackTrmReq03(REQ *q)
 
 static REQ* CreateTrmReq03()
 {
-	__packed struct Req { byte f; u16 hv; u16 crc; } req;
-	__packed struct Rsp { byte f; u16 crc; } rsp;
+	static __packed struct { byte f; byte fireCount; u16 hv; u16 crc; } req;
+	static __packed struct { byte f; u16 crc; } rsp;
 
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
@@ -459,7 +482,8 @@ static REQ* CreateTrmReq03()
 	wb.len = sizeof(req);
 	
 	req.f = 3;
-	req.hv = 800;
+	req.fireCount = reqFireCount;
+	req.hv = reqVoltage;
 	req.crc = GetCRC16(&req, sizeof(req)-2);
 
 	return &q;
@@ -1374,6 +1398,7 @@ static void MainMode()
 	static REQ *req = 0;
 	static R02 *r02 = 0;
 	static RTM32 rt;
+	static TM32 rt2;
 
 //	REQ *rm = 0;
 
@@ -1513,6 +1538,24 @@ static void MainMode()
 			{
 				fireType = (fireType+1) % 3; 
 
+				mainModeState = (fireType == 0) ? 10 : 9;
+			};
+
+			break;
+
+		case 9:
+
+			if (voltage >= reqVoltage || rt.Check(MS2RT(300)))
+			{
+				mainModeState = 0;
+			};
+
+			break;
+
+		case 10:
+
+			if (rt2.Check(1000))
+			{
 				mainModeState = 0;
 			};
 
@@ -1534,6 +1577,7 @@ static void UpdateMisc()
 		CALL( UpdateADC()			);
 		CALL( MainMode()			);
 		CALL( SaveVars()			);
+		CALL( UpdateTrmReq02()		);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -1736,7 +1780,7 @@ int main()
 
 	Init_time();
 
-//	LoadVars();
+	LoadVars();
 
 	InitNumStations();
 
@@ -1775,7 +1819,6 @@ int main()
 		if (rtm.Check(MS2RT(1000)))
 		{ 
 			UpdateTemp();
-			qtrm.Add(CreateTrmReq02());
 			qtrm.Add(CreateTrmReq03());
 			fc = fps; fps = 0; 
 //			startFire = true;

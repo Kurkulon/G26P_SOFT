@@ -57,7 +57,7 @@ static bool Request03(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 {
 	// ”становка значени€ требуемого высокого напр€жени€
 
-	__packed struct Req { byte f; u16 hv; u16 crc; };
+	__packed struct Req { byte f; byte fireCount; u16 hv; u16 crc; };
 	__packed struct Rsp { byte f; u16 crc; };
 
 	static Rsp rsp;
@@ -66,6 +66,7 @@ static bool Request03(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 	
 	if (GetCRC(rb->data, rb->len) != 0) return false;
 
+	SetReqFireCount(req->fireCount);
 	SetReqHV(req->hv);
 
 	rsp.f = 3;

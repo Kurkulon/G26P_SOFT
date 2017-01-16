@@ -5,6 +5,7 @@
 
 u16 curHV = 0;
 u16 reqHV = 800;
+byte reqFireCount = 1;
 
 //#define eVal_IntervalTimer ((MCK / 5000) * 10)
 //#define eVal_StartSample   ((MCK / 5000) *  6)
@@ -192,6 +193,10 @@ static void InitFireM()
 	HW::SWM->CTOUT_0 = 7;
 	HW::SWM->CTOUT_1 = -1;
 
+	SCT->LIMIT_L = 0;
+	SCT->STOP_L = 1<<3;
+	SCT->EVEN = 0;
+
 //	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 
 	charge = true;
@@ -205,12 +210,18 @@ static void InitFireXX()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*10;
-	SCT->MATCH_L[2] = 25*250; //335
-	SCT->MATCH_L[3] = 25*260; //345
-	//SCT->MATCH_L[4] = 0;
+	SCT->MATCH_L[2] = 25*278; //335
+	SCT->MATCH_L[3] = 25*288; //345
+	SCT->MATCH_L[4] = 25*556;
 
 	HW::SWM->CTOUT_0 = 17;
 	HW::SWM->CTOUT_1 = 13;
+
+	SCT->LIMIT_L = 1<<4;
+	SCT->STOP_L = 0;
+	SCT->EVFLAG = 1<<3;
+	SCT->EVEN = 1<<3;
+
 
 //	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 }
@@ -223,12 +234,17 @@ static void InitFireYY()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*10;
-	SCT->MATCH_L[2] = 25*250; //335
-	SCT->MATCH_L[3] = 25*260; //345
-	//SCT->MATCH_L[4] = 0;
+	SCT->MATCH_L[2] = 25*278; //335
+	SCT->MATCH_L[3] = 25*288; //345
+	SCT->MATCH_L[4] = 25*556;
 
 	HW::SWM->CTOUT_0 = 4;
 	HW::SWM->CTOUT_1 = 12;
+
+	SCT->LIMIT_L = 1<<4;
+	SCT->STOP_L = 0;
+	SCT->EVFLAG = 1<<3;
+	SCT->EVEN = 1<<3;
 
 	//W::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 }
@@ -236,6 +252,23 @@ static void InitFireYY()
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //void(*FireMode)() = FireXX;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void SCT_Handler()
+{
+	static byte count = 0;
+
+	count++;
+
+	HW::SCT->EVFLAG = 1<<3;
+
+	if (count >= reqFireCount)
+	{
+		HW::SCT->CTRL_L = 1<<2;
+		count = 0;
+	};
+}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -288,9 +321,9 @@ static void InitFire()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*10;
-	SCT->MATCH_L[2] = 25*250; //335
-	SCT->MATCH_L[3] = 25*260; //345
-//	SCT->MATCH_L[4] = 0;
+	SCT->MATCH_L[2] = 25*258; //335
+	SCT->MATCH_L[3] = 25*288; //345
+	SCT->MATCH_L[4] = 25*566;
 
 	SCT->OUT[0].SET = 0x0002;
 	SCT->OUT[0].CLR = 0x0005;
@@ -314,15 +347,16 @@ static void InitFire()
 	SCT->EVENT[3].STATE = 1;
 	SCT->EVENT[3].CTRL = (1<<5)|(1<<6)|(1<<12)|3;
 
-	SCT->EVENT[4].STATE = 0;
-	SCT->EVENT[4].CTRL = 0;
+	SCT->EVENT[4].STATE = 1;
+	SCT->EVENT[4].CTRL = (1<<5)|(1<<6)|(1<<12)|4;
 
 	SCT->EVENT[5].STATE = 0;
 	SCT->EVENT[5].CTRL = 0;
 
+	SCT->LIMIT_L = 0;
 	SCT->START_L = 0;
-	SCT->STOP_L = 1<<3;
-	SCT->HALT_L = 1<<3;
+	SCT->STOP_L = 0;
+	SCT->HALT_L = 0;
 
 	SCT->CONFIG = 1<<7; 
 
@@ -337,6 +371,11 @@ static void InitFire()
 	//PIN_INT->SIENF = 1;
 	//PIN_INT->FALL = 1;
 	//PIN_INT->IST = 1;
+
+	SCT->EVEN = 1<<4;
+
+	VectorTableExt[SCT_IRQ] = SCT_Handler;
+	CM0::NVIC->ISER[0] = 1<<SCT_IRQ;
 
 	VectorTableExt[PININT0_IRQ] = SyncFireHandler;
 	CM0::NVIC->ISER[0] = 1<<PININT0_IRQ;

@@ -99,7 +99,7 @@ static void InitTimer()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RTT_Init()
+void RTT_Init()
 {
 	using namespace HW;
 

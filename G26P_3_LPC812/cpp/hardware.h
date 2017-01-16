@@ -33,6 +33,14 @@ inline void SetReqHV(u16 v)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+inline void SetReqFireCount(byte v)
+{
+	extern byte reqFireCount;
+	reqFireCount = v;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 inline bool IsSyncActive()
 {
 	extern bool syncActive;

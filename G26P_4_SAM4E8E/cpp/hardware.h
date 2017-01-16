@@ -40,7 +40,7 @@ struct MTB
 {
 	bool	ready;
 	u16		len;
-	u16		*data;
+	const u16		*data;
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -48,5 +48,7 @@ struct MTB
 extern bool RcvManData(MRB *mrb);
 extern bool SendManData(MTB *mtb);
 extern void SetTrmBoudRate(byte i);
+
+extern bool SendMLT3(MTB *mtb);
 
 #endif // HARDWARE_H__15_05_2009__14_35

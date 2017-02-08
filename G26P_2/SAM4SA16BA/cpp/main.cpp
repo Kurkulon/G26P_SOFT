@@ -719,8 +719,8 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	//off 0...2005
 
-
-	if (wb == 0 || !(len == 1 || len == 3)) return false;
+//return false;
+	if (wb == 0 || !(/*len == 1 ||*/ len == 3)) return false;
 
 	byte nf = ((req.rw>>4)-3)&3;
 	byte nr = req.rw & 7;

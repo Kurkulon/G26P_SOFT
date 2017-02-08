@@ -559,6 +559,11 @@ static void UpdateSport()
 			*pPORTFIO_SET = 1<<8;
 
 			{
+				spd[0][0] = spd[0][2];
+				spd[0][1] =	spd[0][3];
+				spd[1][0] =	spd[1][2];
+				spd[1][1] =	spd[1][3];
+
 				u16 *p1 = rsp.data+len*0;
 				u16 *p2 = rsp.data+len*1;
 				u16 *p3 = rsp.data+len*2;

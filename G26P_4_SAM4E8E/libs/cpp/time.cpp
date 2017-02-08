@@ -246,7 +246,7 @@ static __irq void Timer_Handler (void)
 {
 	msec++;
 
-	if (timeBDC.msec < 1000)
+	if (timeBDC.msec < 999)
 	{
 		timeBDC.msec += 1;
 	}

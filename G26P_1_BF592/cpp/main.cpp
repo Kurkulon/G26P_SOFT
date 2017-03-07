@@ -117,6 +117,7 @@ bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 	SetGain(spGain[n]);
 	SyncReadSPORT(spd[0], spd[1], spLen[n]*4, spLen[n]*4, spTime[n]-1, &ready1, &ready2);
+	DisableADC();
 
 	fireN = n;
 	sportState = 0;
@@ -523,6 +524,8 @@ static void UpdateSport()
 			
 			if (ready1 && ready2)
 			{
+				EnableADC();
+
 				n = fireN;
 				chnl = 0;
 				len = spLen[n];

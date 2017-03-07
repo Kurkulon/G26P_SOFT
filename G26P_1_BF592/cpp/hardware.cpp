@@ -15,6 +15,8 @@ U32u adcValue;
 u16 pgaValue = 0x2A01;
 bool pgaSet = true;
 
+bool adcEnable = true;
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //static void LowLevelInit();
@@ -256,7 +258,7 @@ static void UpdateADC()
 	{
 		case 0:
 
-			if (tm.Check(MS2SCLK(1)))
+			if (tm.Check(MS2SCLK(1)) && adcEnable)
 			{
 				*pSPI1_BAUD = 50; // SCLK=16MHz
 				*pSPI1_FLG = 0;//FLS5|FLS2;

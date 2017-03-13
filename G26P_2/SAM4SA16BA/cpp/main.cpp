@@ -60,6 +60,7 @@ static u16 numDevice = 0;
 static u16 verDevice = 1;
 
 static u32 manCounter = 0;
+static u32 fireCounter = 0;
 
 static const u16 reqVoltage = 900;
 static const byte reqFireCount = 1;
@@ -1467,7 +1468,7 @@ static void MainMode()
 						*d++ = *s++;
 					};
 
-					manVec[fireType].cnt = manCounter;
+					manVec[fireType].cnt = fireCounter;
 				};
 
 				CreateMemReq02(*r02);
@@ -1537,6 +1538,8 @@ static void MainMode()
 			if (rt.Check(MS2RT(50)))
 			{
 				fireType = (fireType+1) % 3; 
+
+				fireCounter += 1;
 
 				mainModeState = (fireType == 0) ? 10 : 9;
 			};

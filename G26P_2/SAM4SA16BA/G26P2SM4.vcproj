@@ -92,6 +92,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\SPI.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\system_SAM4S.cpp"
 				>
 			</File>
@@ -106,11 +110,19 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
+				RelativePath=".\cpp\hardware.h"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\list.h"
 				>
 			</File>
 			<File
 				RelativePath=".\cpp\req.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\SPI.h"
 				>
 			</File>
 			<File

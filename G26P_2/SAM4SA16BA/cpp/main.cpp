@@ -2,6 +2,7 @@
 #include "time.h"
 #include "CRC16.h"
 #include "req.h"
+#include "hardware.h"
 
 #include "list.h"
 
@@ -9,9 +10,11 @@
 
 #include "PointerCRC.h"
 
+#include "SPI.h"
+
 ComPort commem;
 ComPort comtr;
-ComPort combf;
+//ComPort combf;
 ComPort comrcv;
 
 //ComPort::WriteBuffer wb;
@@ -52,6 +55,10 @@ static byte sampleTime[3] = { 5, 20, 20};
 static u16 sampleLen[3] = { 64, 64, 64};
 static u16 sampleDelay[3] = { 10, 10, 10};
 
+u32 manRcvData[10];
+u16 manTrmData[50];
+
+u16 rcvBuf[10];
 
 static u16 manReqWord = 0xAA00;
 static u16 manReqMask = 0xFF00;
@@ -105,8 +112,140 @@ inline void SaveParams() { savesCount = 1; }
 //Response rsp;
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static SPI spi;
+static SPI::Buffer	bufAccel; 
+static SPI::Buffer	bufGyro;
 
+u8 txAccel[25] = { 0x87, 0, 0, 0xC7, 0, 0, 0x97, 0, 0, 0xD7, 0, 0, 0xA7, 0, 0, 0xE7, 0, 0, 0xB7, 0, 0, 0xF7, 0, 0, 0 };
+u8 rxAccel[25];
 
+u8 txGyro[25] = { 0x87, 0, 0, 0xC7, 0, 0, 0x97, 0, 0, 0xD7, 0, 0, 0xA7, 0, 0, 0xE7, 0, 0, 0xB7, 0, 0, 0xF7, 0, 0, 0 };
+u8 rxGyro[25];
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackAccel(SPI::Buffer *b)
+{
+	//DataPointer p(b->rxp);
+
+	//union { float f; u16 w[2]; } u;
+
+	//p.b += 1;
+
+	//for (byte i = 0; i < 8; i++)
+	//{
+	//	u.f = (u16)(__rev(*p.d) >> 15) * 0.0003814697265625*1.00112267 - 0.00319055 - valueADC1[i];
+
+	//	valueADC1[i] += u.f * (((u.w[1] & 0x7f80) < 0x3c00) ? 0.01 : 0.1);
+	//	p.b += 3;
+	//};
+
+	//UpdatePWM();
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackGyro(SPI::Buffer *b)
+{
+	//DataPointer p(b->rxp);
+
+	//union { float f; u16 w[2]; } u;
+
+	//p.b += 1;
+
+	//for (byte i = 0; i < 8; i++)
+	//{
+	//	u.f = (u16)(__rev(*p.d) >> 15) * 0.0003814697265625*1.00112267 - 0.00319055 - valueADC2[i];
+
+	//	valueADC2[i] += u.f * (((u.w[1] & 0x7f80) < 0x3c00) ? 0.01 : 0.1);
+	//	p.b += 3;
+	//};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//static void InitADC16()
+//{
+//	using namespace HW;
+//
+//	//PMC->PCER0 = PID::SPI0_M;
+//
+//	//SPI0->CR = 1; 
+//	//SPI0->MR = 0xFF010005;
+//	//SPI0->CSR[0] = 0x00095482;
+//
+//	bufADC1.txp = &txADC1;
+//	bufADC1.rxp = &rxADC1;
+//	bufADC1.count = 25;
+//	bufADC1.CSR = 0x00092302;
+//	bufADC1.DLYBCS = 0x9;
+//	bufADC1.PCS = 1;
+//	bufADC1.pCallBack = CallBackADC1;
+//
+//	bufADC2.txp = &txADC2;
+//	bufADC2.rxp = &rxADC2;
+//	bufADC2.count = 25;
+//	bufADC2.CSR = 0x00092302;
+//	bufADC2.DLYBCS = 0x9;
+//	bufADC2.PCS = 0;
+//	bufADC2.pCallBack = CallBackADC2;
+//
+//	spi.AddRequest(&bufADC1);
+//	spi.AddRequest(&bufADC2);
+//
+//}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateAccel()
+{
+	static byte i = 0;
+
+	static TM32 tm;
+
+	switch (i)
+	{
+		case 0:
+
+			tm.Reset();
+			i++;
+
+			break;
+
+		case 1:
+
+			if (tm.Check(35))
+			{
+
+			};
+
+			break;
+
+	};
+
+	if (bufAccel.ready)
+	{
+		bufAccel.txp = &txAccel;
+		bufAccel.rxp = &rxAccel;
+		bufAccel.count = 25;
+		bufAccel.CSR = 0x00092302;
+		bufAccel.DLYBCS = 0x9;
+		bufAccel.PCS = 1;
+		bufAccel.pCallBack = CallBackAccel;
+		bufAccel.pio = HW::PIOA;
+		bufAccel.mask = 1<<23;
+
+		spi.AddRequest(&bufAccel);
+	};
+
+	//if (bufGyro.ready)
+	//{
+	//	spi.AddRequest(&bufGyro);
+	//};
+
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -614,91 +753,78 @@ static void CreateMemReq02(R02 &r)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_00(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 {
-	static u16 rsp[4];
+	if (data == 0 || len == 0 || mtb == 0) return false;
 
-	if (wb == 0) return false;
+	manTrmData[0] = (manReqWord & manReqMask) | 0;
+	manTrmData[1] = numDevice;
+	manTrmData[2] = verDevice;
 
-	rsp[0] = 0x5501;
-	rsp[1] = manReqWord;
-	rsp[2] = numDevice;
-	rsp[3] = verDevice;
-
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
+	mtb->data = manTrmData;
+	mtb->len = 3;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestMan_10(u16 *buf, u16 len, MTB* mtb)
 {
-	__packed struct T { u16 g[8]; u16 st; u16 len; u16 delay; u16 voltage; };
-	__packed struct Rsp { u16 hdr; u16 rw; T t1, t2, t3; };
+	//__packed struct T { u16 g[8]; u16 st; u16 len; u16 delay; u16 voltage; };
+	//__packed struct Rsp { u16 hdr; u16 rw; T t1, t2, t3; };
 	
-	static Rsp rsp;
+	if (buf == 0 || len == 0 || mtb == 0) return false;
 
-	if (wb == 0) return false;
+	u16* p = manTrmData+1;
 
-	rsp.hdr = 0x5501;
-	rsp.rw = manReqWord|0x10;
-
-	for (byte i = 0; i < 8; i++)
+	for (byte i = 0; i < 3; i++)
 	{
-		rsp.t1.g[i] = gain[i][0];
-		rsp.t2.g[i] = gain[i][1];
-		rsp.t3.g[i] = gain[i][2];
+		*(p++) =  gain[0][i];
+		*(p++) =  gain[1][i];
+		*(p++) =  gain[2][i];
+		*(p++) =  gain[3][i];
+		*(p++) =  gain[4][i];
+		*(p++) =  gain[5][i];
+		*(p++) =  gain[6][i];
+		*(p++) =  gain[7][i];
+		*(p++) =  sampleTime[i];
+		*(p++) =  sampleLen[i];
+		*(p++) =  sampleDelay[i];
+		*(p++) =  800;
 	};
 
-	rsp.t1.st = sampleTime[0];
-	rsp.t1.len = sampleLen[0];
-	rsp.t1.delay = sampleDelay[0];
-	rsp.t1.voltage = 800;
+	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
 
-	rsp.t2.st = sampleTime[1];
-	rsp.t2.len = sampleLen[1];
-	rsp.t2.delay = sampleDelay[1];
-	rsp.t2.voltage = 800;
-
-	rsp.t3.st = sampleTime[2];
-	rsp.t3.len = sampleLen[2];
-	rsp.t3.delay = sampleDelay[2];
-	rsp.t3.voltage = 800;
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
+	mtb->data = manTrmData;
+	mtb->len = 1+12*3;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 {
-	static u16 rsp[8];
+	if (buf == 0 || len == 0 || mtb == 0) return false;
 
-	if (wb == 0) return false;
-
-	rsp[0] = 0x5501;
-	rsp[1] = manReqWord|0x20;
-	rsp[2] = GD(&manCounter, u16, 0);
-	rsp[3] = GD(&manCounter, u16, 1);
-	rsp[4] = voltage;
-	rsp[5] = numStations|(((u16)rcvStatus)<<8);
-	rsp[6] = resistValue;
-	rsp[7] = temperature;
+	manTrmData[0] = manReqWord|0x20;
+	manTrmData[1] = GD(&manCounter, u16, 0);
+	manTrmData[2] = GD(&manCounter, u16, 1);
+	manTrmData[3] = voltage;
+	manTrmData[4] = numStations|(((u16)rcvStatus)<<8);
+	manTrmData[5] = resistValue;
+	manTrmData[6] = temperature;
  
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
+	mtb->data = manTrmData;
+	mtb->len = 7;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 {
 	__packed struct Req { u16 rw; u16 off; u16 len; };
 
@@ -706,7 +832,7 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 //	__packed struct St { Hdr h;  };
 
-	struct Rsp { u16 hdr; u16 rw; u16 data[128]; };
+	struct Rsp { u16 rw; u16 data[128]; };
 	
 	static Rsp rsp; 
 
@@ -721,7 +847,7 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	//off 0...2005
 
 //return false;
-	if (wb == 0 || !(/*len == 1 ||*/ len == 3)) return false;
+	if (buf == 0 || len == 3 || mtb == 0) return false;
 
 	byte nf = ((req.rw>>4)-3)&3;
 	byte nr = req.rw & 7;
@@ -771,8 +897,8 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	};
 
 
-	wb->data = &rsp;
-	wb->len = (c+2)<<1;
+	mtb->data = (u16*)&rsp;
+	mtb->len = c+1;
 
 	u16 *p = rsp.data;
 
@@ -785,7 +911,6 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		*p++ = *s++; c--;
 	};
 
-	rsp.hdr = 0x5501;
 	rsp.rw = req.rw;
 
 	return true;
@@ -793,11 +918,9 @@ static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_80(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
 {
-	static u16 rsp[2];
-
-	if (wb == 0 || len < 3) return false;
+	if (data == 0 || len < 3 || mtb == 0) return false;
 
 	switch (data[1])
 	{
@@ -806,25 +929,27 @@ static bool RequestMan_80(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 			numDevice = data[2];
 
 			break;
+
+		case 2:
+
+			SetTrmBoudRate(data[2]-1);
+
+			break;
 	};
 
-	rsp[0] = 0x5501;
-	rsp[1] = manReqWord|0x80;
- 
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
+	manTrmData[0] = (manReqWord & manReqMask) | 0x80;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 {
-	static u16 rsp[2];
-
-	if (wb == 0 || len < 3) return false;
-
+	if (data == 0 || len < 3 || mtb == 0) return false;
 
 	byte nf = ((data[1]>>4) & 3)-1;
 	byte nr = data[1] & 0xF;
@@ -876,64 +1001,51 @@ static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	SaveParams();
 
-	rsp[0] = 0x5501;
-	rsp[1] = manReqWord|0x90;
- 
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
+	manTrmData[0] = (manReqWord & manReqMask) | 0x90;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_F0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestMan_F0(u16 *data, u16 len, MTB* mtb)
 {
-	static u16 rsp[2];
-
-	if (wb == 0) return false;
+	if (data == 0 || len == 0 || mtb == 0) return false;
 
 	SaveParams();
 
-	rsp[0] = 0x5501;
-	rsp[1] = manReqWord|0xF0;
- 
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
+	manTrmData[0] = (manReqWord & manReqMask) | 0xF0;
+
+	mtb->data = manTrmData;
+	mtb->len = 1;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
+static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
 {
-	u16 *p = (u16*)rb->data;
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
 	bool r = false;
 
-	u16 t = p[1];
+	byte i = (buf[0]>>4)&0xF;
 
-	if ((t & manReqMask) != manReqWord || rb->len < 6)
+	switch (i)
 	{
-		bfERC++; 
-		return false;
-	};
-
-	u16 len = (rb->len - 4)>>1;
-
-	t = (t>>4) & 0xF;
-
-	switch (t)
-	{
-		case 0: 	r = RequestMan_00(p+1, len, wb); break;
-		case 1: 	r = RequestMan_10(p+1, len, wb); break;
-		case 2: 	r = RequestMan_20(p+1, len, wb); break;
+		case 0: 	r = RequestMan_00(buf, len, mtb); break;
+		case 1: 	r = RequestMan_10(buf, len, mtb); break;
+		case 2: 	r = RequestMan_20(buf, len, mtb); break;
 		case 3: 
 		case 4: 
-		case 5: 	r = RequestMan_30(p+1, len, wb); break;
-		case 8: 	r = RequestMan_80(p+1, len, wb); break;
-		case 9:		r = RequestMan_90(p+1, len, wb); break;
-		case 0xF:	r = RequestMan_F0(p+1, len, wb); break;
+		case 5: 	r = RequestMan_30(buf, len, mtb); break;
+		case 8: 	r = RequestMan_80(buf, len, mtb); break;
+		case 9:		r = RequestMan_90(buf, len, mtb); break;
+		case 0xF:	r = RequestMan_F0(buf, len, mtb); break;
 		
 		default:	bfURC++; 
 	};
@@ -943,81 +1055,83 @@ static bool RequestMan(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestBF(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
-{
-	byte *p = (byte*)rb->data;
-	bool r = false;
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	switch(*p)
-	{
-		case 1:	// Запрос Манчестер
-
-			r = RequestMan(wb, rb);
-
-			break;
-
-	};
-
-	return r;
-}
+//static bool RequestBF(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
+//{
+//	byte *p = (byte*)rb->data;
+//	bool r = false;
+//
+//	switch(*p)
+//	{
+//		case 1:	// Запрос Манчестер
+//
+//			r = RequestMan(wb, rb);
+//
+//			break;
+//
+//	};
+//
+//	return r;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateBlackFin()
-{
-	static byte i = 0;
-	static ComPort::WriteBuffer wb;
-	static ComPort::ReadBuffer rb;
-	static byte buf[32];
-
-	switch(i)
-	{
-		case 0:
-
-			rb.data = buf;
-			rb.maxLen = sizeof(buf);
-			combf.Read(&rb, -1, 1);
-			i++;
-
-			break;
-
-		case 1:
-
-			if (!combf.Update())
-			{
-				if (rb.recieved && rb.len > 0 && GetCRC16(rb.data, rb.len) == 0)
-				{
-					if (RequestBF(&wb, &rb))
-					{
-						combf.Write(&wb);
-						i++;
-					}
-					else
-					{
-						i = 0;
-					};
-
-					bfCRCOK++;
-				}
-				else
-				{
-					bfCRCER++;
-					i = 0;
-				};
-			};
-
-			break;
-
-		case 2:
-
-			if (!combf.Update())
-			{
-				i = 0;
-			};
-
-			break;
-	};
-}
+//static void UpdateBlackFin()
+//{
+//	static byte i = 0;
+//	static ComPort::WriteBuffer wb;
+//	static ComPort::ReadBuffer rb;
+//	static byte buf[32];
+//
+//	switch(i)
+//	{
+//		case 0:
+//
+//			rb.data = buf;
+//			rb.maxLen = sizeof(buf);
+//			combf.Read(&rb, -1, 1);
+//			i++;
+//
+//			break;
+//
+//		case 1:
+//
+//			if (!combf.Update())
+//			{
+//				if (rb.recieved && rb.len > 0 && GetCRC16(rb.data, rb.len) == 0)
+//				{
+//					if (RequestBF(&wb, &rb))
+//					{
+//						combf.Write(&wb);
+//						i++;
+//					}
+//					else
+//					{
+//						i = 0;
+//					};
+//
+//					bfCRCOK++;
+//				}
+//				else
+//				{
+//					bfCRCER++;
+//					i = 0;
+//				};
+//			};
+//
+//			break;
+//
+//		case 2:
+//
+//			if (!combf.Update())
+//			{
+//				i = 0;
+//			};
+//
+//			break;
+//	};
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1566,6 +1680,109 @@ static void MainMode()
 	};
 }
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateMan()
+{
+	static MTB mtb;
+	static MRB mrb;
+
+	static byte i = 0;
+
+	static RTM32 tm;
+
+	bool parityErr;
+	u32 *s;
+	u16 *d;
+
+	u16 c;
+
+	switch (i)
+	{
+		case 0:
+
+			mrb.data = manRcvData;
+			mrb.maxLen = 5;
+			RcvManData(&mrb);
+
+			i++;
+
+			break;
+
+		case 1:
+
+			if (mrb.ready)
+			{
+//				HW::PIOE->CODR = 3;
+
+				if (mrb.OK && mrb.len > 0)
+				{
+					parityErr = false;
+					s = mrb.data;
+					d = rcvBuf;
+					c = mrb.len;
+
+					while (c > 0)
+					{
+						parityErr |= (*s ^ CheckParity(*s >> 1))&1 != 0;
+
+						*d++ = *s++ >> 1;
+						c--;
+					};
+
+					if (!parityErr && (rcvBuf[0] & manReqMask) == manReqWord)
+					{
+						if (RequestMan(rcvBuf, mrb.len, &mtb))
+						{
+							tm.Reset();
+
+							i++;
+						}
+						else
+						{
+							i = 0;
+						};
+					}
+					else
+					{
+						i = 0;
+					};
+
+				}
+				else
+				{
+					i = 0;
+				};
+			};
+
+			break;
+
+		case 2:
+
+			if (tm.Check(US2RT(500)))
+			{
+//				SetTrmBoudRate(3); /*mtb.data = tableCRC;*/ mtb.len = 5; SendMLT3(&mtb);
+				SendManData(&mtb);
+
+				i++;
+			};
+
+			break;
+
+		case 3:
+
+			if (mtb.ready)
+			{
+				i = 0;
+			};
+
+			break;
+
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void UpdateMisc()
@@ -1581,6 +1798,7 @@ static void UpdateMisc()
 		CALL( MainMode()			);
 		CALL( SaveVars()			);
 		CALL( UpdateTrmReq02()		);
+		CALL( UpdateMan()			);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -1599,7 +1817,6 @@ static void UpdateParams()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( UpdateBlackFin()		);
 		CALL( UpdateRcvTrm()		);
 		CALL( qmem.Update()			);
 		CALL( UpdateMisc()			);
@@ -1781,6 +1998,8 @@ int main()
 {
 //	static byte i = 0;
 
+	InitHardware();
+
 	Init_time();
 
 	LoadVars();
@@ -1793,11 +2012,10 @@ int main()
 
 	commem.Connect(0, 6250000, 0);
 	comtr.Connect(1, 1562500, 0);
-	combf.Connect(3, 6250000, 0);
+//	combf.Connect(3, 6250000, 0);
 	comrcv.Connect(2, 6250000, 0);
 
 	InitRcv();
-
 
 
 //	com1.Write(&wb);
@@ -1810,11 +2028,11 @@ int main()
 
 	while(1)
 	{
-//		HW::PIOA->SODR = 1UL<<31;
+		HW::PIOA->SODR = 1UL<<8;
 
 		UpdateParams();
 
-//		HW::PIOA->CODR = 1UL<<31;
+		HW::PIOA->CODR = 1UL<<8;
 
 		fps++;
 

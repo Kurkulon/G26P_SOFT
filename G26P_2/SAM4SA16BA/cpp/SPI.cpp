@@ -34,7 +34,7 @@ void SPI::Update()
 			HW::PMC->PCER0 = HW::PID::SPI_M;
 			HW::SPI->CR = 1;
 
-			HW::SPI->MR = 5 | _current->DLYBCS<<24 | _current->PCS<<16;
+			HW::SPI->MR = 0x11 | _current->DLYBCS<<24 | _current->PCS<<16;
 			HW::SPI->CSR[(_current->PCS>>2)&3] = _current->CSR;
 
 			_current->pio->CODR = _current->mask;

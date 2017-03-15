@@ -116,6 +116,8 @@ static SPI spi;
 static SPI::Buffer	bufAccel; 
 static SPI::Buffer	bufGyro;
 
+static i16 gx = 0, gy = 0, gz = 0, gt = 0;
+
 u8 txAccel[25] = { 0x87, 0, 0, 0xC7, 0, 0, 0x97, 0, 0, 0xD7, 0, 0, 0xA7, 0, 0, 0xE7, 0, 0, 0xB7, 0, 0, 0xF7, 0, 0, 0 };
 u8 rxAccel[25];
 
@@ -197,9 +199,70 @@ void CallBackGyro(SPI::Buffer *b)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void SendAccelBuf(u16 count)
+{
+	bufAccel.txp = &txAccel;
+	bufAccel.rxp = &rxAccel;
+	bufAccel.count = count;
+	bufAccel.CSR = 0x00091402;
+	bufAccel.DLYBCS = 0x9;
+	bufAccel.PCS = 0;
+	bufAccel.pCallBack = 0;
+	bufAccel.pio = HW::PIOA;
+	bufAccel.mask = 1<<23;
+	
+	spi.AddRequest(&bufAccel);
+}
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void AccelReadReg(byte reg)
+{
+	txAccel[0] = reg;
+
+	SendAccelBuf(2);
+
+	//HW::PMC->PCER0 = HW::PID::SPI_M;
+	//HW::SPI->CR = 1;
+ //
+	//HW::SPI->MR = 0x09000011;
+	//HW::SPI->CSR[0] = 0x00091482;
+
+	//HW::PIOA->SODR = 1<<22;
+	//HW::PIOA->CODR = 1<<23;
+
+	//HW::SPI->TDR = reg<<8;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void AccelWriteReg(byte reg, byte v)
+{
+	txAccel[0] = reg;
+	txAccel[1] = v;
+
+	SendAccelBuf(2);
+
+	//HW::PMC->PCER0 = HW::PID::SPI_M;
+	//HW::SPI->CR = 1;
+ //
+	//HW::SPI->MR = 0x09000011;
+	//HW::SPI->CSR[0] = 0x0009FF82;
+
+	//HW::PIOA->SODR = 1<<22;
+	//HW::PIOA->CODR = 1<<23;
+
+	//HW::SPI->TDR = reg;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateAccel()
 {
-	static byte i = 0;
+	static byte i = 0; 
+	static i16 x = 0, y = 0, z = 0, t = 0;
+	static i32 fx = 0, fy = 0, fz = 0, ft = 0;
 
 	static TM32 tm;
 
@@ -216,27 +279,235 @@ static void UpdateAccel()
 
 			if (tm.Check(35))
 			{
+				AccelReadReg(0x58); // INT_STATUS
 
+				i++;
 			};
 
 			break;
 
+		case 2:
+
+			if (bufAccel.ready)
+			{
+				AccelWriteReg(7, 0); // CTRL Set PORST to zero
+
+				i++;
+			};
+
+			break;
+
+		case 3:
+
+			if (bufAccel.ready)
+			{
+				tm.Reset();
+
+				i++;
+			};
+
+			break;
+
+		case 4:
+
+			if (tm.Check(10))
+			{
+				AccelReadReg(0x25); // X_MSB 
+
+				i++;
+			};
+
+			break;
+
+		case 5:
+
+			if (bufAccel.ready)
+			{
+				z = rxAccel[1] << 8;
+
+				AccelReadReg(0x20); // X_MSB
+
+				i++;
+			};
+
+			break;
+
+		case 6:
+
+			if (bufAccel.ready)
+			{
+				z |= rxAccel[1];
+
+				z /= 4;
+
+				fz += (((i32)z * 65536) - fz) / 16;
+
+				gz = (i32)fz / 5904;
+
+				AccelReadReg(0x15); // X_MSB
+
+				i++;
+			};
+
+			break;
+
+		case 7:
+
+			if (bufAccel.ready)
+			{
+				x = rxAccel[1] << 8;
+
+				AccelReadReg(0x10); // X_MSB
+
+				i++;
+			};
+
+			break;
+
+		case 8:
+
+			if (bufAccel.ready)
+			{
+				x |= rxAccel[1];
+
+				x /= 4;
+
+				fx += (((i32)x * 65536) - fx) / 16;
+
+				gx = (i32)fx / 5904;
+
+				AccelReadReg(0x1C); // X_MSB
+
+				i++;
+			};
+
+			break;
+
+		case 9:
+
+			if (bufAccel.ready)
+			{
+				y = rxAccel[1] << 8;
+
+				AccelReadReg(0x19); // X_MSB
+
+				i++;
+			};
+
+			break;
+
+		case 10:
+
+			if (bufAccel.ready)
+			{
+				y |= rxAccel[1];
+
+				y /= 4;
+
+				fy += (((i32)y * 65536) - fy) / 16;
+
+				gy = (i32)fy / 5904;
+
+				AccelReadReg(0x4C); // X_MSB
+
+				i++;
+			};
+
+			break;
+
+		case 11:
+
+			if (bufAccel.ready)
+			{
+				t = (rxAccel[1] & 0x3F) << 8;
+
+				AccelReadReg(0x49); // X_MSB
+
+				i++;
+			};
+
+			break;
+
+		case 12:
+
+			if (bufAccel.ready)
+			{
+				t |= rxAccel[1];
+
+				t /= 16;
+
+				gt = ((i32)t - 512) * 10 / 32 + 23;
+
+				i = 4;
+			};
+
+			break;
+
+
+			//	while ((HW::SPI->SR & 0x202) != 0x202);
+
+			//	HW::PIOA->SODR = 1<<23;
+
+			//	z = HW::SPI->RDR<<8;
+
+			//	AccelReadReg(0x20); // X_MSB
+
+			//	while ((HW::SPI->SR & 0x202) != 0x202);
+
+			//	HW::PIOA->SODR = 1<<23;
+
+			//	z |= HW::SPI->RDR & 0xFF;
+
+
+			//	AccelReadReg(0x15); // X_MSB
+
+			//	while ((HW::SPI->SR & 0x202) != 0x202);
+
+			//	HW::PIOA->SODR = 1<<23;
+
+			//	x = HW::SPI->RDR<<8;
+
+			//	AccelReadReg(0x10); // X_MSB
+
+			//	while ((HW::SPI->SR & 0x202) != 0x202);
+
+			//	HW::PIOA->SODR = 1<<23;
+
+			//	x |= HW::SPI->RDR & 0xFF;
+
+
+			//	AccelReadReg(0x1C); // X_MSB
+
+			//	while ((HW::SPI->SR & 0x202) != 0x202);
+
+			//	HW::PIOA->SODR = 1<<23;
+
+			//	y = HW::SPI->RDR<<8;
+
+			//	AccelReadReg(0x19); // X_MSB
+
+			//	while ((HW::SPI->SR & 0x202) != 0x202);
+
+			//	HW::PIOA->SODR = 1<<23;
+
+			//	y |= HW::SPI->RDR & 0xFF;
+
+			//	x /= 4;
+			//	y /= 4;
+			//	z /= 4;
+
+			//	gx = (i32)x * 1110 / 1000;
+			//	gy = (i32)y * 1110 / 1000;
+			//	gz = (i32)z * 1110 / 1000;
+			//};
+			
+//			i++;
+			
+//			break;
+
+
 	};
 
-	if (bufAccel.ready)
-	{
-		bufAccel.txp = &txAccel;
-		bufAccel.rxp = &rxAccel;
-		bufAccel.count = 25;
-		bufAccel.CSR = 0x00092302;
-		bufAccel.DLYBCS = 0x9;
-		bufAccel.PCS = 1;
-		bufAccel.pCallBack = CallBackAccel;
-		bufAccel.pio = HW::PIOA;
-		bufAccel.mask = 1<<23;
-
-		spi.AddRequest(&bufAccel);
-	};
 
 	//if (bufGyro.ready)
 	//{
@@ -1799,6 +2070,8 @@ static void UpdateMisc()
 		CALL( SaveVars()			);
 		CALL( UpdateTrmReq02()		);
 		CALL( UpdateMan()			);
+		CALL( UpdateAccel()			);
+		CALL( spi.Update()			);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -1997,6 +2270,8 @@ static void SaveVars()
 int main()
 {
 //	static byte i = 0;
+
+	HW::PIOA->SODR = 1<<22;
 
 	InitHardware();
 

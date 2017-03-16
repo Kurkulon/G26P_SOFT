@@ -11,6 +11,9 @@
 //	static const bool _debug = false;
 #endif
 
+#pragma O3
+#pragma Otime
+
 extern dword millisecondsCount;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

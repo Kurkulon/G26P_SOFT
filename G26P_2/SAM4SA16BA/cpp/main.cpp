@@ -118,6 +118,8 @@ static SPI::Buffer	bufGyro;
 
 static i16 gx = 0, gy = 0, gz = 0, gt = 0;
 
+static i32 ang_x = 0, ang_y = 0, ang_z = 0;
+
 u8 txAccel[25] = { 0x87, 0, 0, 0xC7, 0, 0, 0x97, 0, 0, 0xD7, 0, 0, 0xA7, 0, 0, 0xE7, 0, 0, 0xB7, 0, 0, 0xF7, 0, 0, 0 };
 u8 rxAccel[25];
 
@@ -258,6 +260,58 @@ static void AccelWriteReg(byte reg, byte v)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static i32 ArcTan(i16 a, i16 b)
+{
+	const i32 a1 = -1.6003 * 65536;
+	const i32 a2 = -13.147 * 65536;
+	const i32 a3 = 59.883 * 65536;
+
+	i32 tmp;
+
+	i32 y = 0;
+
+	if (b < 0)
+	{
+		b = -b;
+		y += 180 * 65536;
+	};
+
+	if (a < 0)
+	{
+		a = -a;
+		y += 90 * 65536;
+	};
+
+	if (a > b)
+	{
+		tmp = a; a = b; b = tmp;
+		y += 45 * 65536;
+	};
+
+	i32 x = (i32)a * 65536 / b;
+
+
+	//-1,6003 =  - 13,147x2 + 59,883x
+
+	i32 v = a1 * x;
+
+	v /= 65536;
+	v += a2;
+	v *= x;
+	v /= 65536;
+	v += a3;
+	v *= x;
+	v /= 65536;
+
+	y += v;//((a1 * x / 65536 + a2) * x / 65536 + a3) * x / 65536;
+
+	//-1,6003x3 - 13,147x2 + 59,883x
+
+	return y;
+
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 static void UpdateAccel()
 {
 	static byte i = 0; 
@@ -338,11 +392,11 @@ static void UpdateAccel()
 			{
 				z |= rxAccel[1];
 
-				z /= 4;
+//				z /= 4;
 
 				fz += (((i32)z * 65536) - fz) / 16;
 
-				gz = (i32)fz / 5904;
+				gz = (i32)fz / 23617;
 
 				AccelReadReg(0x15); // X_MSB
 
@@ -407,6 +461,8 @@ static void UpdateAccel()
 				fy += (((i32)y * 65536) - fy) / 16;
 
 				gy = (i32)fy / 5904;
+
+//				ang_y = ArcTan(gx, gz);
 
 				AccelReadReg(0x4C); // X_MSB
 
@@ -2297,7 +2353,7 @@ int main()
 
 	u32 fps = 0;
 
-	RTM32 rtm;
+	TM32 tm;
 
 //	__breakpoint(0);
 
@@ -2312,7 +2368,7 @@ int main()
 		fps++;
 
 
-		if (rtm.Check(MS2RT(1000)))
+		if (tm.Check(1000))
 		{ 
 			UpdateTemp();
 			qtrm.Add(CreateTrmReq03());

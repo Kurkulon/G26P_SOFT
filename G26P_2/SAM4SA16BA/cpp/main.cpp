@@ -64,7 +64,7 @@ static u16 manReqWord = 0xAA00;
 static u16 manReqMask = 0xFF00;
 
 static u16 numDevice = 0;
-static u16 verDevice = 1;
+static u16 verDevice = 0x101;
 
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
@@ -116,15 +116,22 @@ static SPI spi;
 static SPI::Buffer	bufAccel; 
 static SPI::Buffer	bufGyro;
 
-static i16 gx = 0, gy = 0, gz = 0, gt = 0;
+static i16 ax = 0, ay = 0, az = 0, at = 0;
 
 static i32 ang_x = 0, ang_y = 0, ang_z = 0;
 
-u8 txAccel[25] = { 0x87, 0, 0, 0xC7, 0, 0, 0x97, 0, 0, 0xD7, 0, 0, 0xA7, 0, 0, 0xE7, 0, 0, 0xB7, 0, 0, 0xF7, 0, 0, 0 };
-u8 rxAccel[25];
+static u8 txAccel[25] = { 0 };
+static u8 rxAccel[25];
 
-u8 txGyro[25] = { 0x87, 0, 0, 0xC7, 0, 0, 0x97, 0, 0, 0xD7, 0, 0, 0xA7, 0, 0, 0xE7, 0, 0, 0xB7, 0, 0, 0xF7, 0, 0, 0 };
-u8 rxGyro[25];
+static u8 txGyro[25] = { 0 };
+static u8 rxGyro[25];
+
+static u8 gyro_WHO_AM_I = 0;
+
+static i32 gx = 0, gy = 0, gz = 0;
+static i32 fgx = 6100000, fgy = -5000000, fgz = 4180000;
+static i32 gYaw = 0, gPitch = 0, gRoll = 0;
+static i16 gt = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -312,6 +319,7 @@ static i32 ArcTan(i16 a, i16 b)
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateAccel()
 {
 	static byte i = 0; 
@@ -396,7 +404,7 @@ static void UpdateAccel()
 
 				fz += (((i32)z * 65536) - fz) / 16;
 
-				gz = (i32)fz / 23617;
+				az = (i32)fz / 23617;
 
 				AccelReadReg(0x15); // X_MSB
 
@@ -424,11 +432,11 @@ static void UpdateAccel()
 			{
 				x |= rxAccel[1];
 
-				x /= 4;
+				//x /= 4;
 
 				fx += (((i32)x * 65536) - fx) / 16;
 
-				gx = (i32)fx / 5904;
+				ax = (i32)fx / 23617;
 
 				AccelReadReg(0x1C); // X_MSB
 
@@ -456,11 +464,11 @@ static void UpdateAccel()
 			{
 				y |= rxAccel[1];
 
-				y /= 4;
+				//y /= 4;
 
 				fy += (((i32)y * 65536) - fy) / 16;
 
-				gy = (i32)fy / 5904;
+				ay = (i32)fy / 23617;
 
 //				ang_y = ArcTan(gx, gz);
 
@@ -490,9 +498,11 @@ static void UpdateAccel()
 			{
 				t |= rxAccel[1];
 
-				t /= 16;
+				ft += (((i32)t * 65536) - ft) / 32;
 
-				gt = ((i32)t - 512) * 10 / 32 + 23;
+//				t /= 16;
+
+				at = (ft - 512 * 65536 * 16) / 33554 + 2300;
 
 				i = 4;
 			};
@@ -574,6 +584,205 @@ static void UpdateAccel()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void SendGyroBuf(u16 count)
+{
+	bufGyro.txp = &txGyro;
+	bufGyro.rxp = &rxGyro;
+	bufGyro.count = count;
+	bufGyro.CSR = 0x00091401;
+	bufGyro.DLYBCS = 0x9;
+	bufGyro.PCS = 0;
+	bufGyro.pCallBack = 0;
+	bufGyro.pio = HW::PIOA;
+	bufGyro.mask = 1<<22;
+	
+	spi.AddRequest(&bufGyro);
+}
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void GyroReadReg(byte reg)
+{
+	txGyro[0] = reg;
+
+	SendGyroBuf(2);
+
+	//HW::PMC->PCER0 = HW::PID::SPI_M;
+	//HW::SPI->CR = 1;
+ //
+	//HW::SPI->MR = 0x09000011;
+	//HW::SPI->CSR[0] = 0x00091482;
+
+	//HW::PIOA->SODR = 1<<22;
+	//HW::PIOA->CODR = 1<<23;
+
+	//HW::SPI->TDR = reg<<8;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void GyroWriteReg(byte reg, byte v)
+{
+	txGyro[0] = reg;
+	txGyro[1] = v;
+
+	SendGyroBuf(2);
+
+	//HW::PMC->PCER0 = HW::PID::SPI_M;
+	//HW::SPI->CR = 1;
+ //
+	//HW::SPI->MR = 0x09000011;
+	//HW::SPI->CSR[0] = 0x0009FF82;
+
+	//HW::PIOA->SODR = 1<<22;
+	//HW::PIOA->CODR = 1<<23;
+
+	//HW::SPI->TDR = reg;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateGyro()
+{
+	static byte i = 0; 
+	//static i16 x = 0, y = 0, z = 0, t = 0;
+	//static i32 fx = 0, fy = 0, fz = 0, ft = 0;
+
+//	static TM32 tm;
+
+	i16 t;
+
+	switch (i)
+	{
+		case 0:
+
+			txGyro[0] = 0x80|0xf; // WHO_AM_I
+
+			SendGyroBuf(2);
+
+			i++;
+
+			break;
+
+		case 1:
+
+			if (bufGyro.ready)
+			{
+				gyro_WHO_AM_I = rxGyro[1];
+
+				txGyro[0] = 0x40|0x20;	// Multiple byte write CTRL_REG1
+				txGyro[1] = 0xF;		// CTRL_REG1 = ODR:100, BW:12.5, PD:1, Zen:1, Yen:1, Xen:1
+				txGyro[2] = 0;			// CTRL_REG2 
+				txGyro[3] = 1<<3;		// CTRL_REG3 = I2_DRDY:1
+				txGyro[4] = 0;			// CTRL_REG4 
+				txGyro[5] = 0;			// CTRL_REG5 
+				txGyro[6] = 0;			// REFERENCE 
+
+				SendGyroBuf(7);
+
+				i++;
+			};
+
+			break;
+
+		case 2:
+
+			if (bufGyro.ready)
+			{
+				txGyro[0] = 0x00|0x2E;	// write FIFO_CTRL_REG
+				txGyro[1] = 0;			// FIFO_CTRL_REG = 0
+
+				SendGyroBuf(2);
+
+				i++;
+			};
+
+			break;
+
+		case 3:
+
+			if (bufGyro.ready)
+			{
+				txGyro[0] = 0xC0|0x26;	// Multiple byte SPI read
+				txGyro[1] = 0;			// OUT_TEMP
+				txGyro[2] = 0;			// STATUS_REG
+				txGyro[3] = 0;			// OUT_X_L
+				txGyro[4] = 0;			// OUT_X_H
+				txGyro[5] = 0;			// OUT_Y_L
+				txGyro[6] = 0;			// OUT_Y_H
+				txGyro[7] = 0;			// OUT_Z_L
+				txGyro[8] = 0;			// OUT_Z_H
+
+				SendGyroBuf(9);
+
+				i++;
+			};
+
+			break;
+
+		case 4:
+
+			if (bufGyro.ready)
+			{
+				gt = (i8)rxGyro[1];
+
+				if (rxGyro[2] & 9) // ZYXDA or XDA
+				{
+					t = (i16)(rxGyro[3]|(rxGyro[4]<<8));
+					fgx += ((i32)t * 65536 - fgx) / 16384;
+					gx += t - (6100000/65536) ;
+
+					gYaw = gx / 11429;
+				};
+
+				if (rxGyro[2] & 0xA) // ZYXDA or YDA
+				{
+					t = (i16)(rxGyro[5]|(rxGyro[6]<<8));
+					fgy += ((i32)t * 65536 - fgy) / 16384;
+					gy += t - (-5000000/65536);
+
+					gPitch = gy / 11429;
+				};
+
+				if (rxGyro[2] & 0xA) // ZYXDA or YDA
+				{
+					t = (i16)(rxGyro[7]|(rxGyro[8]<<8));
+					fgz += ((i32)t * 65536 - fgz) / 16384;
+					gz += t - (4180000/65536);
+
+					gRoll = gz / 11429;
+				};
+
+				// ...
+
+				i++;
+			};
+
+			break;
+
+		case 5:
+
+			if ((HW::PIOA->PDSR & (1<<15)) != 0)
+			{
+				i = 3;
+			};
+
+			break;
+
+		//case 6:
+
+		//	if ((HW::PIOA->PDSR & (1<<15)) != 0)
+		//	{
+		//		i = 3;
+		//	};
+
+		//	break;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void CallBackRcvReqFire(REQ *q)
@@ -638,6 +847,8 @@ void CallBackRcvReq02(REQ *q)
 	{
 		rcvStatus &= ~(1 << ((req.adr-1) & 7)); 
 	};
+
+	q->crcOK = crcOK;
 
 	if (!crcOK && q->tryCount > 0)
 	{
@@ -1142,9 +1353,17 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	manTrmData[4] = numStations|(((u16)rcvStatus)<<8);
 	manTrmData[5] = resistValue;
 	manTrmData[6] = temperature;
+	manTrmData[7] = -ax;
+	manTrmData[8] = az;
+	manTrmData[9] = -ay;
+	manTrmData[10] = at;
+	manTrmData[11] = gYaw % 360;
+	manTrmData[12] = gPitch % 360;
+	manTrmData[13] = gRoll % 360;
+	manTrmData[14] = gt;
  
 	mtb->data = manTrmData;
-	mtb->len = 7;
+	mtb->len = 15;
 
 	return true;
 }
@@ -1174,7 +1393,7 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 	//off 0...2005
 
 //return false;
-	if (buf == 0 || len == 3 || mtb == 0) return false;
+	if (buf == 0 || len != 3 || mtb == 0) return false;
 
 	byte nf = ((req.rw>>4)-3)&3;
 	byte nr = req.rw & 7;
@@ -1898,25 +2117,29 @@ static void MainMode()
 
 			if (r02->q.ready)
 			{
-				if (curRcv[fireType] == (rcv-1))
+				if (r02->q.crcOK)
 				{
-					u16 *s = (u16*)&r02->rsp;
-					u16 *d = (u16*)&manVec[fireType*2 + curVec[fireType]];
-					u16 c = r02->rb.len/2;
-
-					while (c-- > 0)
+					if (curRcv[fireType] == (rcv-1))
 					{
-						*d++ = *s++;
+						u16 *s = (u16*)&r02->rsp;
+						u16 *d = (u16*)&manVec[fireType*2 + curVec[fireType]];
+						u16 c = r02->rb.len/2;
+
+						while (c-- > 0)
+						{
+							*d++ = *s++;
+						};
+
+						manVec[fireType].cnt = fireCounter;
 					};
 
-					manVec[fireType].cnt = fireCounter;
-				};
+					CreateMemReq02(*r02);
 
-				CreateMemReq02(*r02);
+					manCounter++;
+				};
 
 				if (rcv < numStations)
 				{
-					manCounter++;
 
 					rcv += 1;
 					chnl = 0;
@@ -2127,6 +2350,7 @@ static void UpdateMisc()
 		CALL( UpdateTrmReq02()		);
 		CALL( UpdateMan()			);
 		CALL( UpdateAccel()			);
+		CALL( UpdateGyro()			);
 		CALL( spi.Update()			);
 	};
 

@@ -777,7 +777,7 @@ static bool UpdateSendVector()
 	static HugeTx *t = 0;
 //	static VecData::Hdr h;
 
-	static u32 vecCount = 0;
+	static u64 vecCount = 0;
 	static u32 fragLen = 0;
 	static u32 fragOff = 0;
 	static u16 ipID = 0;
@@ -786,7 +786,10 @@ static bool UpdateSendVector()
 
 	static u16 ses = 0;
 	static u64 adr = 0;
+	static u64 size = 0;
 	static bool useadr = false;
+
+	static SessionInfo *si = 0;
 
 	__packed struct TRP { EthUdp eu; TrapVector tv; byte data[IP_MTU - sizeof(UdpHdr) - sizeof(TrapVector)]; };
 	__packed struct FR  { EthIp  ei; byte data[IP_MTU]; };
@@ -834,6 +837,13 @@ static bool UpdateSendVector()
 				ses = startSession;
 				useadr = true;
 
+				si = GetSessionInfo(ses, adr);
+
+				if (si != 0)
+				{
+					size = si->size;
+				};
+
 				vecCount = 0;
 
 				i++;
@@ -847,9 +857,9 @@ static bool UpdateSendVector()
 
 		case 1:
 
-			if (tm.Check(1000))
+			if (tm.Check(200))
 			{
-				TRAP_MEMORY_SendStatus(vecCount, FLASH_STATUS_READ_VECTOR_IDLE);
+				TRAP_MEMORY_SendStatus(vecCount * (1<<22) / (size/1024), FLASH_STATUS_READ_VECTOR_IDLE);
 			}
 			//else
 			//{
@@ -915,7 +925,7 @@ static bool UpdateSendVector()
 					//	__breakpoint(0);
 					//};
 
-					vecCount += 1;
+					vecCount += flrb.hdr.dataLen;
 
 					ipID = GetIpID(); 
 

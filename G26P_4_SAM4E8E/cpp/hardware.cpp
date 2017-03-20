@@ -2,6 +2,9 @@
 #include "time.h"
 #include "hardware.h"
 
+#pragma O3
+#pragma Otime
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static __irq void IntDummyHandler()

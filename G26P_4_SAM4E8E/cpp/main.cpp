@@ -11,6 +11,10 @@
 
 #pragma diag_suppress 546,550,177
 
+#pragma O3
+#pragma Otime
+
+
 u32 fps = 0;
 
 //extern byte Heap_Mem[10];
@@ -422,10 +426,30 @@ static void UpdateMisc()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( UpdateEMAC();		);
+		CALL( UpdateEMAC();	);
 		CALL( UpdateTraps();	);
 		CALL( UpdateMan();		);
 		CALL( FLASH_Update();	);
+	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Update()
+{
+	static byte i = 0;
+
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( NAND_Idle();	);
+		CALL( UpdateMisc();	);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -456,9 +480,6 @@ int main()
 	static RTM32 rtm;
 	static RTM32 rtm2;
 
-
-
-
 	HW::PIOB->PER = 1<<13;
 	HW::PIOB->OER = 1<<13;
 
@@ -466,8 +487,7 @@ int main()
 	{
 //		HW::PIOB->SODR = 1<<13;
 
-		NAND_Idle();
-		UpdateMisc();		
+		Update();		
 
 		//static byte i = 0;
 

@@ -176,52 +176,57 @@
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>maxOff</ItemText>
+          <ItemText>gx,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>manVec[0]</ItemText>
+          <ItemText>gy,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>crcErr02</ItemText>
+          <ItemText>gz,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>1</WinNumber>
-          <ItemText>bfCRCER</ItemText>
+          <ItemText>gt,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>6</count>
           <WinNumber>1</WinNumber>
-          <ItemText>combf</ItemText>
+          <ItemText>gyro_WHO_AM_I</ItemText>
         </Ww>
         <Ww>
           <count>7</count>
           <WinNumber>1</WinNumber>
-          <ItemText>gx,0x0A</ItemText>
+          <ItemText>gYaw,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>8</count>
           <WinNumber>1</WinNumber>
-          <ItemText>gy,0x0A</ItemText>
+          <ItemText>gPitch,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>9</count>
           <WinNumber>1</WinNumber>
-          <ItemText>gz,0x0A</ItemText>
+          <ItemText>gRoll,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>10</count>
           <WinNumber>1</WinNumber>
-          <ItemText>gt,0x0A</ItemText>
+          <ItemText>fgx,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>11</count>
           <WinNumber>1</WinNumber>
-          <ItemText>ang_y,0x0A</ItemText>
+          <ItemText>fgy,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>12</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>fgz,0x0A</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -281,6 +286,10 @@
         <Entry>
           <Name>System Viewer\TC0</Name>
           <WinId>35903</WinId>
+        </Entry>
+        <Entry>
+          <Name>System Viewer\TC1</Name>
+          <WinId>35902</WinId>
         </Entry>
       </SystemViewers>
     </TargetOption>

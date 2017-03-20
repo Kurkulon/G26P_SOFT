@@ -206,6 +206,7 @@ extern void NAND_FullErase();
 //extern void NAND_NextSession();
 
 extern void StartSendSession();
+extern SessionInfo* GetSessionInfo(u16 session, u64 adr);
 
 extern const SessionInfo* GetLastSessionInfo();
 

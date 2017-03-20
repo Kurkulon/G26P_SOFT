@@ -63,6 +63,9 @@ static bool writeFlashEnabled = false;
 static bool flashFull = false;
 static bool flashEmpty = false;
 
+static bool testWriteFlash = false;
+
+
 //__packed struct SI
 //{
 //	u16			session;
@@ -2619,7 +2622,7 @@ void StartSendSession()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool UpdateSendSession()
+static bool UpdateSendSession()
 {
 	enum {	WAIT = 0, READ_START, READ_1, READ_2, READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,FIND_2,FIND_3,FIND_4, READ_END};
 
@@ -2704,6 +2707,29 @@ bool UpdateSendSession()
 	};
 
 	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+SessionInfo* GetSessionInfo(u16 session, u64 adr)
+{
+	u16 ind = nvv.index;
+
+	SessionInfo *s = 0;
+
+	for (u16 i = 128; i > 0; i--)
+	{
+		s = &nvsi[ind].si;
+
+		if (s->session == session && s->last_adress == adr)
+		{
+			return s;
+		};
+
+		ind = (ind-1)&127;
+	};
+
+	return 0;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3517,6 +3543,66 @@ static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void RequestTestWrite(FLWB *fwb)
+{
+	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[1024*4]; u16 crc; };
+
+	if (fwb == 0)
+	{
+		return;
+	};
+
+	static byte nr = 0;
+	static byte nf = 0;
+	static u32 count = 0;
+
+	VecData &vd = fwb->vd;
+
+	Req &req = *((Req*)vd.data);
+
+	req.rw = 0xAA30 + ((nf & (3))<<3) + (nr & 7);
+	req.cnt = count++;
+	req.gain = 7;
+	req.st = 10;
+	req.len = ArraySize(req.data)/4;
+	req.delay = 0;
+
+	u16 v = 0;
+
+	for (u16 i = 0; i < ArraySize(req.data); i++)
+	{
+		req.data[i] = v++;
+	};
+
+	if (nr < 7)
+	{ 
+		nr += 1; 
+	}
+	else
+	{
+		nr = 0;
+
+		count += 1;
+
+		if (nf < 2)
+		{
+			nf += 1;
+		}
+		else
+		{
+			nf = 0;
+		};
+	};
+
+	fwb->dataLen = sizeof(req);
+
+	req.crc = GetCRC16(flwb->vd.data, flwb->dataLen - 2);
+	
+	RequestFlashWrite(fwb);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void InitCom()
 {
 	com1.Connect(1, 6250000, 0);
@@ -3526,7 +3612,7 @@ static void InitCom()
 
 static void UpdateCom()
 {
-	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[512*4]; };
+//	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[512*4]; };
 
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
@@ -3534,7 +3620,7 @@ static void UpdateCom()
 	static byte state = 0;
 
 	static FLWB *fwb;
-	static Req *req;
+//	static Req *req;
 	static VecData *vd;
 
 	static u32 count = 0;
@@ -3564,7 +3650,14 @@ static void UpdateCom()
 
 			if (fwb != 0)
 			{
-				state++;
+				if (testWriteFlash)
+				{
+					RequestTestWrite(fwb);
+				}
+				else
+				{
+					state++;
+				};
 			};
 
 			break;
@@ -3572,37 +3665,13 @@ static void UpdateCom()
 		case 1:
 
 			vd = &fwb->vd;
-			req = (Req*)vd->data;
 
 			rb.data = vd->data;
 			rb.maxLen = sizeof(vd->data);
 
-//			rb.len = sizeof(*req);
-
-			//req->rw = 0xAA30 + ((b & (~7))<<1) + (b & 7);
-			//req->cnt = count++;
-			//req->gain = 7;
-			//req->st = 10;
-			//req->len = ArraySize(req->data)/4;
-			//req->delay = 0;
-
-			//if (writeFlashEnabled)
-			//{
-			//	v = 0;
-
-			//	for (u16 i = 0; i < ArraySize(req->data); i++)
-			//	{
-			//		req->data[i] = v++;
-			//	};
-			//};
-
 			HW::PIOB->SODR = 1<<13;
 
 			com1.Read(&rb, -1, 100);
-
-			//b += 1;
-
-			//if (b >= 24) { b = 0; };
 
 			state++;
 

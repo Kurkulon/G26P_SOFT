@@ -31,7 +31,7 @@
 #define FLASH_SAVE_BUFFER_SIZE		8400
 #define FLASH_READ_BUFFER_SIZE		8400
 
-static FLWB flwb[4];
+static FLWB flwb[2];
 static FLRB flrb[4];
 
 static List<FLWB> freeFlWrBuf;
@@ -116,6 +116,8 @@ static byte buf[sizeof(nvv)*2+4];
 byte savesCount = 0;
 
 byte savesSessionsCount = 0;
+
+byte eraseSessionsCount = 0;
 
 static TWI	twi;
 
@@ -1266,10 +1268,10 @@ static bool Write::Update()
 					{
 						Finish();
 
-						if (!createFile && (nvv.si.size >= 1024*1024*1536))
-						{
-							NAND_NextSession();
-						};
+						//if (!createFile && (nvv.si.size >= 1024*1024*1536))
+						//{
+						//	NAND_NextSession();
+						//};
 
 						//if (wr.GetRawPage() >= 0xC0000)
 						//{
@@ -1420,6 +1422,8 @@ static bool Write::Update()
 			spare.chipMask = nandSize.mask;	
 
 			SaveSession();
+
+			createFile = false;
 
 			state = WAIT;
 
@@ -2628,19 +2632,10 @@ static bool UpdateSendSession()
 
 	static byte i = WAIT;
 	
-	static FLADR rs(0), re(0);
-	static u32 bs = 0, be = 0;
-
-	static SpareArea spare;
-	static u16 sid = 0;
-
-	static FLRB flrb;
-
-	static RTC srtc, ertc;
-
 	static u16 ind = 0;
 	static u32 prgrss = 0;
 	static u16 count = 0;
+	static u64 size = 0;
 
 	SessionInfo &s = nvsi[ind].si;
 
@@ -2653,6 +2648,7 @@ static bool UpdateSendSession()
 				ind = nvv.index;
 				prgrss = 0;
 				count = 128;
+				size = 0;
 
 				i++;
 			}
@@ -2673,6 +2669,8 @@ static bool UpdateSendSession()
 
 				count--;
 
+				size += s.size;
+
 				i++;
 			};
 
@@ -2682,7 +2680,7 @@ static bool UpdateSendSession()
 
 			if (TRAP_MEMORY_SendStatus(prgrss, FLASH_STATUS_READ_SESSION_IDLE))
 			{
-				if (s.size > 0 && count > 0)
+				if (s.size > 0 && count > 0 && ((u32*)&size)[1] < 2)
 				{
 					i = 1;
 				}
@@ -2840,6 +2838,7 @@ void NAND_Idle()
 			if (cmdFullErase)
 			{
 				cmdFullErase = false;
+				eraseSessionsCount = 1;
 				nandState = NAND_STATE_FULL_ERASE_START;
 
 				break;
@@ -3627,6 +3626,8 @@ static void UpdateCom()
 	static u16 v = 0;
 	static byte b = 0;
 
+	static TM32 tm;
+
 	//static byte buf[100];
 
 	//wb.data = buf;
@@ -3652,6 +3653,16 @@ static void UpdateCom()
 			{
 				if (testWriteFlash)
 				{
+					if (!writeFlashEnabled && tm.Check(2000))
+					{
+						FLASH_WriteEnable();
+					}
+					else if (writeFlashEnabled && (nvv.si.size > 456789012))
+					{	
+						FLASH_WriteDisable();
+						tm.Reset();
+					};
+
 					RequestTestWrite(fwb);
 				}
 				else
@@ -3856,6 +3867,25 @@ static void SaveVars()
 			{
 				savesSessionsCount--;
 				i = 3;
+			}
+			else if (eraseSessionsCount > 0)
+			{
+				eraseSessionsCount--;
+
+				for (u16 n = 0; n < ArraySize(nvsi); n++)
+				{
+					nvsi[n].si.size = 0;
+					nvsi[n].crc = 0;
+				};
+
+				nvv.si.session = 0;
+				nvv.si.size = 0;
+				nvv.si.last_adress = 0;
+				nvv.index = 0;
+
+				savesCount = 1;
+
+				i = 4;
 			};
 
 			break;
@@ -3890,19 +3920,33 @@ static void SaveVars()
 
 		case 3:
 
-			NVSI &si = nvsi[nvv.index];
+			{
+				NVSI &si = nvsi[nvv.index];
 
-			u32 adr = sa+sizeof(si)*nvv.index;
+				u32 adr = sa+sizeof(si)*nvv.index;
+
+				dsc.MMR = 0x500200;
+				dsc.IADR = adr;
+				dsc.CWGR = 0x7575;
+				dsc.data = buf;
+				dsc.len = sizeof(si);
+
+				p.CRC.w = 0xFFFF;
+				p.WriteArrayB(&si, sizeof(si.si));
+				p.WriteW(p.CRC.w);
+
+				i = (twi.Write(&dsc)) ? 2 : 0;
+			};
+
+			break;
+
+		case 4:
 
 			dsc.MMR = 0x500200;
-			dsc.IADR = adr;
+			dsc.IADR = sa;
 			dsc.CWGR = 0x7575;
-			dsc.data = buf;
-			dsc.len = sizeof(si);
-
-			p.CRC.w = 0xFFFF;
-			p.WriteArrayB(&si, sizeof(si.si));
-			p.WriteW(p.CRC.w);
+			dsc.data = nvsi;
+			dsc.len = sizeof(nvsi);
 
 			i = (twi.Write(&dsc)) ? 2 : 0;
 

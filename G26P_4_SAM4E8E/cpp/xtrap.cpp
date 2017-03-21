@@ -173,13 +173,13 @@ SmallTx* GetSmallTxBuffer()
 HugeTx* GetHugeTxBuffer()
 {
 	static byte		indHugeTx = 0;
-	static HugeTx	hugeTxBuf[8];
+	static HugeTx	hugeTxBuf[4];
 
 	HugeTx *p = &hugeTxBuf[indHugeTx];
 
 	if (p->len == 0)
 	{
-		indHugeTx = (indHugeTx + 1) & 7;
+		indHugeTx = (indHugeTx + 1) & 3;
 		return p;
 	}
 	else

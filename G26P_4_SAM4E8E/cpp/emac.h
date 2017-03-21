@@ -5,7 +5,7 @@
 
 extern bool	InitEMAC();
 extern void	UpdateEMAC();
-extern bool EMAC_SendData(void *pData, u16 length);
+//extern bool EMAC_SendData(void *pData, u16 length);
 
 inline u16 GetIpID() {extern u16 txIpID; return ReverseWord(txIpID++); }
 

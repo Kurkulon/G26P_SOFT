@@ -36,7 +36,7 @@ static trap_status trapStatus = TRAP_WAIT;
 
 static const bool __trace = true;
 
-char TrapTxDataBuffer[TRAP_TX_DATA_BUFFER_SIZE];
+//char TrapTxDataBuffer[TRAP_TX_DATA_BUFFER_SIZE];
 
 u32 TrapRxCounter;
 u32 TrapTxCounter;
@@ -975,6 +975,7 @@ static bool UpdateSendVector()
 				flrb.data = ef.data;
 				flrb.maxLen = sizeof(ef.data);
 				flrb.vecStart = false;
+				flrb.useAdr = false;
 
 				if (flrb.maxLen > fragLen) { flrb.maxLen = fragLen; };
 

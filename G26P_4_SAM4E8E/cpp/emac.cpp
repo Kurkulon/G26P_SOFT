@@ -4,7 +4,7 @@
 #include "xtrap.h"
 #include "list.h"
 
-#pragma diag_suppress 546,550,177
+//#pragma diag_suppress 546,550,177
 
 #pragma O3
 #pragma Otime
@@ -71,7 +71,7 @@ __packed struct SysEthBuf : public EthBuf
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static SysEthBuf	sysTxBuf[8];
+static SysEthBuf	sysTxBuf[4];
 static byte			indSysTx = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -80,34 +80,34 @@ static List<EthBuf> txList;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct GSTAT
-{
-	u32		FR;			
-	u32		BCFR;		
-	u32		MFR;		
-	u32		PFR;		
-	u32		BFR64;		
-	u32		TBFR127;	
-	u32		TBFR255;	
-	u32		TBFR511;	
-	u32		TBFR1023;	
-	u32		TBFR1518;	
-	u32		TMXBFR;		
-	u32		UFR;		
-	u32		OFR;		
-	u32		JR;			
-	u32		FCSE;		
-	u32		LFFE;		
-	u32		RSE;		
-	u32		AE;			
-	u32		RRE;		
-	u32		ROE;		
-	u32		IHCE;		
-	u32		TCE;		
-	u32		UCE;		
-};
-
-GSTAT stat = {0};
+//struct GSTAT
+//{
+//	u32		FR;			
+//	u32		BCFR;		
+//	u32		MFR;		
+//	u32		PFR;		
+//	u32		BFR64;		
+//	u32		TBFR127;	
+//	u32		TBFR255;	
+//	u32		TBFR511;	
+//	u32		TBFR1023;	
+//	u32		TBFR1518;	
+//	u32		TMXBFR;		
+//	u32		UFR;		
+//	u32		OFR;		
+//	u32		JR;			
+//	u32		FCSE;		
+//	u32		LFFE;		
+//	u32		RSE;		
+//	u32		AE;			
+//	u32		RRE;		
+//	u32		ROE;		
+//	u32		IHCE;		
+//	u32		TCE;		
+//	u32		UCE;		
+//};
+//
+//GSTAT stat = {0};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -151,7 +151,7 @@ static SysEthBuf* GetSysTxBuffer()
 
 	if (p.len == 0)
 	{
-		indSysTx = (indSysTx + 1) & 7;
+		indSysTx = (indSysTx + 1) & 3;
 		return &p;
 	}
 	else
@@ -205,34 +205,34 @@ static void FreeTxDesc()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateStatistic()
-{
-	using namespace HW;
-
-	stat.FR			+= 	GMAC->FR;			
-	stat.BCFR		+= 	GMAC->BCFR;		
-	stat.MFR		+= 	GMAC->MFR;		
-	stat.PFR		+= 	GMAC->PFR;		
-	stat.BFR64		+= 	GMAC->BFR64;	
-	stat.TBFR127	+= 	GMAC->TBFR127;	
-	stat.TBFR255 	+= 	GMAC->TBFR255;	
-	stat.TBFR511 	+= 	GMAC->TBFR511;	
-	stat.TBFR1023 	+= 	GMAC->TBFR1023;	
-	stat.TBFR1518 	+= 	GMAC->TBFR1518;	
-	stat.TMXBFR		+= 	GMAC->TMXBFR;		
-	stat.UFR 		+= 	GMAC->UFR;		
-	stat.OFR 		+= 	GMAC->OFR;		
-	stat.JR			+= 	GMAC->JR;			
-	stat.FCSE		+= 	GMAC->FCSE;		
-	stat.LFFE		+= 	GMAC->LFFE;		
-	stat.RSE		+= 	GMAC->RSE;		
-	stat.AE			+= 	GMAC->AE;			
-	stat.RRE		+= 	GMAC->RRE;		
-	stat.ROE		+= 	GMAC->ROE;		
-	stat.IHCE		+= 	GMAC->IHCE;		
-	stat.TCE		+= 	GMAC->TCE;		
-	stat.UCE		+= 	GMAC->UCE;		
-}
+//static void UpdateStatistic()
+//{
+//	using namespace HW;
+//
+//	stat.FR			+= 	GMAC->FR;			
+//	stat.BCFR		+= 	GMAC->BCFR;		
+//	stat.MFR		+= 	GMAC->MFR;		
+//	stat.PFR		+= 	GMAC->PFR;		
+//	stat.BFR64		+= 	GMAC->BFR64;	
+//	stat.TBFR127	+= 	GMAC->TBFR127;	
+//	stat.TBFR255 	+= 	GMAC->TBFR255;	
+//	stat.TBFR511 	+= 	GMAC->TBFR511;	
+//	stat.TBFR1023 	+= 	GMAC->TBFR1023;	
+//	stat.TBFR1518 	+= 	GMAC->TBFR1518;	
+//	stat.TMXBFR		+= 	GMAC->TMXBFR;		
+//	stat.UFR 		+= 	GMAC->UFR;		
+//	stat.OFR 		+= 	GMAC->OFR;		
+//	stat.JR			+= 	GMAC->JR;			
+//	stat.FCSE		+= 	GMAC->FCSE;		
+//	stat.LFFE		+= 	GMAC->LFFE;		
+//	stat.RSE		+= 	GMAC->RSE;		
+//	stat.AE			+= 	GMAC->AE;			
+//	stat.RRE		+= 	GMAC->RRE;		
+//	stat.ROE		+= 	GMAC->ROE;		
+//	stat.IHCE		+= 	GMAC->IHCE;		
+//	stat.TCE		+= 	GMAC->TCE;		
+//	stat.UCE		+= 	GMAC->UCE;		
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -366,7 +366,7 @@ bool TransmitFragUdp(EthUdpBuf *b, u16 dst)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
+/*
 bool EMAC_SendData(void *pData, u16 length)
 {
 	static u16 TxDataID = 0;
@@ -462,7 +462,7 @@ bool EMAC_SendData(void *pData, u16 length)
 	//}
 	//EmacTxCounter++;
 	return ready;
-}
+}*/
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

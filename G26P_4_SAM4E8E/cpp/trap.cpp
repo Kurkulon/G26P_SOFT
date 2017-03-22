@@ -763,6 +763,8 @@ static void MakePacketHeaders(TrapHdr *p, bool need_ask, bool is_ask, char devic
 static void StartSendVector(u16 session, u64 adr)
 {
 	startSendVector = true;
+	stop = false;
+	pause = false;
 	startSession = session;
 	startAdr = adr;
 }
@@ -903,6 +905,9 @@ static bool UpdateSendVector()
 				if (flrb.len == 0 || flrb.hdr.session != ses)
 				{
 					TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_VECTOR_READY);
+
+					stop = false;
+					pause = false;
 
 					i = 0;
 				}

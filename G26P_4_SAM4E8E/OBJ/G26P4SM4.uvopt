@@ -206,7 +206,7 @@
         <Ww>
           <count>8</count>
           <WinNumber>1</WinNumber>
-          <ItemText>nvv</ItemText>
+          <ItemText>nvv,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>9</count>
@@ -217,6 +217,31 @@
           <count>10</count>
           <WinNumber>1</WinNumber>
           <ItemText>rd</ItemText>
+        </Ww>
+        <Ww>
+          <count>11</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>testWriteFlash</ItemText>
+        </Ww>
+        <Ww>
+          <count>12</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>curRdBuf</ItemText>
+        </Ww>
+        <Ww>
+          <count>13</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>rd</ItemText>
+        </Ww>
+        <Ww>
+          <count>14</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>spare</ItemText>
+        </Ww>
+        <Ww>
+          <count>15</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>rspare</ItemText>
         </Ww>
       </WatchWindow1>
       <MemoryWindow1>

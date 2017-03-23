@@ -1,8 +1,10 @@
 #ifndef MEMORY_AT91SAM7X256_FLASH_H
 #define MEMORY_AT91SAM7X256_FLASH_H
 
+#include "types.h"
+
 #include "rtc.h"
-#include "vector.h"
+//#include "vector.h"
 #include "trap_def.h"
 
 
@@ -78,11 +80,11 @@ struct FLADR
 	FLADR(u32 bl, u16 pg, u16 cl, byte ch) : block(bl), page(pg), col(cl), chip(ch) {}
 	FLADR(u32 pg) : col(0) { SetRawPage(pg); }
 
-	u32		GetRawPage() { return raw >> NAND_COL_BITS; }
+	u32		GetRawPage() { return (raw & NAND_RAWADR_MASK) >> NAND_COL_BITS; }
 
 	void	SetRawPage(u32 p) { raw = (u64)(p & NAND_RAWPAGE_MASK) << NAND_COL_BITS; };
 
-	u32		GetRawBlock() { return raw >> (NAND_COL_BITS+NAND_PAGE_BITS); }
+	u32		GetRawBlock() { return (raw & NAND_RAWADR_MASK) >> (NAND_COL_BITS+NAND_PAGE_BITS); }
 
 	void	SetRawBlock(u32 b) { raw = (u64)(b & NAND_RAWBLOCK_MASK) << (NAND_COL_BITS+NAND_PAGE_BITS); };
 

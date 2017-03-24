@@ -173,13 +173,13 @@ SmallTx* GetSmallTxBuffer()
 HugeTx* GetHugeTxBuffer()
 {
 	static byte		indHugeTx = 0;
-	static HugeTx	hugeTxBuf[4];
+	static HugeTx	hugeTxBuf[8];
 
 	HugeTx *p = &hugeTxBuf[indHugeTx];
 
 	if (p->len == 0)
 	{
-		indHugeTx = (indHugeTx + 1) & 3;
+		indHugeTx = (indHugeTx + 1) & 7;
 		return p;
 	}
 	else
@@ -237,7 +237,7 @@ static void UpdateRequestTraps()
 
 		case 2:
 
-			if (TRAP_INFO_SendLostIP(req->srcIP, ReverseWord(req->srcPort)))
+			if (TRAP_INFO_SendLostIP(ReverseDword(req->srcIP), ReverseWord(req->srcPort)))
 			{
 				i++;
 			};
@@ -260,7 +260,7 @@ static void UpdateRequestTraps()
 
 		case 4:
 
-			i += (TRAP_INFO_SendCaptureIP(ComputerOldIpAddr, ReverseWord(ComputerOldUDPPort))) ? 1 : 0;
+			i += (TRAP_INFO_SendCaptureIP(ReverseDword(ComputerOldIpAddr), ReverseWord(ComputerOldUDPPort))) ? 1 : 0;
 
 			break;
 

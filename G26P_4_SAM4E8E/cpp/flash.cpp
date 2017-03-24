@@ -31,7 +31,7 @@
 #define FLASH_SAVE_BUFFER_SIZE		8400
 #define FLASH_READ_BUFFER_SIZE		8400
 
-static FLWB flwb[2];
+static FLWB flwb[4];
 static FLRB flrb[4];
 
 static List<FLWB> freeFlWrBuf;
@@ -209,7 +209,7 @@ static NandMemSize nandSize;
 
 
 static FLADR wr(0, 0, 0, 0);
-static FLADR er(-1, -1, -1, -1);
+//static FLADR er(-1, -1, -1, -1);
 
 //static u64	cur_adr;
 //static u32 		rd_row = 0;
@@ -418,11 +418,11 @@ static const u32 maskChipSelect = (0xF<<13)|(0xF<<23);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define ADR_LATCH_COL(col) { *FLA = col; *FLA = col >>= 8; }
+#define ADR_LATCH_COL(col) { *FLA = col; *FLA = col >> 8; }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define ADR_LATCH_ROW(row) { *FLA = row; *FLA = row >>= 8; *FLA = row >>= 16; }
+#define ADR_LATCH_ROW(row) { *FLA = row; *FLA = row >> 8; *FLA = row >> 16; }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -730,30 +730,30 @@ inline void CmdWritePage2()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-namespace Erase
+struct EraseBlock
 {
 	enum {	WAIT = 0,ERASE_START,ERASE_0,ERASE_1,ERASE_2,ERASE_3,ERASE_4,ERASE_5 };
 
-	static SpareArea spare;
+	SpareArea spare;
+	
+	FLADR er;
 
-	static byte state = WAIT;
-	static bool force = false;	// стереть полюбасу
-	static bool check = true;	// Проверить результат стирания
-	static u16	errBlocks = 0;
-//	static u32	fullEraseBlockCount = 0;
+	byte state;
+	bool force;		// стереть полюбасу
+	bool check;		// Проверить результат стирания
+	u16	errBlocks;
 
+	EraseBlock() : state(WAIT), force(false), check(true), errBlocks(0), er(-1, -1, -1, -1) {}
 
-	static bool Start(byte chip, u32 block, bool frc, bool chk);
-//	static bool FullEraseStart(u32 blockCount, bool frc, bool chk);
-	static bool Update();
+	void Start(const FLADR &rd, bool frc, bool chk);
+	bool Update();
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool Erase::Start(byte chip, u32 block, bool frc, bool chk)
+void EraseBlock::Start(const FLADR &rd, bool frc, bool chk)
 {
-	er.chip = chip;
-	er.block = block;
+	er = rd;
 
 	force = frc;
 	check = chk;
@@ -761,13 +761,11 @@ static bool Erase::Start(byte chip, u32 block, bool frc, bool chk)
 	errBlocks = 0;
 
 	state = ERASE_START;
-
-	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool Erase::Update()
+bool EraseBlock::Update()
 {
 	switch(state)
 	{
@@ -926,6 +924,8 @@ namespace Write
 	static byte state;
 
 	static bool createFile = false;
+
+	static EraseBlock eraseBlock;
 
 
 
@@ -1192,11 +1192,11 @@ static bool Write::Update()
 
 		case WRITE_PAGE:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			if(er.block != wr.block || er.chip != wr.chip)	// новый блок
+			if(eraseBlock.er.GetRawBlock() != wr.GetRawBlock())	// новый блок
 			{
 				wr_pg_error = 0;
 
-				Erase::Start(wr.chip, wr.block, false, true);
+				eraseBlock.Start(wr, false, true);
 
 	            state = ERASE;
 
@@ -1314,7 +1314,7 @@ static bool Write::Update()
 																																
 			break;	
 
-		case WRITE_PAGE_6:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++		
+		case WRITE_PAGE_6:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
 			if(!NAND_BUSY())
 			{
@@ -1333,29 +1333,41 @@ static bool Write::Update()
 
 				if (rspare.crc != 0)
 				{
-					__breakpoint(0);
-				};
+//					__breakpoint(0);
 
-				wr.NextPage();
+					spare.fbp += 1;
 
-				if (wr_count == 0)
-				{
-					Finish();
+					CmdWritePage(wr.pg, wr.block, wr.page);
 
-					state = (createFile) ? WRITE_CREATE_FILE_1 : WAIT;
+					*(u16*)FLD = 0; // spareErase.validPage = 0;
+
+					CmdWritePage2();
+
+					state = WRITE_PAGE_4;
 				}
 				else
 				{
-					state = WRITE_START;
+					wr.NextPage();
+
+					if (wr_count == 0)
+					{
+						Finish();
+
+						state = (createFile) ? WRITE_CREATE_FILE_1 : WAIT;
+					}
+					else
+					{
+						state = WRITE_START;
+					};
+
+					spare.fpn += 1;
+
+					spare.vecFstOff = -1;
+					spare.vecFstLen = 0;
+
+					spare.vecLstOff = -1;
+					spare.vecLstLen = 0;
 				};
-
-				spare.fpn += 1;
-
-				spare.vecFstOff = -1;
-				spare.vecFstLen = 0;
-
-				spare.vecLstOff = -1;
-				spare.vecLstLen = 0;
 			};
 
 			break;
@@ -1366,12 +1378,11 @@ static bool Write::Update()
 
 		case ERASE:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++			
 					
-			if (!Erase::Update())
+			if (!eraseBlock.Update())
 			{
-				wr.block = er.block;
-				wr.chip = er.chip;
+				wr = eraseBlock.er;
 
-				spare.fbb += Erase::errBlocks;
+				spare.fbb += eraseBlock.errBlocks;
 
 				state = WRITE_PAGE_0;																			
 			};
@@ -1438,6 +1449,110 @@ static bool Write::Update()
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct ReadSpare
+{
+	enum { WAIT = 0, START, READ_1, READ_2, READ_3 };
+
+	SpareArea	*spare;
+	FLADR		*rd;
+
+	byte state;
+
+	ReadSpare() : spare(0), rd(0) {}
+
+	bool Start(SpareArea *sp, FLADR *frd);
+	bool Update();
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool ReadSpare::Start(SpareArea *sp, FLADR *frd)
+{
+	if (sp == 0 || frd == 0)
+	{
+		return false;
+	};
+
+	spare = sp;
+	rd = frd;
+
+	state = START;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool ReadSpare::Update()
+{
+	switch(state)
+	{
+		case WAIT:
+
+			return false;
+
+		case START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			NAND_Chip_Select(rd->chip);
+
+			CmdReadPage(rd->pg, rd->block, rd->page);
+
+			state = READ_1;
+
+			break;
+
+		case READ_1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			if(!NAND_BUSY())
+			{
+				NandReadData(spare, sizeof(*spare));
+
+				state = READ_2;
+			};
+
+			break;
+
+		case READ_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			if (CheckDataComplete())
+			{
+				if (spare->validBlock != 0xFFFF)
+				{
+					rd->NextBlock();
+
+					NAND_Chip_Select(rd->chip);
+					CmdReadPage(rd->pg, rd->block, rd->page);
+
+					state = READ_1;
+				}				
+				else if (spare->validPage != 0xFFFF)
+				{
+					rd->NextPage();
+
+					NAND_Chip_Select(rd->chip);
+					CmdReadPage(rd->pg, rd->block, rd->page);
+
+					state = READ_1;
+				}
+				else
+				{
+					spare->crc = GetCRC16((void*)&spare->file, sizeof(*spare) - spare->CRC_SKIP);
+				
+					state = WAIT;
+
+					return false;
+				};
+			};
+
+			break;
+	};
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 namespace Read
 {
@@ -1450,6 +1565,8 @@ namespace Read
 	static u32 		sparePage = -1;
 
 	static SpareArea spare;
+
+	static ReadSpare readSpare;
 
 	static bool vecStart = false;
 
@@ -1539,7 +1656,8 @@ static bool Read::Update()
 
 			if (rd.GetRawPage() != sparePage)
 			{
-				CmdReadPage(rd.pg, rd.block, rd.page);
+				readSpare.Start(&spare, &rd);
+//				CmdReadPage(rd.pg, rd.block, rd.page);
 
 				state = READ_1;
 			}
@@ -1554,18 +1672,29 @@ static bool Read::Update()
 
 		case READ_1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			if(!NAND_BUSY())
+			if (!readSpare.Update()) //(!NAND_BUSY())
 			{
-				NandReadData(&spare, sizeof(spare));
+				//NandReadData(&spare, sizeof(spare));
 
-				state = READ_2;
+				//state = READ_2;
+
+				sparePage = rd.GetRawPage();
+
+				if (sparePage != spare.rawPage)
+				{
+//						__breakpoint(0);
+				};
+
+				CmdRandomRead(rd.col);
+
+				state = READ_PAGE;
 			};
 
 			break;
 
 		case READ_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			if (CheckDataComplete())
+/*			if (CheckDataComplete())
 			{
 				if (rd.page == 0 && spare.validBlock != 0xFFFF)
 				{
@@ -1612,7 +1741,7 @@ static bool Read::Update()
 
 					state = READ_PAGE;
 				};
-			};
+			};*/
 
 			break;
 
@@ -1715,7 +1844,9 @@ static bool Read::Update()
 					//	break;
 					//};
 
-					CmdReadPage(rd.pg, rd.block, rd.page);
+//					CmdReadPage(rd.pg, rd.block, rd.page);
+
+					readSpare.Start(&spare, &rd);
 
 					state = FIND_1;
 				};
@@ -1730,7 +1861,9 @@ static bool Read::Update()
 				//	break;
 				//};
 
-				CmdReadPage(rd.pg, rd.block, rd.page);
+//				CmdReadPage(rd.pg, rd.block, rd.page);
+
+				readSpare.Start(&spare, &rd);
 
 				state = FIND_1;
 			}
@@ -1760,18 +1893,21 @@ static bool Read::Update()
 
 		case FIND_1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			if(!NAND_BUSY())
+			if (!readSpare.Update())	//(!NAND_BUSY())
 			{
-				NandReadData(&spare, sizeof(spare));
+				//NandReadData(&spare, sizeof(spare));
 
-				state = FIND_2;
+				//state = FIND_2;
+				sparePage = rd.GetRawPage();
+
+				state = FIND_START;
 			};
 
 			break;
 
 		case FIND_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			if (CheckDataComplete())
+/*			if (CheckDataComplete())
 			{
 				if (rd.page == 0 && spare.validBlock != 0xFFFF)
 				{
@@ -1809,7 +1945,7 @@ static bool Read::Update()
 
 					state = FIND_START;
 				};
-			};
+			};*/
 
 			break;
 
@@ -1829,103 +1965,7 @@ static bool Read::Update()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static SpareArea *spareReadPtr = 0;
-static FLADR *spareAdrPtr = 0;
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool ReadSpareStart(SpareArea *sp, FLADR *frd)
-{
-	spareReadPtr = sp;
-	spareAdrPtr = frd;
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool ReadSpareUpdate()
-{
-	enum {	WAIT = 0,START,READ_1,READ_2,READ_3};
-
-	static byte state = WAIT;
-	static SpareArea *spare = 0;
-	static FLADR *rd = 0;
-
-	switch(state)
-	{
-		case WAIT:	
-			
-			if (spareReadPtr != 0 && spareAdrPtr != 0)
-			{
-				spare = spareReadPtr;
-				rd = spareAdrPtr;
-
-				state = START;
-			}
-			else
-			{
-				return false;
-			};
-
-		case START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-			NAND_Chip_Select(rd->chip);
-
-			CmdReadPage(rd->pg, rd->block, rd->page);
-
-			state = READ_1;
-
-			break;
-
-		case READ_1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
-
-			if(!NAND_BUSY())
-			{
-				NandReadData(spare, sizeof(*spare));
-
-				state = READ_2;
-			};
-
-			break;
-
-		case READ_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
-
-			if (CheckDataComplete())
-			{
-				if (spare->validBlock != 0xFFFF)
-				{
-					rd->NextBlock();
-
-					state = START;
-				}				
-				else if (spare->validPage != 0xFFFF)
-				{
-					rd->NextPage();
-
-					state = START;
-				}
-				else
-				{
-					spare->crc = GetCRC16((void*)&spare->file, sizeof(*spare) - spare->CRC_SKIP);
-				
-					spareReadPtr = 0;
-					spareAdrPtr = 0;
-
-					state = WAIT;
-
-					return false;
-
-				};
-			};
-
-			break;
-	};
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2238,35 +2278,35 @@ static void Test()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void Test2()
-{
-	FLADR rd(0, 0, 0, 0);
-
-	SpareArea spare;
-
-	rd.SetRawPage(0);
-
-	while (1)
-	{
-		ReadSpareStart(&spare, &rd);
-
-		while (ReadSpareUpdate());
-
-		if (spare.rawPage != rd.GetRawPage())
-		{
-			__breakpoint(0);
-		};
-
-		rd.NextPage();
-
-		//if (rd.overflow != 0)
-		//{
-		//	__breakpoint(0);
-		//	break;
-		//};
-	};
-
-}
+//static void Test2()
+//{
+//	FLADR rd(0, 0, 0, 0);
+//
+//	SpareArea spare;
+//
+//	rd.SetRawPage(0);
+//
+//	while (1)
+//	{
+//		ReadSpareStart(&spare, &rd);
+//
+//		while (ReadSpareUpdate());
+//
+//		if (spare.rawPage != rd.GetRawPage())
+//		{
+//			__breakpoint(0);
+//		};
+//
+//		rd.NextPage();
+//
+//		//if (rd.overflow != 0)
+//		//{
+//		//	__breakpoint(0);
+//		//	break;
+//		//};
+//	};
+//
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2415,8 +2455,8 @@ static void SimpleBuildFileTable()
 
 		//Write::spare.chipMask = nandSize.mask;	
 		
-		Erase::Start(wr.chip, wr.block, true, false);
-		while (Erase::Update());
+		Write::eraseBlock.Start(wr, true, false);
+		while (Write::eraseBlock.Update());
 
 		adrLastVector = -1;
 
@@ -2455,8 +2495,8 @@ static void SimpleBuildFileTable()
 
 		//Write::spare.chipMask = nandSize.mask;
 
-		Erase::Start(wr.chip, wr.block, true, false);
-		while (Erase::Update());
+		Write::eraseBlock.Start(wr, true, false);
+		while (Write::eraseBlock.Update());
 
 
 
@@ -2829,6 +2869,8 @@ void NAND_Idle()
 	static i32 t = 0;
 	static i32 eb = 0;
 	static TM32 tm;
+	static FLADR er(0);
+	static EraseBlock eraseBlock;
 
 	switch (nandState)
 	{
@@ -2892,7 +2934,9 @@ void NAND_Idle()
 
 			t = eb = nandSize.fl >> (NAND_COL_BITS + NAND_PAGE_BITS); // blocks count
 
-			Erase::Start(0, 0, true, true);
+			er.SetRawAdr(0);
+
+			eraseBlock.Start(er, true, true);
 
 			nandState = NAND_STATE_FULL_ERASE_0;
 
@@ -2900,11 +2944,11 @@ void NAND_Idle()
 
 		case NAND_STATE_FULL_ERASE_0:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-			if (!Erase::Update())
+			if (!eraseBlock.Update())
 			{
-				invalidBlocks += Erase::errBlocks;
+				invalidBlocks += eraseBlock.errBlocks;
 
-				t -= Erase::errBlocks;
+				t -= eraseBlock.errBlocks;
 				t -= 1;
 
 				Write::errVec = t;
@@ -2913,7 +2957,7 @@ void NAND_Idle()
 				{
 					er.NextBlock();
 
-					Erase::Start(er.chip, er.block, true, true);
+					eraseBlock.Start(er, true, true);
 
 					if (tm.Check(500)) { TRAP_MEMORY_SendStatus((eb-t)*((u64)0x100000000)/eb, FLASH_STATUS_BUSY); };
 				}

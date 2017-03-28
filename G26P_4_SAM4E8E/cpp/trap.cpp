@@ -791,7 +791,7 @@ static bool UpdateSendVector()
 	static u64 size = 0;
 	static bool useadr = false;
 
-	static SessionInfo *si = 0;
+	static FileDsc *si = 0;
 
 	__packed struct TRP { EthUdp eu; TrapVector tv; byte data[IP_MTU - sizeof(UdpHdr) - sizeof(TrapVector)]; };
 	__packed struct FR  { EthIp  ei; byte data[IP_MTU]; };

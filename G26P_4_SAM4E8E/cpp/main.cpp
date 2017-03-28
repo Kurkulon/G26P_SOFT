@@ -477,8 +477,8 @@ int main()
 	u32 f = 0;
 
 
-	static RTM32 rtm;
-	static RTM32 rtm2;
+	static TM32 tm;
+//	static RTM32 rtm2;
 
 	HW::PIOB->PER = 1<<13;
 	HW::PIOB->OER = 1<<13;
@@ -509,7 +509,7 @@ int main()
 		
 		f++;
 
-		if (rtm.Check(MS2RT(1000)))
+		if (tm.Check(1000))
 		{
 //			UpdateTemp();
 			fps = f;

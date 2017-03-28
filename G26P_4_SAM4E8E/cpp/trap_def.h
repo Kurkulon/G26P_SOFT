@@ -159,8 +159,8 @@ __packed struct TrapMemStatus
 __packed struct SessionInfo
 {
 	u16			session;
-	i64			size; //если 0 то сессия немного порченная
-	RTC_type	start_rtc; //если 0 то сессия немного порченная
+	i64			size;		//если 0 то сессия немного порченная
+	RTC_type	start_rtc;	//если 0 то сессия немного порченная
 	RTC_type	stop_rtc;  
 	i64			last_adress; 
 	byte		flags;

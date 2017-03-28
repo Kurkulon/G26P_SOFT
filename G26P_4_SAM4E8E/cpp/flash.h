@@ -150,13 +150,16 @@ struct FLRB
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct FileDsc
+__packed struct FileDsc
 {
-	u16		num;		// file number
-	u32		start;		// start page of file
-	u32		prev;		// start page of previos file
-	u32		vecCount;	// vectors count
-};
+	u16			session;	// file number
+	i64			size;		//если 0 то сессия немного порченная
+	RTC_type	start_rtc;	//если 0 то сессия немного порченная
+	RTC_type	stop_rtc;  
+	u32			startPage; 
+	u32			lastPage;
+	byte		flags;
+};	
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -208,9 +211,9 @@ extern void NAND_FullErase();
 //extern void NAND_NextSession();
 
 extern void StartSendSession();
-extern SessionInfo* GetSessionInfo(u16 session, u64 adr);
+extern FileDsc* GetSessionInfo(u16 session, u64 adr);
 
-extern const SessionInfo* GetLastSessionInfo();
+//extern const SessionInfo* GetLastSessionInfo();
 
 inline void SaveParams() { extern byte savesCount; savesCount = 1; }
 

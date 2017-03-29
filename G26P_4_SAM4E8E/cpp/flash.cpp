@@ -814,8 +814,8 @@ bool EraseBlock::Update()
 																																
 			if(!NAND_BUSY())																									
 			{																													
-				NandReadData(&spare, spare.CRC_SKIP);																	
-																																
+				NandReadData(&spare, spare.CRC_SKIP);	
+
 				state = ERASE_1;																					
 			};																													
 																																
@@ -831,19 +831,20 @@ bool EraseBlock::Update()
 																																
 					er.NextBlock();	
 
-					//if (er.GetRawBlock() == 0)
-					//{
-					//	flashFull = true;
-
-					//	state = WAIT;		
-
-					//	return false;
-					//}
-					//else
-					//{
-						state = ERASE_START; 
-					//};
-				}																												
+					state = ERASE_START; 
+				}	
+				else if (spare.badPages != 0xFFFF)
+				{
+					errBlocks += 1;	
+																																
+					CmdWritePage(er.pg, er.block, 0);																			
+																																
+					*(u32*)FLD = 0;		// spareErase.validPage = 0; spareErase.validBlock = 0;																
+																																
+					CmdWritePage2();																							
+																																
+					state = ERASE_3;																				
+				}
 				else																											
 				{																												
 					CmdEraseBlock(er.block);																						
@@ -859,7 +860,7 @@ bool EraseBlock::Update()
 																																
 			if(!NAND_BUSY())																									
 			{																													
-				if (((CmdReadStatus() & 1) != 0 /*|| (spare.badPages != 0xFFFF && !force)*/) && check) // erase error																	
+				if ((CmdReadStatus() & 1) != 0 && check) // erase error																	
 				{																												
 					errBlocks += 1;	
 
@@ -892,18 +893,7 @@ bool EraseBlock::Update()
 			{																													
 				er.NextBlock();	
 
-				//if (er.GetRawBlock() == 0)
-				//{
-				//	flashFull = true;
-
-				//	state = WAIT;		
-
-				//	return false;
-				//}
-				//else
-				//{
-					state = ERASE_START; 
-				//};
+				state = ERASE_START; 
 			};
 
 			break;
@@ -923,8 +913,8 @@ struct Write
 
 	FLADR wr;
 
-	u16		wr_cur_col;
-	u32 	wr_cur_pg;
+	//u16		wr_cur_col;
+	//u32 	wr_cur_pg;
 
 	byte	wr_pg_error;
 	u16		wr_count;
@@ -938,7 +928,7 @@ struct Write
 
 	SpareArea spare;
 
-	SpareArea rspare;
+//	SpareArea rspare;
 
 	byte state;
 
@@ -1091,8 +1081,8 @@ bool Write::Start()
 		wr_data = (byte*)&curWrBuf->vd;
 		wr_count = curWrBuf->dataLen + sizeof(curWrBuf->vd.h);
 
-		wr_cur_col = wr.col;
-		wr_cur_pg = wr.GetRawPage();
+//		wr_cur_col = wr.col;
+//		wr_cur_pg = wr.GetRawPage();
 
 		if (spare.vecFstOff == 0xFFFF)
 		{
@@ -1126,7 +1116,7 @@ void Write::Finish()
 	{
 		nvv.f.size += curWrBuf->vd.h.dataLen;
 		nvv.f.stop_rtc = curWrBuf->vd.h.rtc;
-		nvv.f.lastPage = wr.GetRawPage();
+		nvv.f.lastPage = spare.rawPage;
 
 		SaveParams();
 
@@ -1492,7 +1482,8 @@ bool Write::Update()
 			};
 
 			spare.start = wr.GetRawPage();		
-			spare.fpn = 0;		
+			spare.fpn = 0;
+			spare.vectorCount = 0;
 
 			//wr_prev_pg = -1;
 			//wr_prev_col = 0;
@@ -2303,7 +2294,7 @@ static void ReadVecHdrNow(VecData::Hdr *h, FLADR *rd)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void Test()
+/*static void Test()
 {
 	FLADR rd(0, 0, 0, 0);
 
@@ -2340,7 +2331,7 @@ static void Test()
 		};
 	};
 
-}
+}*/
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2378,11 +2369,100 @@ static void Test()
 
 static void InitSessions()
 {
+	__breakpoint(0);
+
 	write.Init();
 
 	if (nvv.f.size > 0)
 	{
-		NAND_NextSession();
+//		NAND_NextSession();
+
+		write.CreateNextFile();
+
+		while (write.Update()) ;
+	};
+
+	SpareArea spare;
+	FLADR rd;
+
+	u16 ps = 0;
+
+	for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
+	{
+		FileDsc &f = nvsi[ind].f;
+
+		if (f.size == 0) continue;
+
+		bool c = false;
+
+		rd.SetRawPage(f.lastPage);
+
+		for (u16 j = 1024; j > 0; j--)
+		{
+			ReadSpareNow(&spare, &rd, true);
+
+			if (spare.validPage != 0xFFFF || spare.crc != 0)
+			{
+				rd.PrevPage();
+			}
+			else
+			{
+				if (f.session != spare.file)
+				{
+					f.size = 0;
+
+					c = true;
+				};
+
+				break;
+			};
+		};
+
+		if (c) continue;
+
+		rd.SetRawPage(f.startPage);
+
+		c = false;
+
+		for (u16 j = 1024; j > 0; j--)
+		{
+			ReadSpareNow(&spare, &rd, true);
+
+			if (spare.validBlock != 0xFFFF )
+			{
+				rd.NextBlock();
+			}
+			if (spare.validPage != 0xFFFF || spare.crc != 0)
+			{
+				rd.NextPage();
+			}
+			else
+			{
+				if (f.session == spare.file)
+				{
+					f.startPage = rd.GetRawPage();
+
+					c = true;
+
+					break;
+				}
+				else
+				{
+					if (!c)
+					{
+						ps = spare.file;
+						c = true;
+					}
+					else if (ps != spare.file)
+					{
+						f.size = 0;
+						break;
+					};
+
+					rd.NextBlock();
+				};
+			};
+		};
 	};
 }
 
@@ -2764,11 +2844,6 @@ static bool UpdateSendSession()
 				ind = nvv.index;
 				prgrss = 0;
 				count = 128;
-				lp = nvsi[nvv.index].f.lastPage;
-				
-				a.SetRawPage(-1);
-
-				offset = (lp - s.startPage) & NAND_RAWPAGE_MASK;
 
 				i++;
 			}
@@ -2781,7 +2856,6 @@ static bool UpdateSendSession()
 
 		case 1:
 
-			sum += s.lastPage - 
 			if (s.size > 0)
 			{
 				if (!TRAP_MEMORY_SendSession(s.session, s.size, (u64)s.startPage * FLADR::pg, s.start_rtc, s.stop_rtc, s.flags))
@@ -2804,7 +2878,7 @@ static bool UpdateSendSession()
 
 			if (TRAP_MEMORY_SendStatus(prgrss, FLASH_STATUS_READ_SESSION_IDLE))
 			{
-				if (s.size > 0 && count > 0 && ((u32*)&size)[1] < 2)
+				if (count > 0)
 				{
 					i = 1;
 				}
@@ -4015,8 +4089,8 @@ static void SaveVars()
 
 				nvv.f.session += 1;
 				nvv.f.size = 0;
-				nvv.f.startPage = 0;
-				nvv.f.lastPage = 0;
+				//nvv.f.startPage = 0;
+				//nvv.f.lastPage = 0;
 				nvv.index = 0;
 
 				savesCount = 1;

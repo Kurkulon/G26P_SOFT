@@ -2382,10 +2382,7 @@ static void InitSessions()
 		while (write.Update()) ;
 	};
 
-	SpareArea spare;
-	FLADR rd;
-
-	u16 ps = 0;
+	FLADR sb(0), eb(-1); // free start and end block
 
 	for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
 	{
@@ -2393,80 +2390,122 @@ static void InitSessions()
 
 		if (f.size == 0) continue;
 
-		bool c = false;
-
-		rd.SetRawPage(f.lastPage);
-
-		for (u16 j = 1024; j > 0; j--)
+		if (f.lastPage >= sb.GetRawPage())
 		{
-			ReadSpareNow(&spare, &rd, true);
-
-			if (spare.validPage != 0xFFFF || spare.crc != 0)
-			{
-				rd.PrevPage();
-			}
-			else
-			{
-				if (f.session != spare.file)
-				{
-					f.size = 0;
-
-					c = true;
-				};
-
-				break;
-			};
+			sb.SetRawPage(f.lastPage); sb.NextBlock();
 		};
 
-		if (c) continue;
-
-		rd.SetRawPage(f.startPage);
-
-		c = false;
-
-		for (u16 j = 1024; j > 0; j--)
+		if (f.startPage < eb.GetRawPage())
 		{
-			ReadSpareNow(&spare, &rd, true);
-
-			if (spare.validBlock != 0xFFFF )
-			{
-				rd.NextBlock();
-			}
-			if (spare.validPage != 0xFFFF || spare.crc != 0)
-			{
-				rd.NextPage();
-			}
-			else
-			{
-				if (f.session == spare.file)
-				{
-					f.startPage = rd.GetRawPage();
-
-					c = true;
-
-					break;
-				}
-				else
-				{
-					if (!c)
-					{
-						ps = spare.file;
-						c = true;
-					}
-					else if (ps != spare.file)
-					{
-						f.size = 0;
-						break;
-					};
-
-					rd.NextBlock();
-				};
-			};
+			eb.SetRawPage(f.startPage);
 		};
 	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//static void InitSessions()
+//{
+//	__breakpoint(0);
+//
+//	write.Init();
+//
+//	if (nvv.f.size > 0)
+//	{
+////		NAND_NextSession();
+//
+//		write.CreateNextFile();
+//
+//		while (write.Update()) ;
+//	};
+//
+//	SpareArea spare;
+//	FLADR rd;
+//
+//	u16 ps = 0;
+//
+//	for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
+//	{
+//		FileDsc &f = nvsi[ind].f;
+//
+//		if (f.size == 0) continue;
+//
+//		bool c = false;
+//
+//		rd.SetRawPage(f.lastPage);
+//
+//		for (u16 j = 1024; j > 0; j--)
+//		{
+//			ReadSpareNow(&spare, &rd, true);
+//
+//			if (spare.validPage != 0xFFFF || spare.crc != 0)
+//			{
+//				rd.PrevPage();
+//			}
+//			else
+//			{
+//				if (f.session != spare.file)
+//				{
+//					f.size = 0;
+//
+//					c = true;
+//				};
+//
+//				break;
+//			};
+//		};
+//
+//		if (c) continue;
+//
+//		rd.SetRawPage(f.startPage);
+//
+//		c = false;
+//
+//		for (u16 j = 1024; j > 0; j--)
+//		{
+//			ReadSpareNow(&spare, &rd, true);
+//
+//			if (spare.validBlock != 0xFFFF )
+//			{
+//				rd.NextBlock();
+//			}
+//			if (spare.validPage != 0xFFFF || spare.crc != 0)
+//			{
+//				rd.NextPage();
+//			}
+//			else
+//			{
+//				if (f.session == spare.file)
+//				{
+//					f.startPage = rd.GetRawPage();
+//
+//					c = true;
+//
+//					break;
+//				}
+//				else
+//				{
+//					if (!c)
+//					{
+//						ps = spare.file;
+//						c = true;
+//					}
+//					else if (ps != spare.file)
+//					{
+//						f.size = 0;
+//						break;
+//					};
+//
+//					rd.NextBlock();
+//				};
+//			};
+//		};
+//	};
+//}
+//
+////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //static void SimpleBuildFileTable()
 //{

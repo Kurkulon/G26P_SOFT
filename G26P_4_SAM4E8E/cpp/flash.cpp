@@ -2369,7 +2369,7 @@ static void ReadVecHdrNow(VecData::Hdr *h, FLADR *rd)
 
 static void InitSessions()
 {
-	__breakpoint(0);
+//	__breakpoint(0);
 
 	write.Init();
 
@@ -2382,24 +2382,24 @@ static void InitSessions()
 		while (write.Update()) ;
 	};
 
-	FLADR sb(0), eb(-1); // free start and end block
+	//FLADR sb(0), eb(-1); // free start and end block
 
-	for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
-	{
-		FileDsc &f = nvsi[ind].f;
+	//for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
+	//{
+	//	FileDsc &f = nvsi[ind].f;
 
-		if (f.size == 0) continue;
+	//	if (f.size == 0) continue;
 
-		if (f.lastPage >= sb.GetRawPage())
-		{
-			sb.SetRawPage(f.lastPage); sb.NextBlock();
-		};
+	//	if (f.lastPage >= sb.GetRawPage())
+	//	{
+	//		sb.SetRawPage(f.lastPage); sb.NextBlock();
+	//	};
 
-		if (f.startPage < eb.GetRawPage())
-		{
-			eb.SetRawPage(f.startPage);
-		};
-	};
+	//	if (f.startPage < eb.GetRawPage())
+	//	{
+	//		eb.SetRawPage(f.startPage);
+	//	};
+	//};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2950,19 +2950,13 @@ FileDsc* GetSessionInfo(u16 session, u64 adr)
 {
 	u16 ind = nvv.index;
 
-	FLADR fa(0);
-
-	fa.SetRawAdr(adr);
-
-	u32 page = fa.GetRawPage();
-
 	FileDsc *s = 0;
 
 	for (u16 i = 128; i > 0; i--)
 	{
 		s = &nvsi[ind].f;
 
-		if ((s->session == session) && (page >= s->startPage) && (page <= s->lastPage))
+		if (s->session == session)
 		{
 			return s;
 		};

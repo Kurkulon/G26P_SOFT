@@ -2382,24 +2382,86 @@ static void InitSessions()
 		while (write.Update()) ;
 	};
 
+	u32 ms = 0, me = 0, ls = -1;
+	u32 sp = 0;
+
+	bool bm = false, bl = false;
+
 	//FLADR sb(0), eb(-1); // free start and end block
 
-	//for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
-	//{
-	//	FileDsc &f = nvsi[ind].f;
+	for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
+	{
+		FileDsc &f = nvsi[ind].f;
 
-	//	if (f.size == 0) continue;
+		if (f.size == 0) continue;
 
-	//	if (f.lastPage >= sb.GetRawPage())
-	//	{
-	//		sb.SetRawPage(f.lastPage); sb.NextBlock();
-	//	};
+		if (bl)
+		{
+			if (f.lastPage < f.startPage)
+			{
+				f.size = 0;
+			}
+			else
+			{
+				if (f.lastPage < ls)
+				{
+					ls = f.startPage;
 
-	//	if (f.startPage < eb.GetRawPage())
-	//	{
-	//		eb.SetRawPage(f.startPage);
-	//	};
-	//};
+					if (bm)
+					{
+						if (f.lastPage <= me)
+						{
+							f.size = 0;
+						}
+						else if (f.startPage < me)
+						{
+							f.startPage = me+1;
+						};
+					};
+				}
+				else
+				{
+					f.size = 0;
+				};
+			};
+		}
+		else
+		{
+			if (f.lastPage < f.startPage)
+			{
+				bl = true;
+				ls = f.startPage;
+				sp = 0;
+			}
+			else
+			{
+				sp = f.startPage;
+			};
+
+			if (!bm)
+			{
+				bm = true;
+				ms = sp;
+				me = f.lastPage;
+			}
+			else if (f.lastPage < ms)
+			{
+				ms = sp;
+			}
+			else if (f.lastPage > me)
+			{
+				f.startPage = me+1;
+				me = f.lastPage;
+			}
+			else
+			{
+				f.size = 0;
+			};
+		};
+
+
+
+	}; // 	for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3800,8 +3862,8 @@ static void RequestTestWrite(FLWB *fwb)
 
 	Req &req = *((Req*)vd.data);
 
-	req.rw = 0xAA30 + ((nf & (3))<<3) + (nr & 7);
-	req.cnt = count++;
+	req.rw = 0xAA30 + ((nf & (3))<<4) + (nr & 7);
+	req.cnt = count;
 	req.gain = 7;
 	req.st = 10;
 	req.len = ArraySize(req.data)/4;

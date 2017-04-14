@@ -850,10 +850,22 @@ void CallBackRcvReq02(REQ *q)
 
 	q->crcOK = crcOK;
 
-	if (!crcOK && q->tryCount > 0)
+	if (!crcOK)
 	{
-		q->tryCount--;
-		qrcv.Add(q);
+		if (q->tryCount > 0)
+		{
+			q->tryCount--;
+			qrcv.Add(q);
+		}
+		else
+		{
+			R02* r = (R02*)q->ptr;
+		
+			if (r != 0)
+			{
+				freeR02.Add(r); 
+			};
+		};
 	};
 
 }
@@ -920,6 +932,15 @@ void CallBackRcvReq03(REQ *q)
 		{
 			q->tryCount--;
 			qrcv.Add(q);
+		}
+		else
+		{
+			R02* r = (R02*)q->ptr;
+		
+			if (r != 0)
+			{
+				freeR02.Add(r); 
+			};
 		};
 	};
 }
@@ -984,6 +1005,15 @@ void CallBackRcvReq04(REQ *q)
 		{
 			q->tryCount--;
 			qrcv.Add(q);
+		}
+		else
+		{
+			R02* r = (R02*)q->ptr;
+		
+			if (r != 0)
+			{
+				freeR02.Add(r); 
+			};
 		};
 	};
 }

@@ -649,7 +649,7 @@ static void UpdateGyro()
 	//static i16 x = 0, y = 0, z = 0, t = 0;
 	//static i32 fx = 0, fy = 0, fz = 0, ft = 0;
 
-//	static TM32 tm;
+	static TM32 tm;
 
 	i16 t;
 
@@ -745,7 +745,7 @@ static void UpdateGyro()
 					gPitch = gy / 11429;
 				};
 
-				if (rxGyro[2] & 0xA) // ZYXDA or YDA
+				if (rxGyro[2] & 0xC) // ZYXDA or YDA
 				{
 					t = (i16)(rxGyro[7]|(rxGyro[8]<<8));
 					fgz += ((i32)t * 65536 - fgz) / 16384;
@@ -763,7 +763,7 @@ static void UpdateGyro()
 
 		case 5:
 
-			if ((HW::PIOA->PDSR & (1<<15)) != 0)
+			if ((HW::PIOA->PDSR & (1<<15)) != 0 && tm.Check(10))
 			{
 				i = 3;
 			};
@@ -898,6 +898,7 @@ R02* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	q.postTimeOut = 1;
 	q.ready = false;
 	q.tryCount = tryCount;
+	q.ptr = &r;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -932,15 +933,6 @@ void CallBackRcvReq03(REQ *q)
 		{
 			q->tryCount--;
 			qrcv.Add(q);
-		}
-		else
-		{
-			R02* r = (R02*)q->ptr;
-		
-			if (r != 0)
-			{
-				freeR02.Add(r); 
-			};
 		};
 	};
 }
@@ -1005,15 +997,6 @@ void CallBackRcvReq04(REQ *q)
 		{
 			q->tryCount--;
 			qrcv.Add(q);
-		}
-		else
-		{
-			R02* r = (R02*)q->ptr;
-		
-			if (r != 0)
-			{
-				freeR02.Add(r); 
-			};
 		};
 	};
 }

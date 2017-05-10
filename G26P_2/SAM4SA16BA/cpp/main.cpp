@@ -2225,7 +2225,7 @@ static void MainMode()
 
 		case 9:
 
-			if (voltage >= reqVoltage || rt.Check(MS2RT(300)))
+			if (/*voltage >= reqVoltage ||*/ rt.Check(MS2RT(300)))
 			{
 				mainModeState = 0;
 			};

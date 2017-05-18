@@ -112,7 +112,7 @@ word ComPort::BoudToPresc(dword speed)
 
 	word presc;
 
-	presc = (word)((MCK*0.0625) / speed + 0.5);
+	presc = (word)((MCK/16 + speed/2) / speed);
 
 	return presc;
 }

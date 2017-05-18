@@ -144,10 +144,6 @@
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
-          <Key>DLGUARM</Key>
-        </SetRegEntry>
-        <SetRegEntry>
-          <Number>0</Number>
           <Key>DLGTARM</Key>
           <Name>(1010=991,308,1357,795,0)(1007=105,133,282,340,0)(1008=1149,777,1515,999,0)(1009=120,149,354,281,0)</Name>
         </SetRegEntry>

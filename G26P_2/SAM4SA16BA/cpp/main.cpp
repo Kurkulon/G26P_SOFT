@@ -69,8 +69,8 @@ static u16 verDevice = 0x101;
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
 
-static const u16 reqVoltage = 900;
-static const byte reqFireCount = 1;
+static const u16 reqVoltage = 500;
+static const byte reqFireCount = 5;
 
 static u16 adcValue = 0;
 static U32u filtrValue;

@@ -66,7 +66,7 @@ static bool Request03(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 	
 	if (GetCRC(rb->data, rb->len) != 0) return false;
 
-//	SetReqFireCount(req->fireCount);
+	SetReqFireCount(req->fireCount);
 	SetReqHV(req->hv);
 
 	rsp.f = 3;

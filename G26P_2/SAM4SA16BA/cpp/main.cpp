@@ -69,8 +69,8 @@ static u16 verDevice = 0x101;
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
 
-static const u16 reqVoltage = 500;
-static const byte reqFireCount = 5;
+static u16 reqVoltage = 400;
+static byte reqFireCount = 1;
 
 static u16 adcValue = 0;
 static U32u filtrValue;
@@ -1342,7 +1342,7 @@ static bool RequestMan_10(u16 *buf, u16 len, MTB* mtb)
 		*(p++) =  sampleTime[i];
 		*(p++) =  sampleLen[i];
 		*(p++) =  sampleDelay[i];
-		*(p++) =  800;
+		*(p++) =  reqVoltage - reqVoltage % 10 + reqFireCount;
 	};
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
@@ -1551,6 +1551,13 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 			case 0xB:
 
+				reqVoltage = data[2];
+
+				if (reqVoltage > 800) { reqVoltage = 800; };
+
+				reqFireCount = data[2] % 10;
+
+				if (reqFireCount == 0) { reqFireCount = 1; };
 
 				break;
 		};

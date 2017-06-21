@@ -192,7 +192,7 @@ const u16 rcvHalfPeriodMin = rcvHalfPeriod*0.75;
 const u16 rcvHalfPeriodMax = rcvHalfPeriod*1.25;
 const u16 rcvQuartPeriod = rcvPeriod/4;
 const u16 rcvSyncPulse = rcvPeriod * 1.5;
-const u16 rcvSyncPulseMin = rcvSyncPulse * 0.9;
+const u16 rcvSyncPulseMin = rcvSyncPulse * 0.8;
 const u16 rcvSyncPulseMax = rcvSyncPulse * 1.2;
 const u16 rcvSyncHalf = rcvSyncPulseMax + rcvHalfPeriod;
 const u16 rcvPeriodMin = rcvPeriod * 0.8;
@@ -761,6 +761,8 @@ static __irq void WaitManDataSync()
 				}
 				else
 				{
+//	HW::PIOA->SODR = 1<<7;
+
 					ManRcvEnd(true);
 				};
 			}
@@ -773,6 +775,7 @@ static __irq void WaitManDataSync()
 				}
 				else
 				{
+//	HW::PIOA->SODR = 1<<21;
 					ManRcvEnd(true);
 				};
 
@@ -790,7 +793,7 @@ static __irq void WaitManDataSync()
 			}
 			else
 			{
-//			HW::PIOE->SODR = 2;
+//	HW::PIOA->SODR = 1<<27;
 				ManRcvEnd(true);
 			};
 
@@ -800,12 +803,11 @@ static __irq void WaitManDataSync()
 
 			if (t < rcvSyncPulseMin || t > rcvSyncHalf)
 			{
+//	HW::PIOA->SODR = 1<<29;
 				ManRcvEnd(true);
 			}
 			else if (t > rcvSyncPulseMax)
 			{
-//	HW::PIOB->SODR = 1<<10;
-
 				VectorTableExt[HW::PID::PIOB_I] = ManRcvSync;
 
 				t = ManTmr.SR;
@@ -825,7 +827,7 @@ static __irq void WaitManDataSync()
 
 	t = HW::PIOB->ISR;
 
-//	HW::PIOB->CODR = 1<<10;
+//	HW::PIOA->CODR = (1<<7)|(1<<21)|(1<<27)|(1<<29);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

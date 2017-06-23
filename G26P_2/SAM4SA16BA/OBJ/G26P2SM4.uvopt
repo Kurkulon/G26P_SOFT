@@ -198,6 +198,16 @@
           <WinNumber>1</WinNumber>
           <ItemText>temperature,0x0A</ItemText>
         </Ww>
+        <Ww>
+          <count>7</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>rcvmanLen</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>rcvBuf</ItemText>
+        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>
@@ -210,7 +220,7 @@
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>buf</ItemText>
+          <ItemText>rcvManPtr-1</ItemText>
         </Mm>
       </MemoryWindow1>
       <Tracepoint>
@@ -244,12 +254,6 @@
       </DebugFlag>
       <LintExecutable></LintExecutable>
       <LintConfigFile></LintConfigFile>
-      <SystemViewers>
-        <Entry>
-          <Name>System Viewer\USART0</Name>
-          <WinId>35901</WinId>
-        </Entry>
-      </SystemViewers>
     </TargetOption>
   </Target>
 

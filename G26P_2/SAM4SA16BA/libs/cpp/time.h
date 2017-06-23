@@ -73,17 +73,17 @@ inline word GetMillisecondsLow()
 #define US2RT(x) ((x*32768+500000)/1000000)
 #define MS2RT(x) ((x*32768+500)/1000)
 
-//inline u32 GetRTT() { return HW::TC0->C0.CV; }
+inline u32 GetRTT() { return HW::TC0->C0.CV; }
 
-inline u32 GetRTT()
-{
-	u32 t1 = HW::RTT->VR;
-	u32 t2;
-
-	while ((t2 = HW::RTT->VR) != t1) { t1 = t2; };
-
-	return t2;
-} 
+//inline u32 GetRTT()
+//{
+//	u32 t1 = HW::RTT->VR;
+//	u32 t2;
+//
+//	while ((t2 = HW::RTT->VR) != t1) { t1 = t2; };
+//
+//	return t2;
+//} 
 
 //inline u32 GetRTT() { return HW::RTT->VR|HW::RTT->VR; }
 

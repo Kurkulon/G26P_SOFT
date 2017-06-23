@@ -107,10 +107,10 @@ void RTT_Init()
 	using namespace HW;
 
 	PMC->PCER0 = PID::TC0_M;
-	TC0->C0.CMR = 4; // SCLK
-	TC0->C0.CCR = 5;
+	TC0->C0.CMR = TIMER_CLOCK5; // SCLK
+	TC0->C0.CCR = CLKEN|SWTRG;
 
-	RTT->MR = 0x40001;
+//	RTT->MR = 0x40001;
 //	RTT->MR = 0x100000;
 
 

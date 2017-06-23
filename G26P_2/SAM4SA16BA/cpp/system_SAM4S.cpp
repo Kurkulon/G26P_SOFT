@@ -1,5 +1,6 @@
 #include "core.h"
 #include "hardware.h"
+#include "time.h"
 
 #pragma O3
 #pragma Otime
@@ -159,7 +160,7 @@ inline void ManZero()		{ HW::PIOA->ODSR = 0x05; __nop(); __nop(); __nop(); HW::P
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static byte manInv = 0;
+//static byte manInv = 0;
 
 #define BOUD2CLK(x) ((u32)((MCK/2.0)/x+0.5))
 #define ManTmr HW::TC0->C2
@@ -187,29 +188,34 @@ static bool rcvBusy = false;
 byte stateManRcvr = 0;
 
 const u16 rcvPeriod = BOUD2CLK(20833);
-const u16 rcvHalfPeriod = rcvPeriod/2;
-const u16 rcvHalfPeriodMin = rcvHalfPeriod*0.75;
-const u16 rcvHalfPeriodMax = rcvHalfPeriod*1.25;
-const u16 rcvQuartPeriod = rcvPeriod/4;
-const u16 rcvSyncPulse = rcvPeriod * 1.5;
-const u16 rcvSyncPulseMin = rcvSyncPulse * 0.8;
-const u16 rcvSyncPulseMax = rcvSyncPulse * 1.2;
-const u16 rcvSyncHalf = rcvSyncPulseMax + rcvHalfPeriod;
-const u16 rcvPeriodMin = rcvPeriod * 0.8;
-const u16 rcvPeriodMax = rcvPeriod * 1.2;
+//const u16 rcvHalfPeriod = rcvPeriod/2;
+//const u16 rcvHalfPeriodMin = rcvHalfPeriod*0.75;
+//const u16 rcvHalfPeriodMax = rcvHalfPeriod*1.25;
+//const u16 rcvQuartPeriod = rcvPeriod/4;
+//const u16 rcvSyncPulse = rcvPeriod * 1.5;
+//const u16 rcvSyncPulseMin = rcvSyncPulse * 0.8;
+//const u16 rcvSyncPulseMax = rcvSyncPulse * 1.2;
+//const u16 rcvSyncHalf = rcvSyncPulseMax + rcvHalfPeriod;
+//const u16 rcvPeriodMin = rcvPeriod * 0.8;
+//const u16 rcvPeriodMax = rcvPeriod * 1.2;
 
-static byte rcvSyncState = 0;
-static byte rcvDataState = 0;
+//static byte rcvSyncState = 0;
+//static byte rcvDataState = 0;
 
-static u32* rcvManPtr = 0;
+static u16* rcvManPtr = 0;
 static u16 rcvManCount = 0;
+
+
+static u16 rcvManLen = 0;
+static u32 rcvManPrevTime = 0;
+
 
 static MRB *manRB = 0;
 
 
 static __irq void WaitManCmdSync();
-static __irq void WaitManDataSync();
-static __irq void ManRcvSync();
+//static __irq void WaitManDataSync();
+//static __irq void ManRcvSync();
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -565,19 +571,23 @@ static void InitManTransmit()
 
 static void ManRcvEnd(bool ok)
 {
+	HW::PIOB->SODR = 1<<8;
+
 	HW::PIOB->IDR = 1;
 	ManTmr.IDR = CPCS;
 
 	manRB->OK = ok;
 	manRB->ready = true;
-	manRB->len = manRB->maxLen - rcvManCount;
+	manRB->len = rcvManLen;
 	ManTmr.CCR = CLKDIS;
 	
 	rcvBusy = false;
+
+	HW::PIOB->CODR = 1<<8;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+/*
 static __irq void ManRcvIRQ()
 {
 	static u32 rw;
@@ -646,9 +656,9 @@ static __irq void ManRcvIRQ()
 
 	HW::PIOB->CODR = 1<<14;
 }
-
+*/
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+/*
 static __irq void WaitManCmdSync()
 {
 	u32 t = ManTmr.CV;
@@ -670,20 +680,22 @@ static __irq void WaitManCmdSync()
 
 		case 1:
 
-	HW::PIOB->SODR = 1<<8;
 
 			if (t < rcvSyncPulseMin || t > rcvSyncHalf)
 			{
+	HW::PIOB->SODR = 1<<8;
 				rcvSyncState = 0;
 				ManTmr.CCR = CLKDIS|SWTRG;
 			}
 			else if (t < rcvSyncPulseMax)
 			{
+	HW::PIOB->SODR = 1<<10;
 				rcvSyncState++;
 				ManTmr.CCR = CLKEN|SWTRG;
 			}
 			else
 			{
+	HW::PIOB->SODR = 1<<11;
 				c = true; 
 				rcvSyncState = 0;
 			};
@@ -692,25 +704,27 @@ static __irq void WaitManCmdSync()
 
 		case 2:
 
-	HW::PIOB->SODR = 1<<10;
-
 			if (t < rcvHalfPeriodMin)
 			{
+	HW::PIOA->SODR = 1<<7;
 				rcvSyncState = 0;
 				ManTmr.CCR = CLKDIS|SWTRG;
 			}
 			else if (t < rcvHalfPeriodMax)
 			{
+	HW::PIOA->SODR = 1<<21;
 				c = true; 
 				rcvSyncState = 0;
 			}
 			else if (t < rcvSyncPulseMin || t > rcvSyncHalf)
 			{
+	HW::PIOA->SODR = 1<<27;
 				rcvSyncState = 0;
 				ManTmr.CCR = CLKDIS|SWTRG;
 			}
 			else if (t > rcvSyncPulseMax)
 			{
+	HW::PIOA->SODR = 1<<29;
 				manInv ^= 1;
 
 				c = true; 
@@ -722,8 +736,6 @@ static __irq void WaitManCmdSync()
 
 	if (c)
 	{
-	HW::PIOB->SODR = 1<<11;
-
 		VectorTableExt[HW::PID::PIOB_I] = ManRcvSync;
 
 		t = ManTmr.SR;
@@ -736,12 +748,17 @@ static __irq void WaitManCmdSync()
 
 	t = HW::PIOB->ISR;
 
+	HW::PIOA->CODR = (1<<7)|(1<<21)|(1<<27)|(1<<29);
 	HW::PIOB->CODR = (1<<8)|(1<<10)|(1<<11);
 }
+*/
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void WaitManDataSync()
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+/*static __irq void WaitManDataSync()
 {
 //	HW::PIOE->SODR = 1;
 
@@ -828,16 +845,13 @@ static __irq void WaitManDataSync()
 	t = HW::PIOB->ISR;
 
 //	HW::PIOA->CODR = (1<<7)|(1<<21)|(1<<27)|(1<<29);
-}
+}*/
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+/*
 static __irq void ManRcvSync()
 {
-
 	u32 t = ManTmr.CV;
-
-
 
 	if (t > rcvPeriodMax)
 	{
@@ -845,9 +859,6 @@ static __irq void ManRcvSync()
 	}
 	else if (t > rcvPeriodMin)
 	{
-//		HW::PIOE->SODR = 2;
-
-	HW::PIOB->SODR = 1<<10;
 
 		t = ManTmr.SR;
 
@@ -868,7 +879,204 @@ static __irq void ManRcvSync()
 
 	t = HW::PIOB->ISR;
 
+//	HW::PIOA->CODR = (1<<7)|(1<<21)|(1<<27)|(1<<29);
+}
+*/
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+class Receiver
+{
+	private:
+		u32 _number;
+		u32 _length;
+		u32 _data_temp;
+		u32 _data;
+		bool _command_temp;
+		bool _command;
+		bool _parity_temp;
+		bool _parity;
+		bool _sync;
+		bool _state;
+
+    public:
+
+		enum status_type
+		{
+			STATUS_WAIT = 0,
+			STATUS_SYNC,
+			STATUS_HANDLE,
+			STATUS_CHECK,
+			STATUS_READY,
+			STATUS_ERROR_LENGTH,
+			STATUS_ERROR_STRUCT,
+		};
+
+		Receiver(bool parity);
+		status_type Parse(u16 len);	
+		u16 GetData() { return _data; }
+		bool GetType() { return _command; }
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Receiver::Receiver(bool parity)
+{
+	_state = false;
+	_number = 0;
+	_length = 0;
+	_data_temp = 0;
+	_data = 0;
+	_command_temp = false;
+	_command = false;
+	_parity = parity;
+	_parity_temp = false;
+	_sync = false;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Receiver::status_type Receiver::Parse(u16 len)
+{	
+	_state = !_state;
+
+	if((len <= 25) || (len > 225))
+	{
+		_number = 0;
+		_length = 0;
+		_sync = false;
+
+		return STATUS_ERROR_LENGTH;
+	}
+	else if(len <= 75)                
+	{	
+		_length++;
+	}
+	else if(len <= 125)
+	{	
+		_length += 2;
+	}
+	else
+	{
+		_sync = true;
+		_data_temp = 0;
+		_parity_temp = _parity;
+		_number = 0;
+		_length = (len <= 175) ? 1 : 2;
+		_command_temp = !_state; 
+	};
+
+	if(_length >= 3)
+	{
+		_number = 0;
+		_length = 0;
+		_sync = false;
+
+		return STATUS_ERROR_STRUCT;
+	};
+
+	if(_sync)
+	{
+		if(_length == 2)
+		{
+			if(_number < 16)
+			{
+				_data_temp <<= 1;
+				_data_temp |= _state;
+				_parity_temp ^= _state;
+				_number ++;
+				_length = 0;
+			}
+		 	else
+			{
+				_data = _data_temp;
+				_data_temp = 0;
+				_command = _command_temp;
+				_command_temp = false;
+				_number = 0;
+				_length = 0;
+				_sync = false;
+
+				if(_state != _parity_temp)
+				{
+					_state = !_state;
+					_data = (~_data);
+					_command = !_command;
+				};
+
+				return STATUS_READY;
+			};
+		};
+
+		return (_number < 16) ? STATUS_HANDLE : STATUS_CHECK;
+	};
+
+	return STATUS_WAIT;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static Receiver manRcv(true);
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void WaitManCmdSync()
+{
+	u32 t = ManTmr.CV;
+
+	HW::PIOB->SODR = 1<<10;
+
+	ManTmr.CCR = CLKEN|SWTRG;
+
+	if(manRcv.Parse(t * 100 / rcvPeriod) == manRcv.STATUS_READY)
+	{
+		rcvManPrevTime = GetRTT();
+
+		if (rcvManLen == 0)
+		{
+			if(manRcv.GetType())
+			{
+				HW::PIOB->SODR = 1<<11;
+
+				*rcvManPtr++ = manRcv.GetData();
+				rcvManLen = 1;
+
+				HW::PIOB->CODR = 1<<11;
+			}
+		}
+		else if(rcvManLen < rcvManCount)
+		{
+			*rcvManPtr++ = manRcv.GetData();
+			rcvManLen += 1;	
+		};
+	};
+
+	t = HW::PIOB->ISR;
+
 	HW::PIOB->CODR = 1<<10;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void ManRcvUpdate()
+{
+	if (rcvBusy)
+	{
+		if ((rcvManLen > 0 && (GetRTT() - rcvManPrevTime) > US2RT(1440)) || rcvManLen >= rcvManCount)
+		{
+			ManRcvEnd(true);
+		}
+		else
+		{
+			manRB->len = rcvManLen;
+		};
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void ManRcvStop()
+{
+	ManRcvEnd(true);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -883,16 +1091,19 @@ static void InitManRecieve()
 	CM4::NVIC->ICPR[0] = HW::PID::PIOB_M;
 	CM4::NVIC->ISER[0] = HW::PID::PIOB_M;	
 
-	//HW::PIOE->IER = 1<<3;
-	//HW::PIOE->IFER = 1<<3;
+	HW::PIOB->IER = 1;
+	HW::PIOB->IFER = 1;
 
 //	HW::PIOA->OER = 15;
 
-	VectorTableExt[HW::PID::TC1_I] = ManRcvIRQ;
-	CM4::NVIC->ICPR[0] = HW::PID::TC1_M;
-	CM4::NVIC->ISER[0] = HW::PID::TC1_M;
+	//VectorTableExt[HW::PID::TC2_I] = ManRcvIRQ;
+	//CM4::NVIC->ICPR[0] = HW::PID::TC2_M;
+	//CM4::NVIC->ISER[0] = HW::PID::TC2_M;
 
-	ManTmr.CMR = 0;
+	HW::PMC->PCER0 = HW::PID::TC2_M;
+
+	ManTmr.CMR = 0x8040;
+	ManTmr.RC = 15000;
 	ManTmr.CCR = CLKEN|SWTRG;
 	ManTmr.IDR = -1;//CPCS;
 }
@@ -917,8 +1128,10 @@ bool RcvManData(MRB *mrb)
 
 	manRB = mrb;
 	
-	stateManRcvr = 0;
-	rcvSyncState = 0;
+	//stateManRcvr = 0;
+	//rcvSyncState = 0;
+
+	rcvManLen = 0;
 
 	rcvManPtr = manRB->data;
 	rcvManCount = manRB->maxLen;
@@ -936,15 +1149,22 @@ bool RcvManData(MRB *mrb)
 	HW::PMC->PCER0 = HW::PID::TC2_M;
 
 	ManTmr.CCR = CLKDIS|SWTRG;
-	ManTmr.IDR = CPCS;
-	ManTmr.RC = rcvQuartPeriod;
-	ManTmr.CMR = 0;
+	ManTmr.IDR = -1;
+	ManTmr.RC = 15000;
+	ManTmr.CMR = 0x8040;
 
 	u32 tmp = ManTmr.SR;
 
-	VectorTableExt[HW::PID::TC2_I] = ManRcvIRQ;
-	CM4::NVIC->ICPR[0] = HW::PID::TC2_M;
-	CM4::NVIC->ISER[0] = HW::PID::TC2_M;	
+	//HW::PMC->PCER0 = HW::PID::TC3_M;
+
+	//ManTimeout.CCR = CLKDIS|SWTRG;
+	//ManTimeout.IER = CPCS;
+	//ManTimeout.RC = US2RT(1440);
+	//ManTimeout.CMR = WAVE|CPCDIS|CPCSTOP|TIMER_CLOCK5;
+
+	//VectorTableExt[HW::PID::TC3_I] = ManRcvIRQ;
+	//CM4::NVIC->ICPR[0] = HW::PID::TC3_M;
+	//CM4::NVIC->ISER[0] = HW::PID::TC3_M;	
 
 
 	return rcvBusy = true;

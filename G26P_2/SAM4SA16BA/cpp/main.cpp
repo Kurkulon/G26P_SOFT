@@ -23,10 +23,10 @@ ComPort comrcv;
 
 u32 fc = 0;
 
-static u32 bfCRCOK = 0;
-static u32 bfCRCER = 0;
+//static u32 bfCRCOK = 0;
+//static u32 bfCRCER = 0;
 static u32 bfURC = 0;
-static u32 bfERC = 0;
+//static u32 bfERC = 0;
 
 //static bool waitSync = false;
 static bool startFire = false;
@@ -55,10 +55,9 @@ static byte sampleTime[3] = { 5, 20, 20};
 static u16 sampleLen[3] = { 64, 64, 64};
 static u16 sampleDelay[3] = { 10, 10, 10};
 
-u32 manRcvData[10];
+u16 manRcvData[10];
 u16 manTrmData[50];
 
-u16 rcvBuf[10];
 
 static u16 manReqWord = 0xAA00;
 static u16 manReqMask = 0xFF00;
@@ -69,8 +68,8 @@ static u16 verDevice = 0x101;
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
 
-static u16 reqVoltage = 400;
-static byte reqFireCount = 1;
+static u16 reqVoltage = 800;
+static byte reqFireCount = 2;
 
 static u16 adcValue = 0;
 static U32u filtrValue;
@@ -2261,18 +2260,15 @@ static void UpdateMan()
 
 	static RTM32 tm;
 
-	bool parityErr;
-	u32 *s;
-	u16 *d;
 
-	u16 c;
+//	u16 c;
 
 	switch (i)
 	{
 		case 0:
 
 			mrb.data = manRcvData;
-			mrb.maxLen = 5;
+			mrb.maxLen = 3;
 			RcvManData(&mrb);
 
 			i++;
@@ -2281,47 +2277,48 @@ static void UpdateMan()
 
 		case 1:
 
+			ManRcvUpdate();
+
 			if (mrb.ready)
 			{
-//				HW::PIOE->CODR = 3;
+				tm.Reset();
 
-				if (mrb.OK && mrb.len > 0)
+				if (mrb.OK && mrb.len > 0 && (manRcvData[0] & manReqMask) == manReqWord && RequestMan(manRcvData, mrb.len, &mtb))
 				{
-					parityErr = false;
-					s = mrb.data;
-					d = rcvBuf;
-					c = mrb.len;
-
-					while (c > 0)
-					{
-						parityErr |= (*s ^ CheckParity(*s >> 1))&1 != 0;
-
-						*d++ = *s++ >> 1;
-						c--;
-					};
-
-					if (!parityErr && (rcvBuf[0] & manReqMask) == manReqWord)
-					{
-						if (RequestMan(rcvBuf, mrb.len, &mtb))
-						{
-							tm.Reset();
-
-							i++;
-						}
-						else
-						{
-							i = 0;
-						};
-					}
-					else
-					{
-						i = 0;
-					};
-
+					i++;
 				}
 				else
 				{
 					i = 0;
+				};
+			}
+			else if (mrb.len > 0)
+			{
+				if ((manRcvData[0] & manReqMask) == manReqWord)
+				{
+					byte i = (manRcvData[0]>>4)&0xF;
+
+					u16 l = 100;
+
+					switch (i)
+					{
+						case 0: 	l = 1; break;
+						case 1: 	l = 1; break;
+						case 2: 	l = 1; break;
+						case 3: 
+						case 4: 
+						case 5: 	
+						case 8: 	
+						case 9:		l = 3; break;
+						case 0xF:	l = 1; break;
+						
+						default:	l = 100; 
+					};
+
+					if (mrb.len >= l)
+					{
+						ManRcvStop();
+					};
 				};
 			};
 
@@ -2329,7 +2326,7 @@ static void UpdateMan()
 
 		case 2:
 
-			if (tm.Check(US2RT(500)))
+			if (tm.Check(US2RT(100)))
 			{
 //				SetTrmBoudRate(3); /*mtb.data = tableCRC;*/ mtb.len = 5; SendMLT3(&mtb);
 				SendManData(&mtb);
@@ -2368,7 +2365,6 @@ static void UpdateMisc()
 		CALL( MainMode()			);
 		CALL( SaveVars()			);
 		CALL( UpdateTrmReq02()		);
-		CALL( UpdateMan()			);
 		CALL( UpdateAccel()			);
 		CALL( UpdateGyro()			);
 		CALL( spi.Update()			);
@@ -2392,6 +2388,7 @@ static void UpdateParams()
 	{
 		CALL( UpdateRcvTrm()		);
 		CALL( qmem.Update()			);
+		CALL( UpdateMan()			);
 		CALL( UpdateMisc()			);
 	};
 

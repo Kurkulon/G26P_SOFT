@@ -19,7 +19,7 @@ u32 fps = 0;
 
 //extern byte Heap_Mem[10];
 
-u32 manRcvData[10];
+u16 manRcvData[10];
 u16 manTrmData[50];
 
 u16 rcvBuf[10];
@@ -255,11 +255,8 @@ static void UpdateMan()
 
 	static RTM32 tm;
 
-	bool parityErr;
-	u32 *s;
-	u16 *d;
 
-	u16 c;
+//	u16 c;
 
 	switch (i)
 	{
@@ -275,47 +272,51 @@ static void UpdateMan()
 
 		case 1:
 
+			ManRcvUpdate();
+
 			if (mrb.ready)
 			{
-				HW::PIOE->CODR = 3;
+				tm.Reset();
 
-				if (mrb.OK && mrb.len > 0)
+				if (mrb.OK && mrb.len > 0 && (manRcvData[0] & manReqMask) == manReqWord && RequestMan(manRcvData, mrb.len, &mtb))
 				{
-					parityErr = false;
-					s = mrb.data;
-					d = rcvBuf;
-					c = mrb.len;
-
-					while (c > 0)
-					{
-						parityErr |= (*s ^ CheckParity(*s >> 1))&1 != 0;
-
-						*d++ = *s++ >> 1;
-						c--;
-					};
-
-					if (!parityErr && (rcvBuf[0] & manReqMask) == manReqWord)
-					{
-						if (RequestMan(rcvBuf, mrb.len, &mtb))
-						{
-							tm.Reset();
-
-							i++;
-						}
-						else
-						{
-							i = 0;
-						};
-					}
-					else
-					{
-						i = 0;
-					};
-
+					i++;
 				}
 				else
 				{
 					i = 0;
+				};
+			}
+			else if (mrb.len > 0)
+			{
+				if ((manRcvData[0] & manReqMask) == manReqWord)
+				{
+					byte i = manRcvData[0] & 0xFF;
+
+					u16 l = 100;
+
+					switch (i)
+					{
+						case 0x00:			
+						case 0x10:			
+						case 0x20:	l = 1;		break;
+
+						case 0x30:	l = 5;		break;
+
+						case 0x31:	
+						case 0x32:	
+						case 0x33:	l = 1;		break;
+
+						case 0x80:	
+						case 0x90:	l = 3;		break;
+
+						case 0xF0:	l = 1;		break;
+					};
+
+					if (mrb.len >= l)
+					{
+						ManRcvStop();
+					};
 				};
 			};
 
@@ -323,7 +324,7 @@ static void UpdateMan()
 
 		case 2:
 
-			if (tm.Check(US2RT(500)))
+			if (tm.Check(US2RT(100)))
 			{
 //				SetTrmBoudRate(3); /*mtb.data = tableCRC;*/ mtb.len = 5; SendMLT3(&mtb);
 				SendManData(&mtb);

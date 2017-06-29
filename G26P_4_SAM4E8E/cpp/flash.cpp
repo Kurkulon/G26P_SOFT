@@ -3829,7 +3829,7 @@ static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
 	}
 	else
 	{
-		if ((req.rw & 0xFF00) == 0xAA00) //(GetCRC16(flwb->vd.data, flwb->dataLen) == 0)
+		if (GetCRC16(flwb->vd.data, flwb->dataLen) == 0) // (req.rw & 0xFF00) == 0xAA00)
 		{
 			result = RequestFunc02 (fwb, wb);
 		}

@@ -41,8 +41,8 @@ struct Buf_Desc
 
 __packed struct EthHdr
 {
-	MAC		dest;	/* Destination node		*/
-	MAC		src;	/* Source node			*/
+	MAC		dest;		/* Destination node		*/
+	MAC		src;		/* Source node			*/
 	u16		protlen;	/* Protocol or length		*/
 };
 

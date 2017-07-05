@@ -1135,7 +1135,7 @@ void Write::Finish()
 
 bool Write::Update()
 {
-	byte t;
+//	u32 t;
 
 	switch(state)
 	{
@@ -1259,12 +1259,13 @@ bool Write::Update()
 
 			if(!NAND_BUSY())
 			{
-				t = CmdReadStatus();
+				byte t = CmdReadStatus();
 
-				if ((t & (1<<6)) == 0)
-				{
-					__breakpoint(0);
-				}
+				//if ((t & (1<<6)) == 0)
+				//{
+				//	__breakpoint(0);
+				//}
+
 				if ((t & 1) != 0) // program error
 				{
 //					__breakpoint(0);
@@ -1737,10 +1738,10 @@ static bool Read::Update()
 
 				sparePage = rd.GetRawPage();
 
-				if (sparePage != spare.rawPage)
-				{
-					__breakpoint(0);
-				};
+				//if (sparePage != spare.rawPage)
+				//{
+				//	__breakpoint(0);
+				//};
 
 				CmdRandomRead(rd.col);
 
@@ -3251,6 +3252,8 @@ void NAND_Idle()
 
 static void NAND_Init()
 {
+	using namespace HW;
+
 	nandSize.shPg = 0;
 	nandSize.shBl = 0;
 	nandSize.shCh = 0;
@@ -3271,6 +3274,15 @@ static void NAND_Init()
 	nandSize.maskPage	= 0;
 
 	nandSize.pagesInBlock	= 0;
+
+
+	PMC->PCER0 = PID::SMC_M;
+
+	SMC->CSR[0].SETUP = 1;
+	SMC->CSR[0].PULSE = 0x0F0F0F0F;
+	SMC->CSR[0].CYCLE = 0x00200020;
+	SMC->CSR[0].MODE = 0x00000003;
+
 
 	for(byte chip = 0; chip < NAND_MAX_CHIP; chip ++)
 	{
@@ -3303,6 +3315,14 @@ static void NAND_Init()
 	NAND_Chip_Select(0); // пока один
 
 	DisableWriteProtect();
+
+
+	PMC->PCER0 = PID::SMC_M;
+
+	SMC->CSR[0].SETUP = 1;
+	SMC->CSR[0].PULSE = 0x05050505;
+	SMC->CSR[0].CYCLE = 0x00090009;
+	SMC->CSR[0].MODE = 0x00000003;
 }
 
 
@@ -3829,7 +3849,7 @@ static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
 	}
 	else
 	{
-		if (GetCRC16(flwb->vd.data, flwb->dataLen) == 0) // (req.rw & 0xFF00) == 0xAA00)
+		if (GetCRC16(flwb->vd.data, flwb->dataLen) == 0) // (req.rw & 0xFF00) == 0xAA00) // 
 		{
 			result = RequestFunc02 (fwb, wb);
 		}
@@ -3985,7 +4005,7 @@ static void UpdateCom()
 
 			HW::PIOB->SODR = 1<<13;
 
-			com1.Read(&rb, -1, 100);
+			com1.Read(&rb, -1, 1);
 
 			state++;
 

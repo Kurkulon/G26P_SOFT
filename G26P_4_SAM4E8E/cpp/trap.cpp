@@ -783,6 +783,7 @@ static bool UpdateSendVector()
 	static u32 fragLen = 0;
 	static u32 fragOff = 0;
 	static u16 ipID = 0;
+	static u16 crc = 0;
 
 	static TM32 tm;
 
@@ -911,7 +912,7 @@ static bool UpdateSendVector()
 
 					i = 0;
 				}
-				else if (flrb.hdr.crc == 0)
+				else // if (flrb.hdr.crc == 0)
 				{
 					TRP &et = *((TRP*)&t->eth);
 
@@ -939,6 +940,8 @@ static bool UpdateSendVector()
 
 					t->len = sizeof(et.eu) + sizeof(et.tv) + flrb.len;
 
+					crc = GetCRC16(flrb.data, flrb.len, 0xFFFF, 0);
+
 					if (flrb.hdr.dataLen > flrb.maxLen)
 					{
 						fragOff = t->len - sizeof(EthIp); //flrb.maxLen;
@@ -952,18 +955,18 @@ static bool UpdateSendVector()
 					}
 					else
 					{
-						t->len -= 2;
+						t->len -=  (crc != 0) ? flrb.len : 2;
 
 						i = 1;
 					};
 
 					SendFragTrap(t);
-				}
-				else
-				{
-					// найти следующий вектор
-					__breakpoint(0);
 				};
+				//else
+				//{
+				//	// найти следующий вектор
+				//	__breakpoint(0);
+				//};
 
 			};
 
@@ -1003,7 +1006,16 @@ static bool UpdateSendVector()
 				fragLen -= flrb.len;
 				fragOff += flrb.len;
 
-				if (fragLen > 0) { t->iph.off |= 0x2000; };
+				crc = GetCRC16(flrb.data, flrb.len, crc, 0);
+
+				if (fragLen > 0)
+				{ 
+					t->iph.off |= 0x2000; 
+				}
+				else if (crc != 0)
+				{
+					t->iph.off = 0;
+				};
 
 				t->len = sizeof(ef.ei) + flrb.len;
 

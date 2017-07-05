@@ -834,10 +834,10 @@ static void UpdateTransmit()
 
 			if ((dsc = GetTxDesc()) != 0)
 			{
-				if ((buf->len & TD_LENGTH_MASK) == 0)
-				{
-					__breakpoint(0);
-				};
+				//if ((buf->len & TD_LENGTH_MASK) == 0)
+				//{
+				//	__breakpoint(0);
+				//};
 
 				dsc->addr = (u32)&buf->eth;
 				dsc->stat &= TD_TRANSMIT_OK|TD_TRANSMIT_WRAP;

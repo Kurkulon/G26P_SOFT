@@ -2138,6 +2138,13 @@ static void MainMode()
 			{
 				if (r02->q.crcOK)
 				{
+					r02->rsp.cnt = fireCounter;
+
+					u16 *p = (u16*)&r02->rsp;
+					u16 len = r02->rb.len-2;
+
+					p[len/2] = GetCRC16(&r02->rsp, len);
+
 					if (curRcv[fireType] == (rcv-1))
 					{
 						u16 *s = (u16*)&r02->rsp;
@@ -2178,7 +2185,7 @@ static void MainMode()
 
 		case 5:
 
-			if (rt.Check(US2RT(1)))
+			if (rt.Check(MS2RT(1)))
 			{
 				mainModeState = 3;
 			};

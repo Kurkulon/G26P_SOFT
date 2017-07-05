@@ -507,6 +507,15 @@ int main()
 
 	
 //		HW::PIOB->CODR = 1<<13;
+
+		RTC rtc;
+
+		GetTime(&rtc);
+
+		if (rtc.msec > 999)
+		{
+			__breakpoint(0);
+		};
 		
 		f++;
 

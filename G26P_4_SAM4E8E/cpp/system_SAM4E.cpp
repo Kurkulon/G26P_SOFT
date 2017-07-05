@@ -57,8 +57,8 @@ extern "C" void SystemInit (void)
 	MATRIX->SYSIO = (1<<4)|(1<<5); // PB4 PB5
 
 
-//	WDT->MR = (((1000 * 32768 / 128 + 500) / 1000) & 0xFFF) | 0x0FFF6000;
-	HW::WDT->MR = 0x8000;	// Disable Watchdog
+	WDT->MR = (((1000 * 32768 / 128 + 500) / 1000) & 0xFFF) | 0x0FFF6000;
+//	HW::WDT->MR = 0x8000;	// Disable Watchdog
 
 	PMC->MOR	= 0x01370102; while ((PMC->SR & 1) == 0) {};
 
@@ -125,13 +125,6 @@ extern "C" void SystemInit (void)
 //tWHR		60	- 
 //tRST		-	5/10/500
 
-
-	PMC->PCER0 = PID::SMC_M;
-
-	SMC->CSR[0].SETUP = 1;
-	SMC->CSR[0].PULSE = 0x05050505;
-	SMC->CSR[0].CYCLE = 0x00090009;
-	SMC->CSR[0].MODE = 0x00000003;
 
 
 	__asm { DSB };

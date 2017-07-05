@@ -6,6 +6,7 @@
 extern const u16 tableCRC[256];
 
 extern word GetCRC16(const void *data, u32 len);
+extern word GetCRC16_asm(const void *data, u32 len);
 extern word GetCRC16(const void *data, u32 len, word init, word xorOut);
 
 extern const unsigned long int tableCRC32[256];

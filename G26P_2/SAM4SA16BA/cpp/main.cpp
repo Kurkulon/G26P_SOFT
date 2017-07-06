@@ -1359,8 +1359,8 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	if (buf == 0 || len == 0 || mtb == 0) return false;
 
 	manTrmData[0] = manReqWord|0x20;
-	manTrmData[1] = GD(&manCounter, u16, 0);
-	manTrmData[2] = GD(&manCounter, u16, 1);
+	manTrmData[1] = GD(&fireCounter, u16, 0);
+	manTrmData[2] = GD(&fireCounter, u16, 1);
 	manTrmData[3] = voltage;
 	manTrmData[4] = numStations|(((u16)rcvStatus)<<8);
 	manTrmData[5] = resistValue;
@@ -2138,6 +2138,7 @@ static void MainMode()
 			{
 				if (r02->q.crcOK)
 				{
+					r02->rsp.rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
 					r02->rsp.cnt = fireCounter;
 
 					u16 *p = (u16*)&r02->rsp;

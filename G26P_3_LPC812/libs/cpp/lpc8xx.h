@@ -615,7 +615,7 @@ namespace HW
 	MK_PTR(GPIO,			0xA0000000);
 	MK_PTR(PIN_INT,			0xA0004000);
 
-	inline void ResetWDT() { /*WDT->CR = 0xA5000001;*/ }
+	inline void ResetWDT() { WDT->FEED = 0xAA; WDT->FEED = 0x55;}
 
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

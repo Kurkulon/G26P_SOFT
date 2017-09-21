@@ -422,10 +422,20 @@ static void InitADC()
 
 void InitHardware()
 {
+	using namespace HW;
+
 	InitVectorTable();
 	Init_time();
 	InitADC();
 	InitFire();
+
+	SYSCON->SYSAHBCLKCTRL |= HW::CLK::WWDT_M;
+	SYSCON->PDRUNCFG &= ~(1<<6); // WDTOSC_PD = 0
+	SYSCON->WDTOSCCTRL = (1<<5)|1; 
+
+	WDT->TC = 0x1FF;
+	WDT->MOD = 0x3;
+	ResetWDT();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -434,6 +444,8 @@ void UpdateHardware()
 {
 	UpdateADC();
 	UpdateCharge();
+
+	HW::ResetWDT();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -826,7 +826,7 @@ void CallBackRcvReq02(REQ *q)
 
 	if (q->rb->recieved)
 	{
-		crcOK = GetCRC16(q->rb->data, q->rb->len) == 0;
+		crcOK = true;//GetCRC16(q->rb->data, q->rb->len) == 0;
 
 		if (!crcOK) 
 		{
@@ -2144,7 +2144,7 @@ static void MainMode()
 					u16 *p = (u16*)&r02->rsp;
 					u16 len = r02->rb.len-2;
 
-					p[len/2] = GetCRC16(&r02->rsp, len);
+					//p[len/2] = GetCRC16(&r02->rsp, len);
 
 					if (curRcv[fireType] == (rcv-1))
 					{
@@ -2297,7 +2297,9 @@ static void UpdateMan()
 				}
 				else
 				{
+					HW::PIOB->SODR = 1<<10;
 					i = 0;
+					HW::PIOB->CODR = 1<<10;
 				};
 			}
 			else if (mrb.len > 0)
@@ -2334,7 +2336,7 @@ static void UpdateMan()
 
 		case 2:
 
-			if (tm.Check(US2RT(100)))
+			if (tm.Check(US2RT(1000)))
 			{
 //				SetTrmBoudRate(3); /*mtb.data = tableCRC;*/ mtb.len = 5; SendMLT3(&mtb);
 				SendManData(&mtb);

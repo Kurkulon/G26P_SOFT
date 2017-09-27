@@ -941,9 +941,13 @@ Receiver::status_type Receiver::Parse(u16 len)
 
 	if((len <= 25) || (len > 225))
 	{
+//		HW::PIOB->SODR = 1<<10;
+
 		_number = 0;
 		_length = 0;
 		_sync = false;
+
+//		HW::PIOB->CODR = 1<<10;
 
 		return STATUS_ERROR_LENGTH;
 	}
@@ -970,6 +974,7 @@ Receiver::status_type Receiver::Parse(u16 len)
 		_number = 0;
 		_length = 0;
 		_sync = false;
+
 
 		return STATUS_ERROR_STRUCT;
 	};
@@ -1023,7 +1028,7 @@ static __irq void WaitManCmdSync()
 {
 	u32 t = ManTmr.CV;
 
-	HW::PIOB->SODR = 1<<10;
+//	HW::PIOB->SODR = 1<<10;
 
 	ManTmr.CCR = CLKEN|SWTRG;
 
@@ -1052,7 +1057,7 @@ static __irq void WaitManCmdSync()
 
 	t = HW::PIOB->ISR;
 
-	HW::PIOB->CODR = 1<<10;
+//	HW::PIOB->CODR = 1<<10;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1061,9 +1066,23 @@ void ManRcvUpdate()
 {
 	if (rcvBusy)
 	{
-		if ((rcvManLen > 0 && (GetRTT() - rcvManPrevTime) > US2RT(1440)) || rcvManLen >= rcvManCount)
+		bool c = ManTmr.SR & CPCS;
+
+		if (rcvManLen > 0 && c)//(GetRTT() - rcvManPrevTime) > US2RT(3000)))
 		{
+			HW::PIOB->SODR = 1<<10;
+
 			ManRcvEnd(true);
+
+			HW::PIOB->CODR = 1<<10;
+		}
+		else if (rcvManLen >= rcvManCount)
+		{
+//			HW::PIOB->SODR = 1<<10;
+
+			ManRcvEnd(true);
+
+//			HW::PIOB->CODR = 1<<10;
 		}
 		else
 		{

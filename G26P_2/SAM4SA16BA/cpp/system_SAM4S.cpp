@@ -1040,12 +1040,12 @@ static __irq void WaitManCmdSync()
 		{
 			if(manRcv.GetType())
 			{
-				HW::PIOB->SODR = 1<<11;
+//				HW::PIOB->SODR = 1<<11;
 
 				*rcvManPtr++ = manRcv.GetData();
 				rcvManLen = 1;
 
-				HW::PIOB->CODR = 1<<11;
+//				HW::PIOB->CODR = 1<<11;
 			}
 		}
 		else if(rcvManLen < rcvManCount)
@@ -1070,11 +1070,11 @@ void ManRcvUpdate()
 
 		if (rcvManLen > 0 && c)//(GetRTT() - rcvManPrevTime) > US2RT(3000)))
 		{
-			HW::PIOB->SODR = 1<<10;
+//			HW::PIOB->SODR = 1<<10;
 
 			ManRcvEnd(true);
 
-			HW::PIOB->CODR = 1<<10;
+//			HW::PIOB->CODR = 1<<10;
 		}
 		else if (rcvManLen >= rcvManCount)
 		{

@@ -88,7 +88,7 @@ void RequestQuery::Update()
 					}
 					else
 					{
-						_state += 2;
+						_state = 5;
 					};
 				};
 
@@ -98,13 +98,50 @@ void RequestQuery::Update()
 
 				if (!com->Update())
 				{
-//					_req->crcOK = GetCRC16(_req->rb->data, _req->rb->len) == 0;
-					_state++;
+					if (_req->checkCRC && _req->rb->recieved)
+					{
+						_crc = 0xFFFF;
+						_crcLen = _req->rb->len;
+						_crcPtr = (byte*) _req->rb->data;
+
+						_state++;
+					}
+					else
+					{
+						_req->crcOK = false;
+						_state = 5;
+					};
 				};
 
 				break;
 
 			case 4:
+
+				{
+					u16 len = 100;
+
+					if (_crcLen < len) len = _crcLen;
+
+					_crcLen -= len;
+
+					HW::PIOB->SODR = 1<<10;
+
+					_crc = GetCRC16(_crcPtr, len, _crc, 0);
+
+					HW::PIOB->CODR = 1<<10;
+
+					_crcPtr += len;
+
+					if (_crcLen == 0)
+					{
+						_req->crcOK = _crc == 0;
+						_state++;
+					};
+				};
+
+				break;
+
+			case 5:
 
 				_req->ready = true;
 

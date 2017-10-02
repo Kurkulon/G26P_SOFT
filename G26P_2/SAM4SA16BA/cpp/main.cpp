@@ -822,21 +822,7 @@ void CallBackRcvReq02(REQ *q)
 	Rsp02 &rsp = *((Rsp02*)q->rb->data);
 	Req02 &req = *((Req02*)q->wb->data);
 	
-	bool crcOK;
-
-	if (q->rb->recieved)
-	{
-		crcOK = true;//GetCRC16(q->rb->data, q->rb->len) == 0;
-
-		if (!crcOK) 
-		{
-			crcErr02++;
-		};
-	}
-	else
-	{
-		crcOK = false;
-	};
+	bool crcOK = q->crcOK;
 
 	if (crcOK)
 	{
@@ -845,12 +831,8 @@ void CallBackRcvReq02(REQ *q)
 	else
 	{
 		rcvStatus &= ~(1 << ((req.adr-1) & 7)); 
-	};
+		crcErr02++;
 
-	q->crcOK = crcOK;
-
-	if (!crcOK)
-	{
 		if (q->tryCount > 0)
 		{
 			q->tryCount--;
@@ -866,7 +848,6 @@ void CallBackRcvReq02(REQ *q)
 			};
 		};
 	};
-
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -898,6 +879,7 @@ R02* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	q.ready = false;
 	q.tryCount = tryCount;
 	q.ptr = &r;
+	q.checkCRC = true;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -920,11 +902,7 @@ R02* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 
 void CallBackRcvReq03(REQ *q)
 {
-//	Rsp03 *rsp = (Rsp03*)q->rb->data;
-
-	bool crcOK = GetCRC16(q->rb->data, q->rb->len) == 0;
-
-	if (!crcOK) 
+	if (!q->crcOK) 
 	{
 		crcErr03++;
 
@@ -953,6 +931,7 @@ REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[], u16 tryCount)
 	q.wb = &wb;
 	q.ready = false;
 	q.tryCount = tryCount;
+	q.checkCRC = true;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -984,11 +963,7 @@ REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[], u16 tryCount)
 
 void CallBackRcvReq04(REQ *q)
 {
-//	Rsp04 *rsp = (Rsp04*)q->rb->data;
-
-	bool crcOK = GetCRC16(q->rb->data, q->rb->len) == 0;
-
-	if (!crcOK) 
+	if (!q->crcOK) 
 	{
 		crcErr04++;
 
@@ -1017,6 +992,7 @@ REQ* CreateRcvReq04(byte adr, byte ka[], u16 tryCount)
 	q.wb = &wb;
 	q.ready = false;
 	q.tryCount = tryCount;
+	q.checkCRC = true;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -2144,7 +2120,7 @@ static void MainMode()
 					u16 *p = (u16*)&r02->rsp;
 					u16 len = r02->rb.len-2;
 
-					//p[len/2] = GetCRC16(&r02->rsp, len);
+					p[len/2] = GetCRC16(&r02->rsp, len);
 
 					if (curRcv[fireType] == (rcv-1))
 					{
@@ -2297,9 +2273,9 @@ static void UpdateMan()
 				}
 				else
 				{
-					HW::PIOB->SODR = 1<<10;
+//					HW::PIOB->SODR = 1<<10;
 					i = 0;
-					HW::PIOB->CODR = 1<<10;
+//					HW::PIOB->CODR = 1<<10;
 				};
 			}
 			else if (mrb.len > 0)

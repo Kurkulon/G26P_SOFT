@@ -150,6 +150,8 @@ struct REQ
 {
 	bool	ready;
 	bool	crcOK;
+	bool	checkCRC;
+
 	typedef void tRsp(REQ*);
 
 	u16		tryCount;
@@ -176,6 +178,11 @@ class RequestQuery
 	REQ* _req;
 	
 	byte _state;
+
+	u16	_crc;
+	u16 _crcLen;
+
+	byte* _crcPtr;
 
 
 	ComPort *com;

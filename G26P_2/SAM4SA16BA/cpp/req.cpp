@@ -62,13 +62,19 @@ void RequestQuery::Update()
 
 				if (_req->wb != 0)
 				{
-					//DataPointer p(_req->wb->data);
-					//p.b += _req->wb->len;
+					if (_req->updateCRC)
+					{
+						_crc = 0xFFFF;
+						_crcLen = _req->wb->len;
+						_crcPtr = (byte*) _req->wb->data;
 
-					//*p.w = GetCRC16(_req->wb->data, _req->wb->len);
-					//_req->wb->len += 2;
-					com->Write(_req->wb);
-					_state++;
+						_state++;
+					}
+					else
+					{
+						com->Write(_req->wb);
+						_state++;
+					};
 				}
 				else
 				{
@@ -78,44 +84,6 @@ void RequestQuery::Update()
 				break;
 
 			case 2:
-
-				if (!com->Update())
-				{
-					if (_req->rb != 0)
-					{
-						com->Read(_req->rb, _req->preTimeOut, _req->postTimeOut); 
-						_state++;
-					}
-					else
-					{
-						_state = 5;
-					};
-				};
-
-				break;
-
-			case 3:
-
-				if (!com->Update())
-				{
-					if (_req->checkCRC && _req->rb->recieved)
-					{
-						_crc = 0xFFFF;
-						_crcLen = _req->rb->len;
-						_crcPtr = (byte*) _req->rb->data;
-
-						_state++;
-					}
-					else
-					{
-						_req->crcOK = false;
-						_state = 5;
-					};
-				};
-
-				break;
-
-			case 4:
 
 				{
 					u16 len = 100;
@@ -134,6 +102,75 @@ void RequestQuery::Update()
 
 					if (_crcLen == 0)
 					{
+						DataPointer p(_req->wb->data);
+						*p.w = _crc;
+						_req->wb->len += 2;
+						_req->updateCRC = false;
+
+						com->Write(_req->wb);
+						_state++;
+					};
+				};
+
+				break;
+
+			case 3:
+
+				if (!com->Update())
+				{
+					if (_req->rb != 0)
+					{
+						com->Read(_req->rb, _req->preTimeOut, _req->postTimeOut); 
+						_state++;
+					}
+					else
+					{
+						_state = 6;
+					};
+				};
+
+				break;
+
+			case 4:
+
+				if (!com->Update())
+				{
+					if (_req->checkCRC && _req->rb->recieved)
+					{
+						_crc = 0xFFFF;
+						_crcLen = _req->rb->len;
+						_crcPtr = (byte*) _req->rb->data;
+
+						_state++;
+					}
+					else
+					{
+						_req->crcOK = false;
+						_state = 6;
+					};
+				};
+
+				break;
+
+			case 5:
+
+				{
+					u16 len = 100;
+
+					if (_crcLen < len) len = _crcLen;
+
+					_crcLen -= len;
+
+//					HW::PIOB->SODR = 1<<10;
+
+					_crc = GetCRC16(_crcPtr, len, _crc, 0);
+
+//					HW::PIOB->CODR = 1<<10;
+
+					_crcPtr += len;
+
+					if (_crcLen == 0)
+					{
 						_req->crcOK = _crc == 0;
 						_state++;
 					};
@@ -141,7 +178,7 @@ void RequestQuery::Update()
 
 				break;
 
-			case 5:
+			case 6:
 
 				_req->ready = true;
 

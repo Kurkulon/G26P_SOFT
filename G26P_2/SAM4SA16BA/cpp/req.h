@@ -151,6 +151,7 @@ struct REQ
 	bool	ready;
 	bool	crcOK;
 	bool	checkCRC;
+	bool	updateCRC;
 
 	typedef void tRsp(REQ*);
 

@@ -782,6 +782,34 @@ static void UpdateGyro()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void CopyData(void *src, void *dst, u16 len)
+{
+	T_HW::S_USART &u = *HW::USART1;
+
+	u.CR = 0x1A0;	// Disable transmit and receive, reset status
+
+	u.MR = 0x89C0; // LOCAL_LOOPBACK, SYNC, No parity, 
+	u.BRGR = 3;
+	u.PDC.TPR = src;
+	u.PDC.TCR = len;
+	u.PDC.RPR = dst;
+	u.PDC.RCR = len;
+
+	u.PDC.PTCR = 0x101;
+
+	u.CR = 0x150;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline bool CheckCopyDataComplete()
+{
+	T_HW::S_USART &u = *HW::USART1;
+
+	return 	u.PDC.TCR == 0 && u.PDC.RCR == 0;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void CallBackRcvReqFire(REQ *q)
@@ -1266,9 +1294,10 @@ static void CreateMemReq02(R02 &r)
 	q.postTimeOut = 1;
 	q.ready = false;
 	q.ptr = &r;
+	q.updateCRC = true;
 	
 	wb.data = &r.rsp;
-	wb.len = r.rb.len;// l*4*2 + sizeof(req) - sizeof(req.data);
+	wb.len = r.rb.len-2;// l*4*2 + sizeof(req) - sizeof(req.data);
 
 	//rb.data = &rsp;
 	//rb.maxLen = sizeof(rsp);
@@ -2118,20 +2147,10 @@ static void MainMode()
 					r02->rsp.cnt = fireCounter;
 
 					u16 *p = (u16*)&r02->rsp;
-					u16 len = r02->rb.len-2;
-
-					p[len/2] = GetCRC16(&r02->rsp, len);
 
 					if (curRcv[fireType] == (rcv-1))
 					{
-						u16 *s = (u16*)&r02->rsp;
-						u16 *d = (u16*)&manVec[fireType*2 + curVec[fireType]];
-						u16 c = r02->rb.len/2;
-
-						while (c-- > 0)
-						{
-							*d++ = *s++;
-						};
+						CopyData(&r02->rsp, &manVec[fireType*2 + curVec[fireType]], r02->rb.len);
 
 						manVec[fireType].cnt = fireCounter;
 					};
@@ -2143,7 +2162,6 @@ static void MainMode()
 
 				if (rcv < numStations)
 				{
-
 					rcv += 1;
 					chnl = 0;
 

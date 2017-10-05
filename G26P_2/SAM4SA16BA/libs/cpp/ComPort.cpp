@@ -18,11 +18,11 @@ extern dword millisecondsCount;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ComPort::ComBase	ComPort::_bases[4] = { 
+ComPort::ComBase	ComPort::_bases[3] = { 
 	{false, HW::UART0,	 HW::PIOA, 1U<<31 }, 
 	{false, HW::UART1,	 HW::PIOB, 1<<13 },
-	{false, HW::USART0,	 HW::PIOA, 1<<4	 }, 
-	{false, HW::USART1,	 HW::PIOA, 0	 }
+	{false, HW::USART0,	 HW::PIOA, 1<<4	 } 
+//	{false, HW::USART1,	 HW::PIOA, 0	 }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -31,7 +31,7 @@ bool ComPort::Connect(byte port, dword speed, byte parity)
 {
 #ifndef WIN32
 
-	if (_connected || port > 3 || _bases[port].used)
+	if (_connected || port > 2 || _bases[port].used)
 	{
 		return false;
 	};

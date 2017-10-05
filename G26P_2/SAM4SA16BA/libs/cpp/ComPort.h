@@ -46,7 +46,7 @@ class ComPort
 		const dword maskRTS;
 	};
 
-	static ComBase _bases[4];
+	static ComBase _bases[3];
 
 	bool			_connected;
 	byte			_status485;

@@ -1830,15 +1830,17 @@ static void UpdateRcvTrm()
 		case 4:
 
 			reqr = CreateRcvReqFire(0, n, 0);
-			reqt = CreateTrmReqFire(n);
-
 			comrcv.Write(reqr->wb);
-			comtr.Write(reqt->wb);
+
+			if (reqVoltage > 100)
+			{
+				reqt = CreateTrmReqFire(n);
+				comtr.Write(reqt->wb);
+			};
 
 			i++;
 
 			break;
-
 
 		case 5:
 

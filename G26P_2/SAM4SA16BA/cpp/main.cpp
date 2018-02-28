@@ -858,7 +858,6 @@ void CallBackRcvReq02(REQ *q)
 	}
 	else
 	{
-		rcvStatus &= ~(1 << ((req.adr-1) & 7)); 
 		crcErr02++;
 
 		if (q->tryCount > 0)
@@ -868,6 +867,8 @@ void CallBackRcvReq02(REQ *q)
 		}
 		else
 		{
+			rcvStatus &= ~(1 << ((req.adr-1) & 7)); 
+
 			R02* r = (R02*)q->ptr;
 		
 			if (r != 0)
@@ -1569,7 +1570,7 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 		qrcv.Add(CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 2));
 	};
 
-	SaveParams();
+//	SaveParams();
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x90;
 
@@ -2300,39 +2301,39 @@ static void UpdateMan()
 			}
 			else if (mrb.len > 0)
 			{
-				if ((manRcvData[0] & manReqMask) == manReqWord)
-				{
-					byte i = (manRcvData[0]>>4)&0xF;
+				//if ((manRcvData[0] & manReqMask) == manReqWord)
+				//{
+				//	byte i = (manRcvData[0]>>4)&0xF;
 
-					u16 l = 100;
+				//	u16 l = 100;
 
-					switch (i)
-					{
-						case 0: 	l = 1; break;
-						case 1: 	l = 1; break;
-						case 2: 	l = 1; break;
-						case 3: 
-						case 4: 
-						case 5: 	
-						case 8: 	
-						case 9:		l = 3; break;
-						case 0xF:	l = 1; break;
-						
-						default:	l = 100; 
-					};
+				//	switch (i)
+				//	{
+				//		case 0: 	l = 1; break;
+				//		case 1: 	l = 1; break;
+				//		case 2: 	l = 1; break;
+				//		case 3: 
+				//		case 4: 
+				//		case 5: 	
+				//		case 8: 	
+				//		case 9:		l = 3; break;
+				//		case 0xF:	l = 1; break;
+				//		
+				//		default:	l = 100; 
+				//	};
 
-					if (mrb.len >= l)
-					{
-						ManRcvStop();
-					};
-				};
+				//	if (mrb.len >= l)
+				//	{
+				//		ManRcvStop();
+				//	};
+				//};
 			};
 
 			break;
 
 		case 2:
 
-			if (tm.Check(US2RT(1000)))
+			if (tm.Check(US2RT(500)))
 			{
 //				SetTrmBoudRate(3); /*mtb.data = tableCRC;*/ mtb.len = 5; SendMLT3(&mtb);
 				SendManData(&mtb);

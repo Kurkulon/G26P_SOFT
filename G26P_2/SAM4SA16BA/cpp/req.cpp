@@ -102,7 +102,7 @@ void RequestQuery::Update()
 
 					if (_crcLen == 0)
 					{
-						DataPointer p(_req->wb->data);
+						DataPointer p(_crcPtr);
 						*p.w = _crc;
 						_req->wb->len += 2;
 						_req->updateCRC = false;

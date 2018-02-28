@@ -1076,14 +1076,14 @@ void ManRcvUpdate()
 
 //			HW::PIOB->CODR = 1<<10;
 		}
-		else if (rcvManLen >= rcvManCount)
-		{
-//			HW::PIOB->SODR = 1<<10;
-
-			ManRcvEnd(true);
-
-//			HW::PIOB->CODR = 1<<10;
-		}
+//		else if (rcvManLen >= rcvManCount)
+//		{
+////			HW::PIOB->SODR = 1<<10;
+//
+//			ManRcvEnd(true);
+//
+////			HW::PIOB->CODR = 1<<10;
+//		}
 		else
 		{
 			manRB->len = rcvManLen;

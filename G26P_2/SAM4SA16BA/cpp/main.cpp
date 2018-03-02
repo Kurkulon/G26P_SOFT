@@ -1311,7 +1311,7 @@ static void CreateMemReq02(R02 &r)
 
 static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 {
-	if (data == 0 || len == 0 || mtb == 0) return false;
+	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0;
 	manTrmData[1] = numDevice;
@@ -1330,7 +1330,7 @@ static bool RequestMan_10(u16 *buf, u16 len, MTB* mtb)
 	//__packed struct T { u16 g[8]; u16 st; u16 len; u16 delay; u16 voltage; };
 	//__packed struct Rsp { u16 hdr; u16 rw; T t1, t2, t3; };
 	
-	if (buf == 0 || len == 0 || mtb == 0) return false;
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	u16* p = manTrmData+1;
 
@@ -1362,7 +1362,7 @@ static bool RequestMan_10(u16 *buf, u16 len, MTB* mtb)
 
 static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len == 0 || mtb == 0) return false;
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = manReqWord|0x20;
 	manTrmData[1] = GD(&fireCounter, u16, 0);
@@ -1411,7 +1411,7 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 	//off 0...2005
 
 //return false;
-	if (buf == 0 || len != 3 || mtb == 0) return false;
+	if (buf == 0 || len < 3 || len > 4 || mtb == 0) return false;
 
 	byte nf = ((req.rw>>4)-3)&3;
 	byte nr = req.rw & 7;
@@ -1484,7 +1484,7 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 
 static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
 {
-	if (data == 0 || len < 3 || mtb == 0) return false;
+	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
 
 	switch (data[1])
 	{
@@ -1513,7 +1513,7 @@ static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
 
 static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 {
-	if (data == 0 || len < 3 || mtb == 0) return false;
+	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
 
 	byte nf = ((data[1]>>4) & 3)-1;
 	byte nr = data[1] & 0xF;
@@ -1584,7 +1584,7 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 static bool RequestMan_F0(u16 *data, u16 len, MTB* mtb)
 {
-	if (data == 0 || len == 0 || mtb == 0) return false;
+	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	SaveParams();
 
@@ -2333,7 +2333,7 @@ static void UpdateMan()
 
 		case 2:
 
-			if (tm.Check(US2RT(500)))
+			if (tm.Check(US2RT(100)))
 			{
 //				SetTrmBoudRate(3); /*mtb.data = tableCRC;*/ mtb.len = 5; SendMLT3(&mtb);
 				SendManData(&mtb);

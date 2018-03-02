@@ -57,8 +57,8 @@ extern "C" void SystemInit (void)
 	MATRIX->SYSIO = (1<<4)|(1<<5); // PB4 PB5
 
 
-	WDT->MR = (((1000 * 32768 / 128 + 500) / 1000) & 0xFFF) | 0x0FFF6000;
-//	HW::WDT->MR = 0x8000;	// Disable Watchdog
+//	WDT->MR = (((1000 * 32768 / 128 + 500) / 1000) & 0xFFF) | 0x0FFF6000;
+	HW::WDT->MR = 0x8000;	// Disable Watchdog
 
 	PMC->MOR	= 0x01370102; while ((PMC->SR & 1) == 0) {};
 

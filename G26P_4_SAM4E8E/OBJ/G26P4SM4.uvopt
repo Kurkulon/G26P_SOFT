@@ -167,7 +167,7 @@
           <Type>0</Type>
           <LineNumber>958</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>4210546</Address>
+          <Address>4208770</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -175,6 +175,22 @@
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\trap.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression></Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>1064</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>4195544</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_SAM4E8E\cpp\emac.cpp</Filename>
           <ExecCommand></ExecCommand>
           <Expression></Expression>
         </Bp>

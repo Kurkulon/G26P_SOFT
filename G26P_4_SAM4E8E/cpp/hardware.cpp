@@ -646,9 +646,13 @@ static __irq void WaitManCmdSync()
 				//HW::PIOB->CODR = 1<<11;
 			}
 		}
-		else if(rcvManLen < rcvManCount)
+		else 
 		{
-			*rcvManPtr++ = manRcv.GetData();
+			if(rcvManLen < rcvManCount)
+			{
+				*rcvManPtr++ = manRcv.GetData();
+			};
+
 			rcvManLen += 1;	
 		};
 	};
@@ -664,7 +668,9 @@ void ManRcvUpdate()
 {
 	if (rcvBusy)
 	{
-		if ((rcvManLen > 0 && (GetRTT() - rcvManPrevTime) > US2RT(1440)) || rcvManLen >= rcvManCount)
+		bool c = ManTmr.SR & CPCS;
+
+		if (rcvManLen > 0 && c /*(GetRTT() - rcvManPrevTime) > US2RT(1440)) || rcvManLen >= rcvManCount*/)
 		{
 			ManRcvEnd(true);
 		}

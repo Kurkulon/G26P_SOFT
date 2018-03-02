@@ -51,7 +51,7 @@ static byte status = 0;
 
 static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len == 0 || mtb == 0) return false;
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0;
 	manTrmData[1] = 0xEC00;
@@ -67,7 +67,7 @@ static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
 
 static bool ReqMan10(u16 *buf, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len == 0 || mtb == 0) return false;
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
 
@@ -83,7 +83,7 @@ static bool ReqMan20(u16 *buf, u16 len, MTB* mtb)
 {
 	__packed struct Rsp {u16 rw; u16 device; u16 session; u32 rcvVec; u32 rejVec; u32 wrVec; u32 errVec; u16 wrAdr[3]; u16 temp; u16 status; RTC rtc; };
 
-	if (buf == 0 || len == 0 || mtb == 0) return false;
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	Rsp &rsp = *((Rsp*)&manTrmData);
 
@@ -110,7 +110,7 @@ static bool ReqMan20(u16 *buf, u16 len, MTB* mtb)
 
 static bool ReqMan30(u16 *buf, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len < 5 || mtb == 0) return false;
+	if (buf == 0 || len < 5 || len > 6 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x30;
 
@@ -126,7 +126,7 @@ static bool ReqMan30(u16 *buf, u16 len, MTB* mtb)
 
 static bool ReqMan31(u16 *buf, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len == 0 || mtb == 0) return false;
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x31;
 
@@ -142,7 +142,7 @@ static bool ReqMan31(u16 *buf, u16 len, MTB* mtb)
 
 static bool ReqMan32(u16 *buf, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len == 0 || mtb == 0) return false;
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x32;
 
@@ -158,7 +158,7 @@ static bool ReqMan32(u16 *buf, u16 len, MTB* mtb)
 
 static bool ReqMan33(u16 *buf, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len == 0 || mtb == 0) return false;
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x33;
 
@@ -172,7 +172,7 @@ static bool ReqMan33(u16 *buf, u16 len, MTB* mtb)
 
 static bool ReqMan80(u16 *buf, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len < 3 || mtb == 0) return false;
+	if (buf == 0 || len < 3 || len > 4 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x80;
 
@@ -191,7 +191,7 @@ static bool ReqMan80(u16 *buf, u16 len, MTB* mtb)
 
 static bool ReqMan90(u16 *buf, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len < 3 || mtb == 0) return false;
+	if (buf == 0 || len < 3 || len > 4 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x90;
 
@@ -205,7 +205,7 @@ static bool ReqMan90(u16 *buf, u16 len, MTB* mtb)
 
 static bool ReqManF0(u16 *buf, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len == 0 || mtb == 0) return false;
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	SaveParams();
 
@@ -289,35 +289,35 @@ static void UpdateMan()
 			}
 			else if (mrb.len > 0)
 			{
-				if ((manRcvData[0] & manReqMask) == manReqWord)
-				{
-					byte i = manRcvData[0] & 0xFF;
+				//if ((manRcvData[0] & manReqMask) == manReqWord)
+				//{
+				//	byte i = manRcvData[0] & 0xFF;
 
-					u16 l = 100;
+				//	u16 l = 100;
 
-					switch (i)
-					{
-						case 0x00:			
-						case 0x10:			
-						case 0x20:	l = 1;		break;
+				//	switch (i)
+				//	{
+				//		case 0x00:			
+				//		case 0x10:			
+				//		case 0x20:	l = 1;		break;
 
-						case 0x30:	l = 5;		break;
+				//		case 0x30:	l = 5;		break;
 
-						case 0x31:	
-						case 0x32:	
-						case 0x33:	l = 1;		break;
+				//		case 0x31:	
+				//		case 0x32:	
+				//		case 0x33:	l = 1;		break;
 
-						case 0x80:	
-						case 0x90:	l = 3;		break;
+				//		case 0x80:	
+				//		case 0x90:	l = 3;		break;
 
-						case 0xF0:	l = 1;		break;
-					};
+				//		case 0xF0:	l = 1;		break;
+				//	};
 
-					if (mrb.len >= l)
-					{
-						ManRcvStop();
-					};
-				};
+				//	if (mrb.len >= l)
+				//	{
+				//		ManRcvStop();
+				//	};
+				//};
 			};
 
 			break;

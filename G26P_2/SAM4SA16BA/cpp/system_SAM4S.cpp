@@ -1048,9 +1048,13 @@ static __irq void WaitManCmdSync()
 //				HW::PIOB->CODR = 1<<11;
 			}
 		}
-		else if(rcvManLen < rcvManCount)
+		else 
 		{
-			*rcvManPtr++ = manRcv.GetData();
+			if(rcvManLen < rcvManCount)
+			{
+				*rcvManPtr++ = manRcv.GetData();
+			};
+
 			rcvManLen += 1;	
 		};
 	};

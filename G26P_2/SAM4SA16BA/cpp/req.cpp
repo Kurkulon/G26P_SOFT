@@ -1,7 +1,10 @@
 #include "req.h"
 
 #include "CRC16.h"
+#include "time.h"
 
+#pragma O3
+#pragma Otime
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -48,159 +51,171 @@ REQ* RequestQuery::Get()
 
 void RequestQuery::Update()
 {
-		switch(_state)
-		{
-			case 0:
+//	static RTM32 tm;
 
-				_req = (_run) ? Get() : 0;
+	switch(_state)
+	{
+		case 0:
 
-				if (_req != 0) _state++;
+			_req = (_run) ? Get() : 0;
 
-				break;
+			if (_req != 0) _state++;
 
-			case 1:
+			break;
 
-				if (_req->wb != 0)
+		case 1:
+
+			if (_req->wb != 0)
+			{
+				if (_req->updateCRC)
 				{
-					if (_req->updateCRC)
-					{
-						_crc = 0xFFFF;
-						_crcLen = _req->wb->len;
-						_crcPtr = (byte*) _req->wb->data;
+					_crc = 0xFFFF;
+					_crcLen = _req->wb->len;
+					_crcPtr = (byte*) _req->wb->data;
 
-						_state++;
-					}
-					else
-					{
-						com->Write(_req->wb);
-						_state++;
-					};
+					_state++;
 				}
 				else
 				{
-					_state = 0;
-				}; 
-
-				break;
-
-			case 2:
-
-				{
-					u16 len = 1050;
-
-					if (_crcLen < len) len = _crcLen;
-
-					_crcLen -= len;
-
-					HW::PIOB->SODR = 1<<10;
-
-					_crc = GetCRC16(_crcPtr, len, _crc, 0);
-
-					HW::PIOB->CODR = 1<<10;
-
-					_crcPtr += len;
-
-					if (_crcLen == 0)
-					{
-						DataPointer p(_crcPtr);
-						*p.w = _crc;
-						_req->wb->len += 2;
-						_req->updateCRC = false;
-
-						com->Write(_req->wb);
-						_state++;
-					};
+					com->Write(_req->wb);
+					_state = 3;
 				};
+			}
+			else
+			{
+				_state = 0;
+			}; 
 
-				break;
+			break;
 
-			case 3:
+		case 2:
 
-				if (!com->Update())
+			{
+				u16 len = 1050;
+
+				if (_crcLen < len) len = _crcLen;
+
+				_crcLen -= len;
+
+				HW::PIOB->SODR = 1<<10;
+
+				_crc = GetCRC16(_crcPtr, len, _crc, 0);
+
+				HW::PIOB->CODR = 1<<10;
+
+				_crcPtr += len;
+
+				if (_crcLen == 0)
 				{
-					if (_req->rb != 0)
-					{
-						com->Read(_req->rb, _req->preTimeOut, _req->postTimeOut); 
-						_state++;
-					}
-					else
-					{
-						_state = 6;
-					};
+					DataPointer p(_crcPtr);
+					*p.w = _crc;
+					_req->wb->len += 2;
+					_req->updateCRC = false;
+
+					com->Write(_req->wb);
+					_state++;
 				};
+			};
 
-				break;
+			break;
 
-			case 4:
+		case 3:
 
-				if (!com->Update())
+			if (!com->Update())
+			{
+				if (_req->rb != 0)
 				{
-					if (_req->checkCRC && _req->rb->recieved)
-					{
-						_crc = 0xFFFF;
-						_crcLen = _req->rb->len;
-						_crcPtr = (byte*) _req->rb->data;
-
-						_state++;
-					}
-					else
-					{
-						_req->crcOK = false;
-						_state = 6;
-					};
+					com->Read(_req->rb, _req->preTimeOut, _req->postTimeOut); 
+					_state++;
+				}
+				else
+				{
+					_state = 6;
 				};
+			};
 
-				break;
+			break;
 
-			case 5:
+		case 4:
 
+			if (!com->Update())
+			{
+				if (_req->checkCRC && _req->rb->recieved)
 				{
-					u16 len = 1050;
+					_crc = 0xFFFF;
+					_crcLen = _req->rb->len;
+					_crcPtr = (byte*) _req->rb->data;
 
-					if (_crcLen < len) len = _crcLen;
+					_state++;
+				}
+				else
+				{
+					_req->crcOK = false;
+					_state = 6;
+				};
+			};
 
-					_crcLen -= len;
+			break;
+
+		case 5:
+
+			{
+				u16 len = 1050;
+
+				if (_crcLen < len) len = _crcLen;
+
+				_crcLen -= len;
 
 //					HW::PIOB->SODR = 1<<10;
 
-					_crc = GetCRC16(_crcPtr, len, _crc, 0);
+				_crc = GetCRC16(_crcPtr, len, _crc, 0);
 
 //					HW::PIOB->CODR = 1<<10;
 
-					_crcPtr += len;
+				_crcPtr += len;
 
-					if (_crcLen == 0)
-					{
-						_req->crcOK = _crc == 0;
-						_state++;
-					};
-				};
-
-				break;
-
-			case 6:
-
-				_req->ready = true;
-
-				if (_req->CallBack != 0)
+				if (_crcLen == 0)
 				{
-					//if (!HW::RomCheck((void*)_req->CallBack))
-					//{
-					//	__breakpoint(0);
-					//};
-
-					_req->CallBack(_req);
+					_req->crcOK = _crc == 0;
+					_state++;
 				};
+			};
 
+			break;
 
-				_state = 0;
+		case 6:
 
-				break;
+			_req->ready = true;
 
-			default:
+//			tm.Reset();
 
-				_state = 0;
-		};
+			if (_req->CallBack != 0)
+			{
+				//if (!HW::RomCheck((void*)_req->CallBack))
+				//{
+				//	__breakpoint(0);
+				//};
+
+				_req->CallBack(_req);
+			};
+
+			_state = 0;
+
+			break;
+
+		//case 7:
+
+		//	if (tm.Check(US2RT(500)))
+		//	{
+		//		_state = 0;
+		//	};
+
+			break;
+
+		default:
+
+			_state = 0;
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

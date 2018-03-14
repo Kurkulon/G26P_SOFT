@@ -87,9 +87,12 @@ static byte rcvStatus = 0;
 
 //static u32 chnlCount[4] = {0};
 
-static u32 crcErr02 = 0;
+static u32 crcErr02[8] = {0};
 static u32 crcErr03 = 0;
 static u32 crcErr04 = 0;
+
+static u32 notRcv02[8] = {0};
+static u32 lenErr02[8] = {0};
 
 static byte savesCount = 0;
 
@@ -789,7 +792,7 @@ void CopyData(void *src, void *dst, u16 len)
 	u.CR = 0x1A0;	// Disable transmit and receive, reset status
 
 	u.MR = 0x89C0; // LOCAL_LOOPBACK, SYNC, No parity, 
-	u.BRGR = 3;
+	u.BRGR = 30;
 	u.PDC.TPR = src;
 	u.PDC.TCR = len;
 	u.PDC.RPR = dst;
@@ -849,8 +852,8 @@ void CallBackRcvReq02(REQ *q)
 {
 	Rsp02 &rsp = *((Rsp02*)q->rb->data);
 	Req02 &req = *((Req02*)q->wb->data);
-	
-	bool crcOK = q->crcOK;
+	 
+	bool crcOK = q->crcOK = true;
 
 	if (crcOK)
 	{
@@ -858,7 +861,26 @@ void CallBackRcvReq02(REQ *q)
 	}
 	else
 	{
-		crcErr02++;
+		byte a = (req.adr-1) & 7;
+
+//		crcErr02[a]++;
+
+		if (q->rb->recieved)
+		{
+			if ((rsp.rw & manReqMask) != manReqWord || (rsp.len*8+16) != q->rb->len)
+			{
+				lenErr02[a]++;
+			}
+			else
+			{
+				crcErr02[a]++;
+			};
+		}
+		else
+		{
+			notRcv02[a]++;
+		};
+
 
 		if (q->tryCount > 0)
 		{
@@ -867,7 +889,9 @@ void CallBackRcvReq02(REQ *q)
 		}
 		else
 		{
-			rcvStatus &= ~(1 << ((req.adr-1) & 7)); 
+//			if (!q->rb->recieved) notRcv02[a]++;
+
+			rcvStatus &= ~(1 << (a)); 
 
 			R02* r = (R02*)q->ptr;
 		
@@ -908,7 +932,7 @@ R02* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	q.ready = false;
 	q.tryCount = tryCount;
 	q.ptr = &r;
-	q.checkCRC = true;
+	q.checkCRC = false;
 	q.updateCRC = false;
 	
 	wb.data = &req;
@@ -2139,7 +2163,7 @@ static void MainMode()
 
 		case 3:
 
-			r02 = CreateRcvReq02(rcv, fireType, chnl, 1);
+			r02 = CreateRcvReq02(rcv, fireType, chnl, 2);
 
 			if (r02 != 0)
 			{
@@ -2163,12 +2187,25 @@ static void MainMode()
 
 					if (curRcv[fireType] == (rcv-1))
 					{
-						CopyData(&r02->rsp, &manVec[fireType*2 + curVec[fireType]], r02->rb.len);
+						//CopyData(&r02->rsp, &manVec[fireType*2 + curVec[fireType]], r02->rb.len);
+
+						//while(!CheckCopyDataComplete()) {};
+
+						u16 *s = (u16*)&r02->rsp;
+						u16 *d = (u16*)&manVec[fireType*2 + curVec[fireType]];
+						u16 c = r02->rb.len/2;
+
+						while (c-- > 0)
+						{
+							*d++ = *s++;
+						};
 
 						manVec[fireType].cnt = fireCounter;
 					};
 
-					CreateMemReq02(*r02);
+					//CreateMemReq02(*r02);
+
+					freeR02.Add(r02);
 
 					manCounter++;
 				};

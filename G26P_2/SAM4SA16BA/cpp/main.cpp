@@ -909,6 +909,7 @@ R02* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	q.tryCount = tryCount;
 	q.ptr = &r;
 	q.checkCRC = true;
+	q.updateCRC = false;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -961,6 +962,7 @@ REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[], u16 tryCount)
 	q.ready = false;
 	q.tryCount = tryCount;
 	q.checkCRC = true;
+	q.updateCRC = false;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -1022,6 +1024,7 @@ REQ* CreateRcvReq04(byte adr, byte ka[], u16 tryCount)
 	q.ready = false;
 	q.tryCount = tryCount;
 	q.checkCRC = true;
+	q.updateCRC = false;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -1064,6 +1067,8 @@ static REQ* CreateTrmReqFire(byte n)
 	q.CallBack = CallBackTrmReqFire;
 	q.rb = 0;
 	q.wb = &wb;
+	q.checkCRC = false;
+	q.updateCRC = false;
 	
 	wb.data = &req;
 	wb.len = sizeof(req);
@@ -1113,6 +1118,8 @@ static REQ* CreateTrmReq02()
 	q.preTimeOut = MS2RT(1);
 	q.postTimeOut = 1;
 	q.ready = false;
+	q.checkCRC = false;
+	q.updateCRC = false;
 	
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
@@ -1169,6 +1176,8 @@ static REQ* CreateTrmReq03()
 	q.preTimeOut = MS2RT(1);
 	q.postTimeOut = 1;
 	q.ready = false;
+	q.checkCRC = false;
+	q.updateCRC = false;
 	
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
@@ -1295,6 +1304,7 @@ static void CreateMemReq02(R02 &r)
 	q.postTimeOut = 1;
 	q.ready = false;
 	q.ptr = &r;
+	q.checkCRC = false;
 	q.updateCRC = true;
 	
 	wb.data = &r.rsp;

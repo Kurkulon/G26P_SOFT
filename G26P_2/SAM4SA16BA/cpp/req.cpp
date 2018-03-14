@@ -86,7 +86,7 @@ void RequestQuery::Update()
 			case 2:
 
 				{
-					u16 len = 100;
+					u16 len = 1050;
 
 					if (_crcLen < len) len = _crcLen;
 
@@ -155,7 +155,7 @@ void RequestQuery::Update()
 			case 5:
 
 				{
-					u16 len = 100;
+					u16 len = 1050;
 
 					if (_crcLen < len) len = _crcLen;
 

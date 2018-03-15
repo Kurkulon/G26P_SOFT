@@ -853,7 +853,7 @@ void CallBackRcvReq02(REQ *q)
 	Rsp02 &rsp = *((Rsp02*)q->rb->data);
 	Req02 &req = *((Req02*)q->wb->data);
 	 
-	bool crcOK = q->crcOK = true;
+	bool crcOK = q->crcOK;
 
 	if (crcOK)
 	{
@@ -932,7 +932,7 @@ R02* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	q.ready = false;
 	q.tryCount = tryCount;
 	q.ptr = &r;
-	q.checkCRC = false;
+	q.checkCRC = true;
 	q.updateCRC = false;
 	
 	wb.data = &req;
@@ -2163,7 +2163,7 @@ static void MainMode()
 
 		case 3:
 
-			r02 = CreateRcvReq02(rcv, fireType, chnl, 2);
+			r02 = CreateRcvReq02(rcv, fireType, chnl, 1);
 
 			if (r02 != 0)
 			{
@@ -2191,9 +2191,9 @@ static void MainMode()
 
 						//while(!CheckCopyDataComplete()) {};
 
-						u16 *s = (u16*)&r02->rsp;
-						u16 *d = (u16*)&manVec[fireType*2 + curVec[fireType]];
-						u16 c = r02->rb.len/2;
+						u32 *s = (u32*)&r02->rsp;
+						u32 *d = (u32*)&manVec[fireType*2 + curVec[fireType]];
+						u16 c = (r02->rb.len+3)/4;
 
 						while (c-- > 0)
 						{
@@ -2203,9 +2203,9 @@ static void MainMode()
 						manVec[fireType].cnt = fireCounter;
 					};
 
-					//CreateMemReq02(*r02);
+					CreateMemReq02(*r02);
 
-					freeR02.Add(r02);
+					//freeR02.Add(r02);
 
 					manCounter++;
 				};

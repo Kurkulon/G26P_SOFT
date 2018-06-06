@@ -1305,7 +1305,7 @@ static void CallBackMemReq02(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-u32 countMemReq = 0;
+//u32 countMemReq = 0;
 
 //RMEM reqMem;
 
@@ -1337,6 +1337,50 @@ static void CreateMemReq02(R02 &r)
 	//rb.data = &rsp;
 	//rb.maxLen = sizeof(rsp);
 	//rb.recieved = false;
+
+	qmem.Add(&q);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void CreateMemReq_20()
+{
+	static u16 manTrmData[16];
+
+	static ComPort::WriteBuffer wb;
+	
+	static REQ q;
+
+	q.CallBack = 0;
+	q.rb = 0;
+	q.wb = &wb;
+	q.preTimeOut = MS2RT(1);
+	q.postTimeOut = 1;
+	q.ready = false;
+	q.ptr = 0;
+	q.checkCRC = false;
+	q.updateCRC = true;
+
+	manTrmData[0] = manReqWord|0x20;
+	manTrmData[1] = GD(&fireCounter, u16, 0);
+	manTrmData[2] = GD(&fireCounter, u16, 1);
+	manTrmData[3] = voltage;
+	manTrmData[4] = numStations|(((u16)rcvStatus)<<8);
+	manTrmData[5] = resistValue;
+	manTrmData[6] = temperature;
+	manTrmData[7] = -ax;
+	manTrmData[8] = az;
+	manTrmData[9] = -ay;
+	manTrmData[10] = at;
+	manTrmData[11] = gYaw % 360;
+	manTrmData[12] = gPitch % 360;
+	manTrmData[13] = gRoll % 360;
+	manTrmData[14] = gt;
+
+	
+	wb.data = manTrmData;
+	wb.len = 30;
 
 	qmem.Add(&q);
 }
@@ -2276,7 +2320,16 @@ static void MainMode()
 
 				fireCounter += 1;
 
-				mainModeState = (fireType == 0) ? 10 : 9;
+				if (fireType == 0)
+				{
+					mainModeState = 10;
+
+					CreateMemReq_20();
+				}
+				else
+				{
+					mainModeState = 9;
+				};
 			};
 
 			break;

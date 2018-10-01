@@ -222,7 +222,7 @@ static void LowLevelInit()
 
 	*pPORTGIO_SET = 3<<11;
 
-	*pWDOG_CNT = MS2SCLK(10);
+	*pWDOG_CNT = MS2SCLK(100);
 	*pWDOG_CTL = WDEV_RESET|WDEN;
 }
 

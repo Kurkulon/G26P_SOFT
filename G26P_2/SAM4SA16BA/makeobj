@@ -89,7 +89,7 @@ win32_link_options = -NOLOGO -SUBSYSTEM:CONSOLE -DEBUG -MACHINE:X86 kernel32.lib
 ##################################################################################################
 !ifneq version Win32_Debug
 
-$(objdir)\G26P2SM4.axf : $(libname) $(objdir)\startup_SAM4S.o $(modules_obj)
+$(objdir)\G26P2SM4.axf : $(libname) $(cppdir)\G26P.LDR.H $(objdir)\startup_SAM4S.o $(modules_obj)
 	@echo Linking ...
 	@$(bindir)\armlink	$(link_options) &
 	--feedback "$^*.fed" &
@@ -113,6 +113,11 @@ $(objdir)\G26P2SM4.exe : makefile $(libname) $(modules_obj)
 ##################################################################################################
 
 !ifneq version Win32_Debug
+
+##################################################################################################
+
+$(cppdir)\G26P.LDR.H : ..\..\G26P_1_BF592\Release\G26P.LDR
+	@bin2cpp $[@ $^@
 
 ##################################################################################################
 

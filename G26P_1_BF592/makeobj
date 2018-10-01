@@ -53,7 +53,6 @@ libsuffix=r
 .s: $(cppdir)
 .d:	$(objdir)
 
-
 ##################################################################################################
 
 .BEFORE
@@ -61,26 +60,14 @@ libsuffix=r
 	@call echo Building $(version) version ...
 	@call buildnum.bat
 
-
 ##################################################################################################
-
-# -w4 -wcd13 -wcd14 -wcd367 -wcd368 -wcd627 -wcd726
-# -I "d:\progs\Keil\ARM\INC\Atmel\SAM7SE" 
-# -- thumb --arm --asm --interleave 
-# --omf_browse $(objdir)\
-#	--feedback "$(objdir)\brkp.fed"&
-#--diag_suppress=68,368,1299,3017 
 
 compiler_options = $(debug_compiler_options) -c -c++ -g -structs-do-not-overlap -no-multiline &
 	-double-size-32 -decls-strong -warn-protos -si-revision 0.2 -proc ADSP-BF592-A -Wterse
 
-
-
-
 ##################################################################################################
 
 asm_options = -proc ADSP-BF592-A -g -si-revision 0.2
-
 
 ##################################################################################################
 #-MDUSE_FILEIO
@@ -101,28 +88,23 @@ win32_link_options = -NOLOGO -SUBSYSTEM:CONSOLE -DEBUG -MACHINE:X86 kernel32.lib
 !include $(objdir)\mkoutobj
 
 ##################################################################################################
-!ifneq version Win32_Debug
 
-$(objdir)\g26p.dxe : $(objdir)\g26p_basiccrt.doj $(modules_obj)
+$(objdir)\g26p.dxe : g26p_basiccrt.doj at25df021.doj ComPort.doj CRC16.doj hardware.doj heaptab.doj main.doj  
+	@echo Linking ...
+	@linker	$(link_options) -Map "$(objdir)\$^&.xml" -MDUSER_CRT="$(objdir)\g26p_basiccrt.doj" -o "$^@" $< 
+	@elfloader -v -f binary -b SPI -proc ADSP-BF592-A -si-revision 0.2 -o "$(objdir)\$^&.ldr" -dmawidth 8 -width 8 $^@ 
+	
+##################################################################################################
+
+$(objdir)\bootloader.dxe : g26p_basiccrt.doj at25df021.doj bootloader.doj ComPort.doj CRC16.doj hardware.doj heaptab.doj 
 	@echo Linking ...
 	@linker	$(link_options) -Map "$(objdir)\$^&.xml" -MDUSER_CRT="$(objdir)\g26p_basiccrt.doj" -o "$^@" &
 		$< $(libname)
 	@elfloader -v -f binary -b SPI -proc ADSP-BF592-A -si-revision 0.2 -o "$(objdir)\$^&.ldr" -dmawidth 8 -width 8 $^@ 
 	
-!else
-
-$(objdir)\mtu.exe : makefile $(libname) $(modules_obj)	
-	@echo Linking ...
-	@call link $(win32_link_options) -OUT:$^@ $(modules_obj) $(libname)
-
-!endif
 ##################################################################################################
 
-!ifneq version Win32_Debug
-
-##################################################################################################
-
-$(objdir)\g26p_basiccrt.doj : $(cppdir)\g26p_basiccrt.s
+g26p_basiccrt.doj : g26p_basiccrt.s
 
 ##################################################################################################
 
@@ -141,21 +123,3 @@ $(objdir)\g26p_basiccrt.doj : $(cppdir)\g26p_basiccrt.s
 	@easmblkfn $(asm_options) -l $(objdir)\$^&.lst  -o $(objdir)\$^. $[@	
 
 ##################################################################################################
-
-#$(objdir)\events.preprocessed.cpp : $(objdir)\events.o
-#	@echo Generate $^. ...
-#	@$(bindir)\armcc $(compiler_options) -P >$^@ $(cppdir)\events.cpp
-
-##################################################################################################
-
-!else
-
-##################################################################################################
-
-
-.cpp.o:	.AUTODEPEND
-	@cl $(win32_compiler_options) -Fo"$(objdir)\$^." $[@
-
-##################################################################################################
-
-!endif

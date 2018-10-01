@@ -4,27 +4,29 @@
 #include "ComPort.h"
 
 
-struct Request
-{
-	byte adr;
-	byte func;
-	
-	union
-	{
-		struct  { byte n; word crc; } f1;  // старт оцифровки
-		struct  { byte n; byte chnl; word crc; } f2;  // чтение вектора
-		struct  { byte dt[3]; byte ka[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
-	};
-};
+//struct Request
+//{
+//	byte adr;
+//	byte func;
+//	
+//	union
+//	{
+//		struct  { byte n; word crc; } f1;  // старт оцифровки
+//		struct  { byte n; byte chnl; word crc; } f2;  // чтение вектора
+//		struct  { byte dt[3]; byte ka[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
+//	};
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct Req01	// старт оцифровки
 {
-	byte adr;
-	byte func;
-	byte n; 
-	word crc;  
+	byte 	len;
+	byte 	adr;
+	byte 	func;
+	byte 	n; 
+	u16		vc;
+	word 	crc;  
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -40,11 +42,12 @@ __packed struct Rsp01	// старт оцифровки
 
 __packed struct Req02	// чтение вектора
 {
-	byte adr;
-	byte func;
-	byte n; 
-	byte chnl; 
-	word crc; 
+	byte 	len;
+	byte 	adr;
+	byte 	func;
+	byte 	n; 
+	byte 	chnl; 
+	word 	crc; 
 };  
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -65,6 +68,7 @@ __packed struct Rsp02	// чтение вектора
 
 __packed struct  Req03	// установка периода дискретизации вектора и коэффициента усиления
 { 
+	byte 	len;
 	byte 	adr;
 	byte 	func;
 	u16 	st[3]; 
@@ -84,21 +88,78 @@ __packed struct  Rsp03	// установка периода дискретизации вектора и коэффициента
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct  Req04	// установка периода дискретизации вектора и коэффициента усиления
+__packed struct  Req04	// установка коэффициента усиления
 { 
-	byte adr;
-	byte func;
-	byte ka[3]; 
-	word crc; 
+	byte 	len;
+	byte 	adr;
+	byte 	func;
+	byte 	ka[3]; 
+	word 	crc; 
 };  
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct  Rsp04	// установка периода дискретизации вектора и коэффициента усиления
 { 
-	byte adr;
-	byte func;
-	word crc; 
+	byte	adr;
+	byte	func;
+	u16 	maxAmp[4];
+	u16		power[4];
+	word	crc; 
+};  
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct  Req05	// запрос контрольной суммы и длины программы во флэш-памяти
+{ 
+	byte 	len;
+	byte 	adr;
+	byte 	func;
+	word 	crc; 
+};  
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct  Rsp05	// запрос контрольной суммы и длины программы во флэш-памяти
+{ 
+	byte 	adr;
+	byte 	func;
+	u16		flashLen; 
+	u16		flashCRC;
+	word 	crc; 
+};  
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct  Req06	// запись страницы во флэш
+{ 
+	byte 	len;
+	byte 	adr;
+	byte 	func;
+	u16		stAdr; 
+	u16		count; 
+	word	crc; 
+	byte	data[258]; 
+};  
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct  Rsp06	// запись страницы во флэш
+{ 
+	byte 	adr;
+	byte 	func;
+	u16		res; 
+	word	crc; 
+};  
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct  Req07	// перезагрузить блэкфин
+{ 
+	byte 	len;
+	byte 	adr;
+	byte 	func;
+	word 	crc; 
 };  
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -142,6 +203,16 @@ __packed struct RspMem
 	//	__packed struct  { word crc; } fFE;  // Ошибка CRC
 	//	__packed struct  { word crc; } fFF;  // Неправильный запрос
 	//};
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct RspMan60
+{
+	u16 rw; 
+	u32 cnt; 
+	u16 maxAmp[96]; 
+	u16 power[96];
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -215,7 +286,7 @@ struct R02
 	ComPort::WriteBuffer	wb;
 	ComPort::ReadBuffer		rb;
 	REQ		q;
-	Req02	req;
+	Req02	req[2];
 	Rsp02	rsp;
 };
 

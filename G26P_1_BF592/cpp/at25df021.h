@@ -60,23 +60,23 @@ struct BOOT_HEADER
 
 
 extern ERROR_CODE at25df021_Read(byte *data, u32 stAdr, u16 count );
-extern ERROR_CODE at25df021_Read_DMA(byte *data, u32 stAdr, u16 count, bool *ready);
-extern ERROR_CODE at25df021_Read_IRQ(byte *data, u32 stAdr, u16 count, bool *ready);
+//extern ERROR_CODE at25df021_Read_DMA(byte *data, u32 stAdr, u16 count, bool *ready);
+//extern ERROR_CODE at25df021_Read_IRQ(byte *data, u32 stAdr, u16 count, bool *ready);
 
-extern ERROR_CODE at25df021_Write(byte *data, u32 stAdr, u32 count, bool verify);
+extern ERROR_CODE at25df021_Write(const byte *data, u32 stAdr, u32 count, bool verify);
 
-extern ERROR_CODE at25df021_GetCRC16_IRQ(u32 stAdr, u16 count, bool *ready, u16 *crc);
+//extern ERROR_CODE at25df021_GetCRC16_IRQ(u32 stAdr, u16 count, bool *ready, u16 *crc);
 extern u16 at25df021_GetCRC16(u32 stAdr, u16 count);
 
 
-extern ERROR_CODE GetCodes(int *pnManCode, int *pnDevCode);
-extern ERROR_CODE GetSectorStartEnd( unsigned long *ulStartOff, unsigned long *ulEndOff, int nSector );
-extern ERROR_CODE GetSectorNumber( unsigned long ulAddr, int *pnSector );
-extern ERROR_CODE EraseFlash();
+//extern ERROR_CODE GetCodes(int *pnManCode, int *pnDevCode);
+//extern ERROR_CODE GetSectorStartEnd( unsigned long *ulStartOff, unsigned long *ulEndOff, int nSector );
+//extern ERROR_CODE GetSectorNumber( unsigned long ulAddr, int *pnSector );
+//extern ERROR_CODE EraseFlash();
 extern ERROR_CODE EraseBlock(int nBlock);
-extern ERROR_CODE ResetFlash();
-extern u32 GetNumSectors();
-extern u32 GetSectorSize();
+//extern ERROR_CODE ResetFlash();
+//extern u32 GetNumSectors();
+//extern u32 GetSectorSize();
 
 
 

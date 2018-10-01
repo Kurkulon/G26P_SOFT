@@ -20,6 +20,15 @@ ComPort comrcv;
 //ComPort::WriteBuffer wb;
 //ComPort::ReadBuffer rb;
 
+static const u32 flashPages[] = {
+#include "G26P.LDR.H"
+};
+
+u16 flashLen = 0;
+u16 flashCRC = 0;
+
+u16 rcvFlashLen[8];
+u16 rcvFlashCRC[8];
 
 u32 fc = 0;
 
@@ -39,6 +48,8 @@ static R02 r02[2];
 
 static Rsp02 manVec[6];
 
+static RspMan60 rspMan60;
+
 static byte curRcv[3] = {0};
 static byte curVec[3] = {0};
 
@@ -50,10 +61,10 @@ static List<R02> freeR02;
 
 static byte fireType = 0;
 
-static byte gain[8][3] = { { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 }, { 1, 3, 3 } };
-static byte sampleTime[3] = { 5, 20, 20};
-static u16 sampleLen[3] = { 64, 64, 64};
-static u16 sampleDelay[3] = { 10, 10, 10};
+static byte gain[8][3] = { { 0, 1, 1 }, { 0, 1, 1 }, { 0, 1, 1 }, { 0, 1, 1 }, { 0, 1, 1 }, { 0, 1, 1 }, { 0, 1, 1 }, { 0, 1, 1 } };
+static byte sampleTime[3] = { 5, 10, 10};
+static u16 sampleLen[3] = { 1024, 1024, 1024};
+static u16 sampleDelay[3] = { 200, 500, 500};
 
 u16 manRcvData[10];
 u16 manTrmData[50];
@@ -822,9 +833,9 @@ void CallBackRcvReqFire(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReqFire(byte adr, byte n, u16 tryCount)
+REQ* CreateRcvReqFire(byte n, u16 vc)
 {
-	static Req01 req;
+	static Req01 req[3];
 	static ComPort::WriteBuffer wb;
 	static REQ q;
 
@@ -832,15 +843,17 @@ REQ* CreateRcvReqFire(byte adr, byte n, u16 tryCount)
 	q.rb = 0;
 	q.wb = &wb;
 	q.ready = false;
-	q.tryCount = tryCount;
+	q.tryCount = 0;
 	
-	wb.data = &req;
+	wb.data = req;
 	wb.len = sizeof(req);
 	
-	req.adr = adr;
-	req.func = 1;
-	req.n = n;
-	req.crc = GetCRC16(&req, sizeof(req)-2);
+	req[2].len	= req[1].len	= req[0].len	= sizeof(Req01) - 1;
+	req[2].adr	= req[1].adr	= req[0].adr	= 0;
+	req[2].func = req[1].func	= req[0].func	= 1;
+	req[2].n	= req[1].n		= req[0].n		= n;
+	req[2].vc	= req[1].vc		= req[0].vc		= vc;
+	req[2].crc	= req[1].crc	= req[0].crc	= GetCRC16(&req[0].adr, sizeof(Req01)-3);
 
 	return &q;
 }
@@ -916,7 +929,7 @@ R02* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 
 	R02 &r = *r02;
 
-	Req02 &req = r.req;
+	Req02 *req = r.req;
 	Rsp02 &rsp = r.rsp;
 	
 	ComPort::WriteBuffer &wb = r.wb;
@@ -935,18 +948,19 @@ R02* CreateRcvReq02(byte adr, byte n, byte chnl, u16 tryCount)
 	q.checkCRC = true;
 	q.updateCRC = false;
 	
-	wb.data = &req;
-	wb.len = sizeof(req);
+	wb.data = req;
+	wb.len = sizeof(r.req);
 
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
 	rb.recieved = false;
 	
-	req.adr = adr+1;
-	req.func = 2;
-	req.n = n;
-	req.chnl = chnl;
-	req.crc = GetCRC16(&req, sizeof(req)-2);
+	req[1].len	= req[0].len	= sizeof(Req02) - 1;
+	req[1].adr	= req[0].adr	= adr+1;
+	req[1].func	= req[0].func	= 2;
+	req[1].n	= req[0].n		= n;
+	req[1].chnl	= req[0].chnl	= chnl;
+	req[1].crc	= req[0].crc	= GetCRC16(&req[0].adr, sizeof(Req02)-3);
 
 	return r02;
 }
@@ -972,7 +986,7 @@ void CallBackRcvReq03(REQ *q)
 
 REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[], u16 tryCount)
 {
-	static Req03 req;
+	static Req03 req[2];
 	static Rsp03 rsp;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
@@ -988,28 +1002,29 @@ REQ* CreateRcvReq03(byte adr, byte st[], u16 sl[], u16 sd[], u16 tryCount)
 	q.checkCRC = true;
 	q.updateCRC = false;
 	
-	wb.data = &req;
+	wb.data = req;
 	wb.len = sizeof(req);
 	
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
 
-	req.adr = adr;
-	req.func = 3;
+	req[1].len	= req[0].len	= sizeof(Req03) - 1;
+	req[1].adr	= req[0].adr	= adr;
+	req[1].func	= req[0].func	= 3;
 
-	req.st[0] = st[0];
-	req.st[1] = st[1];
-	req.st[2] = st[2];
+	req[1].st[0] = req[0].st[0] = st[0];
+	req[1].st[1] = req[0].st[1] = st[1];
+	req[1].st[2] = req[0].st[2] = st[2];
+				   
+	req[1].sl[0] = req[0].sl[0] = sl[0];
+	req[1].sl[1] = req[0].sl[1] = sl[1];
+	req[1].sl[2] = req[0].sl[2] = sl[2];
+				   
+	req[1].sd[0] = req[0].sd[0] = sd[0];
+	req[1].sd[1] = req[0].sd[1] = sd[1];
+	req[1].sd[2] = req[0].sd[2] = sd[2];
 
-	req.sl[0] = sl[0];
-	req.sl[1] = sl[1];
-	req.sl[2] = sl[2];
-
-	req.sd[0] = sd[0];
-	req.sd[1] = sd[1];
-	req.sd[2] = sd[2];
-
-	req.crc = GetCRC16(&req, sizeof(req)-2);
+	req[1].crc = req[0].crc = GetCRC16(&req[0].adr, sizeof(Req03)-3);
 	
 	return &q;
 }
@@ -1027,6 +1042,27 @@ void CallBackRcvReq04(REQ *q)
 			q->tryCount--;
 			qrcv.Add(q);
 		};
+	}
+	else
+	{
+		Rsp04 *rsp = (Rsp04*)q->rb->data;
+
+		u16 i = rsp->adr - 1;
+
+		if (fireType <= 2 && i <= 7)
+		{
+			i = fireType*32 + i*4;
+
+			rspMan60.maxAmp[i + 0] = rsp->maxAmp[0];
+			rspMan60.maxAmp[i + 1] = rsp->maxAmp[1];
+			rspMan60.maxAmp[i + 2] = rsp->maxAmp[2];
+			rspMan60.maxAmp[i + 3] = rsp->maxAmp[3];
+
+			rspMan60.power[i + 0] = rsp->power[0];
+			rspMan60.power[i + 1] = rsp->power[1];
+			rspMan60.power[i + 2] = rsp->power[2];
+			rspMan60.power[i + 3] = rsp->power[3];
+		};
 	};
 }
 
@@ -1034,7 +1070,7 @@ void CallBackRcvReq04(REQ *q)
 
 REQ* CreateRcvReq04(byte adr, byte ka[], u16 tryCount)
 {
-	static Req04 req;
+	static Req04 req[2];
 	static Rsp04 rsp;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
@@ -1050,21 +1086,180 @@ REQ* CreateRcvReq04(byte adr, byte ka[], u16 tryCount)
 	q.checkCRC = true;
 	q.updateCRC = false;
 	
-	wb.data = &req;
+	wb.data = req;
 	wb.len = sizeof(req);
 	
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
 
-	req.adr = adr;
-	req.func = 4;
+	req[1].len	= req[0].len	= sizeof(Req04) - 1;
+	req[1].adr	= req[0].adr	= adr;
+	req[1].func = req[0].func	= 4;
 
-	req.ka[0] = ka[0];
-	req.ka[1] = ka[1];
-	req.ka[2] = ka[2];
+	req[1].ka[0] = req[0].ka[0] = ka[0];
+	req[1].ka[1] = req[0].ka[1] = ka[1];
+	req[1].ka[2] = req[0].ka[2] = ka[2];
 
-	req.crc = GetCRC16(&req, sizeof(req)-2);
+	req[1].crc = req[0].crc = GetCRC16(&req[0].adr, sizeof(Req04)-3);
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackRcvReq05(REQ *q)
+{
+	if (!q->crcOK) 
+	{
+		crcErr04++;
+
+		if (q->tryCount > 0)
+		{
+			q->tryCount--;
+			qrcv.Add(q);
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateRcvReq05(byte adr, u16 tryCount)
+{
+	static Req05 req[2];
+	static Rsp05 rsp;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static REQ q;
+
+	q.CallBack = CallBackRcvReq05;
+	q.preTimeOut = US2RT(500);
+	q.postTimeOut = US2RT(100);
+	q.rb = &rb;
+	q.wb = &wb;
+	q.ready = false;
+	q.tryCount = tryCount;
+	q.checkCRC = true;
+	q.updateCRC = false;
 	
+	wb.data = req;
+	wb.len = sizeof(req);
+	
+	rb.data = &rsp;
+	rb.maxLen = sizeof(rsp);
+
+	req[1].len	= req[0].len	= sizeof(Req05) - 1;
+	req[1].adr	= req[0].adr	= adr;
+	req[1].func = req[0].func	= 5;
+
+	req[1].crc = req[0].crc = GetCRC16(&req[0].adr, sizeof(Req05)-3);
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackRcvReq06(REQ *q)
+{
+	if (!q->crcOK) 
+	{
+		crcErr04++;
+
+		if (q->tryCount > 0)
+		{
+			q->tryCount--;
+			qrcv.Add(q);
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateRcvReq06(byte adr, u16 stAdr, u16 count, void* data, u16 tryCount)
+{
+	static Req06 req;
+	static Rsp06 rsp;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static REQ q;
+
+	q.CallBack = CallBackRcvReq06;
+	q.preTimeOut = MS2RT(10);
+	q.postTimeOut = US2RT(100);
+	q.rb = &rb;
+	q.wb = &wb;
+	q.ready = false;
+	q.tryCount = tryCount;
+	q.checkCRC = true;
+	q.updateCRC = false;
+	
+	rb.data = &rsp;
+	rb.maxLen = sizeof(rsp);
+
+	req.len	= sizeof(req) - sizeof(req.data) - 1;
+	req.adr	= adr;
+	req.func = 6;
+
+	u16 max = sizeof(req.data)-2;
+
+	if (count > max) count = max;
+
+	req.stAdr = stAdr;
+	req.count = count;
+
+	req.crc = GetCRC16(&req.adr, sizeof(req)-sizeof(req.data)-3);
+
+	byte *d = req.data;
+	byte *s = (byte*)data;
+
+	while(count > 0)
+	{
+		*d++ = *s++;
+		count--;
+	};
+
+	u16 crc = GetCRC16(data, req.count);
+
+	d[0] = crc;
+	d[1] = crc>>8;
+
+	wb.data = &req;
+	wb.len = req.len+1 + req.count+2;
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateRcvReq07(byte adr)
+{
+	static Req07 req[2];
+//	static Rsp07 rsp;
+	static ComPort::WriteBuffer wb;
+//	static ComPort::ReadBuffer rb;
+	static REQ q;
+
+	q.CallBack = 0;
+	//q.preTimeOut = US2RT(500);
+	//q.postTimeOut = US2RT(100);
+	q.rb = 0;
+	q.wb = &wb;
+	q.ready = false;
+	q.tryCount = 0;
+	q.checkCRC = false;
+	q.updateCRC = false;
+	
+	wb.data = req;
+	wb.len = sizeof(req);
+	
+	//rb.data = &rsp;
+	//rb.maxLen = sizeof(rsp);
+
+	req[1].len	= req[0].len	= sizeof(Req07) - 1;
+	req[1].adr	= req[0].adr	= adr;
+	req[1].func = req[0].func	= 7;
+
+	req[1].crc = req[0].crc = GetCRC16(&req[0].adr, sizeof(Req07)-3);
+
 	return &q;
 }
 
@@ -1309,7 +1504,7 @@ static void CallBackMemReq02(REQ *q)
 
 //RMEM reqMem;
 
-static void CreateMemReq02(R02 &r)
+static void CreateMemReq02(R02 &r, bool crc)
 {
 	//R02 &r = *r02;
 
@@ -1329,7 +1524,7 @@ static void CreateMemReq02(R02 &r)
 	q.ready = false;
 	q.ptr = &r;
 	q.checkCRC = false;
-	q.updateCRC = true;
+	q.updateCRC = crc;
 	
 	wb.data = &r.rsp;
 	wb.len = r.rb.len-2;// l*4*2 + sizeof(req) - sizeof(req.data);
@@ -1560,6 +1755,21 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static bool RequestMan_60(u16 *data, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
+
+	rspMan60.rw = manReqWord|0x60;
+	rspMan60.cnt = fireCounter;
+ 
+	mtb->data = (u16*)&rspMan60;
+	mtb->len = sizeof(rspMan60)/2;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
@@ -1692,6 +1902,7 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
 		case 3: 
 		case 4: 
 		case 5: 	r = RequestMan_30(buf, len, mtb); break;
+		case 6: 	r = RequestMan_60(buf, len, mtb); break;
 		case 8: 	r = RequestMan_80(buf, len, mtb); break;
 		case 9:		r = RequestMan_90(buf, len, mtb); break;
 		case 0xF:	r = RequestMan_F0(buf, len, mtb); break;
@@ -1908,7 +2119,7 @@ static void UpdateRcvTrm()
 
 		case 4:
 
-			reqr = CreateRcvReqFire(0, n, 0);
+			reqr = CreateRcvReqFire(n, fireCounter);
 			comrcv.Write(reqr->wb);
 
 			if (reqVoltage > 100)
@@ -2145,7 +2356,7 @@ static void InitNumStations()
 {
 	u32 t = GetRTT();
 
-	while ((GetRTT()-t) < MS2RT(100))
+	while ((GetRTT()-t) < MS2RT(1000))
 	{
 		UpdateADC();
 	};
@@ -2224,10 +2435,18 @@ static void MainMode()
 			{
 				if (r02->q.crcOK)
 				{
-					r02->rsp.rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
-					r02->rsp.cnt = fireCounter;
+					bool crc = false;
 
-					u16 *p = (u16*)&r02->rsp;
+					u16 rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
+					
+					if (r02->rsp.rw != rw || r02->rsp.cnt != fireCounter)
+					{
+						r02->rsp.rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
+						r02->rsp.cnt = fireCounter;
+						crc = true;
+					};
+
+					//u16 *p = (u16*)&r02->rsp;
 
 					if (curRcv[fireType] == (rcv-1))
 					{
@@ -2247,7 +2466,7 @@ static void MainMode()
 						manVec[fireType].cnt = fireCounter;
 					};
 
-					CreateMemReq02(*r02);
+					CreateMemReq02(*r02, crc);
 
 					//freeR02.Add(r02);
 
@@ -2512,7 +2731,7 @@ static void InitRcv()
 
 	for (byte i = 1; i <= numStations; i++)
 	{
-		req = CreateRcvReq04(i, gain[i-1], 200);
+		req = CreateRcvReq04(i, gain[i-1], 2);
 
 		qrcv.Add(req);
 
@@ -2594,21 +2813,21 @@ static void LoadVars()
 		for (byte i = 0; i < 8; i++)
 		{
 			gain[i][0] = 0;
-			gain[i][1] = 7;
-			gain[i][2] = 7;
+			gain[i][1] = 1;
+			gain[i][2] = 1;
 		};
 
-		sampleTime[0] = 10;
-		sampleTime[1] = 20;
-		sampleTime[2] = 20;
+		sampleTime[0] = 5;
+		sampleTime[1] = 10;
+		sampleTime[2] = 10;
 
-		sampleLen[0] = 512;
-		sampleLen[1] = 512;
-		sampleLen[2] = 512;
+		sampleLen[0] = 1024;
+		sampleLen[1] = 1024;
+		sampleLen[2] = 1024;
 
-		sampleDelay[0] = 0;
-		sampleDelay[1] = 0;
-		sampleDelay[2] = 0;
+		sampleDelay[0] = 200;
+		sampleDelay[1] = 500;
+		sampleDelay[2] = 500;
 
 		savesCount = 2;
 	};
@@ -2671,6 +2890,56 @@ static void SaveVars()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void FlashRcv()
+{
+	REQ *req = 0;
+
+	flashLen = sizeof(flashPages);
+	flashCRC = GetCRC16(flashPages, flashLen);
+
+	for (byte i = 1; i <= numStations; i++)
+	{
+		req = CreateRcvReq05(i, 2);
+
+		qrcv.Add(req); while(!req->ready) { qrcv.Update(); };
+
+		if (req->crcOK)
+		{
+			Rsp05 *rsp = (Rsp05*)req->rb->data;
+
+			rcvFlashLen[i-1] = rsp->flashLen;
+			rcvFlashCRC[i-1] = rsp->flashCRC;
+
+			if (rsp->flashCRC != flashCRC || rsp->flashLen != flashLen)
+			{
+				u16 count = flashLen;
+				u16 adr = 0;
+				byte *p = (byte*)flashPages;
+
+				while (count > 0)
+				{
+					u16 len = (count > 256) ? 256 : count;
+
+					req = CreateRcvReq06(i, adr, len, p, 2);
+
+					qrcv.Add(req); while(!req->ready) { qrcv.Update(); };
+
+					count -= len;
+					p += len;
+					adr += len;
+				};
+			};
+
+			req = CreateRcvReq07(i);
+
+			qrcv.Add(req); while(!req->ready) { qrcv.Update();	};
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 //	static byte i = 0;
@@ -2693,6 +2962,8 @@ int main()
 	comtr.Connect(1, 1562500, 0);
 //	combf.Connect(3, 6250000, 0);
 	comrcv.Connect(2, 6250000, 0);
+
+//	FlashRcv();
 
 	InitRcv();
 

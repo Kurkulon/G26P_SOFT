@@ -87,25 +87,26 @@ static byte ReadFlash();
 static void WriteFlash(byte usValue);
 static unsigned long GetFlashStartAddress( unsigned long ulAddr);
 static void GlobalUnProtect();
+static ERROR_CODE GetSectorStartEnd( unsigned long *ulStartOff, unsigned long *ulEndOff, int nSector );
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-u32 GetNumSectors()
+static u32 GetNumSectors()
 {
 	return gNumSectors;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-u32 GetSectorSize()
+static u32 GetSectorSize()
 {
 	return SECTOR_SIZE;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SetupSPIDMA()
+static void SetupSPIDMA()
 {
     volatile int i;
 
@@ -143,7 +144,7 @@ void SetupSPIDMA()
 // returns- none
 //
 //////////////////////////////////////////////////////////////
-inline void Wait_For_SPIF(void)
+static void Wait_For_SPIF(void)
 {
 	volatile int n;
 
@@ -152,12 +153,12 @@ inline void Wait_For_SPIF(void)
 		asm("nop;");
 	}
 
-	while((*pSPI0_STAT & SPIF) == 0);
+	while((*pSPI0_STAT & SPIF) == 0) { *pWDOG_STAT = 0; };
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void Wait_For_RXS_SPIF(void)
+static void Wait_For_RXS_SPIF(void)
 {
 	volatile int n;
 
@@ -166,26 +167,26 @@ inline void Wait_For_RXS_SPIF(void)
 		asm("nop;");
 	}
 
-	while((*pSPI0_STAT & (SPIF|RXS)) != (SPIF|RXS));
+	while((*pSPI0_STAT & (SPIF|RXS)) != (SPIF|RXS)) { *pWDOG_STAT = 0; };
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline u16 WaitReadSPI0()
+static u16 WaitReadSPI0()
 {
-	while ((*pSPI0_STAT & RXS) == 0); 
+	while ((*pSPI0_STAT & RXS) == 0) { *pWDOG_STAT = 0; };
 
 	return *pSPI0_RDBR;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void WriteSyncDMA(byte *data, u16 count)
+static void WriteSyncDMA(const byte *data, u16 count)
 {
 	*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|3;	
 
 	*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8/*|SYNC*/;
-	*pDMA5_START_ADDR = data;
+	*pDMA5_START_ADDR = (void*)data;
 	*pDMA5_X_COUNT = count;
 	*pDMA5_X_MODIFY = 1;
 
@@ -194,18 +195,18 @@ inline void WriteSyncDMA(byte *data, u16 count)
 
 //	while (*pDMA5_IRQ_STATUS & DMA_RUN);
 
-	while ((*pDMA5_IRQ_STATUS & DMA_DONE) == 0);
+	while ((*pDMA5_IRQ_STATUS & DMA_DONE) == 0) { *pWDOG_STAT = 0; };
 
 //	while ((*pDMA5_IRQ_STATUS & (DMA_RUN|DMA_DONE)) != DMA_DONE);
 
-	while ((*pSPI0_STAT & SPIF) == 0 || (*pSPI0_STAT & TXS));
+	while ((*pSPI0_STAT & SPIF) == 0 || (*pSPI0_STAT & TXS)) { *pWDOG_STAT = 0; };
 
 	*pDMA5_IRQ_STATUS = 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void ReadSyncDMA(byte *data, u16 count)
+static void ReadSyncDMA(byte *data, u16 count)
 {
 	*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|2;
 	*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8|WNR|SYNC;
@@ -217,26 +218,26 @@ inline void ReadSyncDMA(byte *data, u16 count)
 	*pDMA5_CONFIG |= DMAEN;
 	*pSPI0_CTL |= SPE;
 
-	while ((*pDMA5_IRQ_STATUS & DMA_DONE) == 0);
+	while ((*pDMA5_IRQ_STATUS & DMA_DONE) == 0) { *pWDOG_STAT = 0; };
 
 	*pDMA5_IRQ_STATUS = 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-EX_INTERRUPT_HANDLER(SPI0_WriteDMA_ISR)
-{
-	if (*pDMA5_IRQ_STATUS & 1)
-	{
-		*pDMA5_IRQ_STATUS = 1;
-		*pDMA5_CONFIG = 0;
-
-//		*pIMASK &= ~EVT_IVG10; 
-		*pSIC_IMASK &= ~IRQ_DMA5;
-
-		SPI_OFF();
-	};
-}
+//EX_INTERRUPT_HANDLER(SPI0_WriteDMA_ISR)
+//{
+//	if (*pDMA5_IRQ_STATUS & 1)
+//	{
+//		*pDMA5_IRQ_STATUS = 1;
+//		*pDMA5_CONFIG = 0;
+//
+////		*pIMASK &= ~EVT_IVG10; 
+//		*pSIC_IMASK &= ~IRQ_DMA5;
+//
+//		SPI_OFF();
+//	};
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -254,178 +255,178 @@ static u16 *ptrCRC_SPI0 = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-EX_INTERRUPT_HANDLER(SPI0_GetCRC_ISR)
-{
-	u16 t = *pSPI0_STAT;
-
-	if (t & RXS)
-	{
-		*pSPI0_TDBR = 0;
-
-		readCountSPI0--;
-
-		CRC_SPI0.w = tableCRC[CRC_SPI0.b[0] ^ *pSPI0_RDBR] ^ CRC_SPI0.b[1];
-
-		if (readCountSPI0 == 0)
-		{
-			*pSPI0_CTL = 0;	
-			
-			*pSIC_IMASK &= ~IRQ_DMA5;
-
-			*readReadySPI0 = true;
-			*ptrCRC_SPI0 = CRC_SPI0.w;
-			
-			SPI_OFF();
-		};
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-EX_INTERRUPT_HANDLER(SPI0_ReadDMA_ISR)
-{
-	if (*pDMA5_IRQ_STATUS & 1)
-	{
-		*pSPI0_CTL = 0;
-
-		*pDMA5_IRQ_STATUS = 1;
-	
-		*pDMA5_CONFIG = 0;
-
-		*pSIC_IMASK &= ~IRQ_DMA5;
-
-		*readReadySPI0 = true;
-		
-		SPI_OFF();
-	};
-}
+//EX_INTERRUPT_HANDLER(SPI0_GetCRC_ISR)
+//{
+//	u16 t = *pSPI0_STAT;
+//
+//	if (t & RXS)
+//	{
+//		*pSPI0_TDBR = 0;
+//
+//		readCountSPI0--;
+//
+//		CRC_SPI0.w = tableCRC[CRC_SPI0.b[0] ^ *pSPI0_RDBR] ^ CRC_SPI0.b[1];
+//
+//		if (readCountSPI0 == 0)
+//		{
+//			*pSPI0_CTL = 0;	
+//			
+//			*pSIC_IMASK &= ~IRQ_DMA5;
+//
+//			*readReadySPI0 = true;
+//			*ptrCRC_SPI0 = CRC_SPI0.w;
+//			
+//			SPI_OFF();
+//		};
+//	};
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-EX_INTERRUPT_HANDLER(SPI0_ReadIRQ_ISR)
-{
-	u16 t = *pSPI0_STAT;
 
-	if (t & RXS)
-	{
-		if (readCountSPI0 == 1)
-		{
-			*pSPI0_CTL = 0;	
-			
-			*pSIC_IMASK &= ~IRQ_DMA5;
-
-			*readReadySPI0 = true;
-			
-			SPI_OFF();
-		};
-
-		*pSPI0_TDBR = 0;
-
-		readCountSPI0--;
-
-		*readDataSPI0++ = *pSPI0_RDBR;
-	};
-}
+//EX_INTERRUPT_HANDLER(SPI0_ReadDMA_ISR)
+//{
+//	if (*pDMA5_IRQ_STATUS & 1)
+//	{
+//		*pSPI0_CTL = 0;
+//
+//		*pDMA5_IRQ_STATUS = 1;
+//	
+//		*pDMA5_CONFIG = 0;
+//
+//		*pSIC_IMASK &= ~IRQ_DMA5;
+//
+//		*readReadySPI0 = true;
+//		
+//		SPI_OFF();
+//	};
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-EX_INTERRUPT_HANDLER(SPI0_StatusWRD_ISR)
-{
-	u16 t = *pSPI0_STAT;
-
-	if (t & RXS)
-	{
-		if (writeCountSPI0 == 0)
-		{
-			if (readCountSPI0 > 0)
-			{
-				if (ptrCRC_SPI0 != 0)
-				{
-					*pEVT10 = (void*)SPI0_GetCRC_ISR;
-				}
-				else
-				{
-					//*pEVT10 = (void*)SPI0_ReadIRQ_ISR;
-
-					//*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8|WNR/*|SYNC*/;
-
-					*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|2;
-
-					*pDMA5_START_ADDR = readDataSPI0;
-					*pDMA5_X_COUNT = readCountSPI0;
-					*pDMA5_X_MODIFY = 1;
-
-					*pEVT10 = (void*)SPI0_ReadDMA_ISR;
-
-					*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8|WNR|DMAEN;
-					*pSPI0_CTL |= SPE;
-
-					return;
-				};
-			}
-			else
-			{
-				*pSPI0_CTL = 0;	
-				
-				*pSIC_IMASK &= ~IRQ_DMA5;
-
-				*writeReadySPI0 = true;
-				
-				SPI_OFF();
-			};
-		}
-		else
-		{
-			*pSPI0_TDBR = *writeDataSPI0++;
-
-			writeCountSPI0--;
-		};
-
-		t = *pSPI0_RDBR;
-	};
-}
+//EX_INTERRUPT_HANDLER(SPI0_ReadIRQ_ISR)
+//{
+//	u16 t = *pSPI0_STAT;
+//
+//	if (t & RXS)
+//	{
+//		if (readCountSPI0 == 1)
+//		{
+//			*pSPI0_CTL = 0;	
+//			
+//			*pSIC_IMASK &= ~IRQ_DMA5;
+//
+//			*readReadySPI0 = true;
+//			
+//			SPI_OFF();
+//		};
+//
+//		*pSPI0_TDBR = 0;
+//
+//		readCountSPI0--;
+//
+//		*readDataSPI0++ = *pSPI0_RDBR;
+//	};
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE at25df021_Read_IRQ(byte *data, u32 stAdr, u16 count, bool *ready)
-{
-	static byte buf[5];
-	static bool defReady = false;
+//EX_INTERRUPT_HANDLER(SPI0_StatusWRD_ISR)
+//{
+//	u16 t = *pSPI0_STAT;
+//
+//	if (t & RXS)
+//	{
+//		if (writeCountSPI0 == 0)
+//		{
+//			if (readCountSPI0 > 0)
+//			{
+//				if (ptrCRC_SPI0 != 0)
+//				{
+//					*pEVT10 = (void*)SPI0_GetCRC_ISR;
+//				}
+//				else
+//				{
+//					//*pEVT10 = (void*)SPI0_ReadIRQ_ISR;
+//
+//					//*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8|WNR/*|SYNC*/;
+//
+//					*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|2;
+//
+//					*pDMA5_START_ADDR = readDataSPI0;
+//					*pDMA5_X_COUNT = readCountSPI0;
+//					*pDMA5_X_MODIFY = 1;
+//
+//					*pEVT10 = (void*)SPI0_ReadDMA_ISR;
+//
+//					*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8|WNR|DMAEN;
+//					*pSPI0_CTL |= SPE;
+//
+//					return;
+//				};
+//			}
+//			else
+//			{
+//				*pSPI0_CTL = 0;	
+//				
+//				*pSIC_IMASK &= ~IRQ_DMA5;
+//
+//				*writeReadySPI0 = true;
+//				
+//				SPI_OFF();
+//			};
+//		}
+//		else
+//		{
+//			*pSPI0_TDBR = *writeDataSPI0++;
+//
+//			writeCountSPI0--;
+//		};
+//
+//		t = *pSPI0_RDBR;
+//	};
+//}
 
- //   ERROR_CODE Result = NO_ERR;
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    buf[0] = SPI_FAST_READ;
-    buf[1] = stAdr >> 16;
-    buf[2] = stAdr >> 8;
-    buf[3] = stAdr;
-    buf[4] = 0;
-
-	readDataSPI0 = data;
-	readCountSPI0 = count;
-
-	readReadySPI0 = (ready != 0) ? ready : &defReady;
-
-	*readReadySPI0 = false;
-
-	writeDataSPI0 = buf;
-	writeCountSPI0 = sizeof(buf);
-
-	SetupSPIDMA();
-
-	*pEVT10 = (void*)SPI0_StatusWRD_ISR;
-	*pIMASK |= EVT_IVG10; 
-	*pSIC_IMASK |= IRQ_DMA5;
-
-	*pSPI0_CTL = COMMON_SPI_SETTINGS|0;
-
-	*pSPI0_TDBR = *writeDataSPI0++;
-	writeCountSPI0--;
-
-	u16 t = *pSPI0_RDBR;
-
-	return NO_ERR;
-}
+//ERROR_CODE at25df021_Read_IRQ(byte *data, u32 stAdr, u16 count, bool *ready)
+//{
+//	static byte buf[5];
+//	static bool defReady = false;
+//
+// //   ERROR_CODE Result = NO_ERR;
+//
+//    buf[0] = SPI_FAST_READ;
+//    buf[1] = stAdr >> 16;
+//    buf[2] = stAdr >> 8;
+//    buf[3] = stAdr;
+//    buf[4] = 0;
+//
+//	readDataSPI0 = data;
+//	readCountSPI0 = count;
+//
+//	readReadySPI0 = (ready != 0) ? ready : &defReady;
+//
+//	*readReadySPI0 = false;
+//
+//	writeDataSPI0 = buf;
+//	writeCountSPI0 = sizeof(buf);
+//
+//	SetupSPIDMA();
+//
+//	*pEVT10 = (void*)SPI0_StatusWRD_ISR;
+//	*pIMASK |= EVT_IVG10; 
+//	*pSIC_IMASK |= IRQ_DMA5;
+//
+//	*pSPI0_CTL = COMMON_SPI_SETTINGS|0;
+//
+//	*pSPI0_TDBR = *writeDataSPI0++;
+//	writeCountSPI0--;
+//
+//	u16 t = *pSPI0_RDBR;
+//
+//	return NO_ERR;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -433,81 +434,81 @@ ERROR_CODE at25df021_Read_IRQ(byte *data, u32 stAdr, u16 count, bool *ready)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-EX_INTERRUPT_HANDLER(SPI0_WriteReadDMA_ISR)
-{
-	if (*pDMA5_IRQ_STATUS & 1)
-	{
-		*pDMA5_IRQ_STATUS = 1;
-
-		//while (*pDMA5_IRQ_STATUS & DMA_RUN);
-
-		//for (byte c = 2; c > 0; )
-		//{
-		//	c = (*pSPI0_STAT & TXS) ? 2 : (c-1);
-		//};
-
-		while ((*pSPI0_STAT & SPIF) == 0 || (*pSPI0_STAT & TXS));
-
-		*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8|WNR/*|SYNC*/;
-
-		*pDMA5_START_ADDR = readDataSPI0;
-		*pDMA5_X_COUNT = readCountSPI0;
-		*pDMA5_X_MODIFY = 1;
-
-		*pEVT10 = (void*)SPI0_ReadDMA_ISR;
-
-
-		*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|2;	
-
-		*pDMA5_CONFIG |= DMAEN;
-		*pSPI0_CTL |= SPE;
-	};
-}
+//EX_INTERRUPT_HANDLER(SPI0_WriteReadDMA_ISR)
+//{
+//	if (*pDMA5_IRQ_STATUS & 1)
+//	{
+//		*pDMA5_IRQ_STATUS = 1;
+//
+//		//while (*pDMA5_IRQ_STATUS & DMA_RUN);
+//
+//		//for (byte c = 2; c > 0; )
+//		//{
+//		//	c = (*pSPI0_STAT & TXS) ? 2 : (c-1);
+//		//};
+//
+//		while ((*pSPI0_STAT & SPIF) == 0 || (*pSPI0_STAT & TXS));
+//
+//		*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8|WNR/*|SYNC*/;
+//
+//		*pDMA5_START_ADDR = readDataSPI0;
+//		*pDMA5_X_COUNT = readCountSPI0;
+//		*pDMA5_X_MODIFY = 1;
+//
+//		*pEVT10 = (void*)SPI0_ReadDMA_ISR;
+//
+//
+//		*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|2;	
+//
+//		*pDMA5_CONFIG |= DMAEN;
+//		*pSPI0_CTL |= SPE;
+//	};
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE at25df021_Read_DMA(byte *data, u32 stAdr, u16 count, bool *ready)
-{
-	static byte buf[5];
-	static bool defReady = false;
-
- //   ERROR_CODE Result = NO_ERR;
-
-    buf[0] = SPI_FAST_READ;
-    buf[1] = stAdr >> 16;
-    buf[2] = stAdr >> 8;
-    buf[3] = stAdr;
-    buf[4] = 0;
-
-	readDataSPI0 = data;
-	readCountSPI0 = count;
-
-	readReadySPI0 = (ready != 0) ? ready : &defReady;
-
-	*readReadySPI0 = false;
-
-	SetupSPIDMA();
-
-	*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8/*|SYNC*/;
-	*pDMA5_START_ADDR = buf;
-	*pDMA5_X_COUNT = 5;
-	*pDMA5_X_MODIFY = 1;
-
-	*pEVT10 = (void*)SPI0_WriteReadDMA_ISR;
-	*pIMASK |= EVT_IVG10; 
-	*pSIC_IMASK |= IRQ_DMA5;
-
-	*pEVT7 = (void*)SPI0_StatusWRD_ISR;
-	*pIMASK |= EVT_IVG7; 
-	*pSIC_IMASK |= IRQ_SPI0_ERR;
-
-	*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|3;	
-
-	*pDMA5_CONFIG |= DMAEN;
-	*pSPI0_CTL |= SPE;
-
-	return NO_ERR;
-}
+//ERROR_CODE at25df021_Read_DMA(byte *data, u32 stAdr, u16 count, bool *ready)
+//{
+//	static byte buf[5];
+//	static bool defReady = false;
+//
+// //   ERROR_CODE Result = NO_ERR;
+//
+//    buf[0] = SPI_FAST_READ;
+//    buf[1] = stAdr >> 16;
+//    buf[2] = stAdr >> 8;
+//    buf[3] = stAdr;
+//    buf[4] = 0;
+//
+//	readDataSPI0 = data;
+//	readCountSPI0 = count;
+//
+//	readReadySPI0 = (ready != 0) ? ready : &defReady;
+//
+//	*readReadySPI0 = false;
+//
+//	SetupSPIDMA();
+//
+//	*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8/*|SYNC*/;
+//	*pDMA5_START_ADDR = buf;
+//	*pDMA5_X_COUNT = 5;
+//	*pDMA5_X_MODIFY = 1;
+//
+//	*pEVT10 = (void*)SPI0_WriteReadDMA_ISR;
+//	*pIMASK |= EVT_IVG10; 
+//	*pSIC_IMASK |= IRQ_DMA5;
+//
+//	*pEVT7 = (void*)SPI0_StatusWRD_ISR;
+//	*pIMASK |= EVT_IVG7; 
+//	*pSIC_IMASK |= IRQ_SPI0_ERR;
+//
+//	*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|3;	
+//
+//	*pDMA5_CONFIG |= DMAEN;
+//	*pSPI0_CTL |= SPE;
+//
+//	return NO_ERR;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -564,14 +565,14 @@ ERROR_CODE at25df021_Read(byte *data, u32 stAdr, u16 count )
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE at25df021_GetCRC16_IRQ(u32 stAdr, u16 count, bool *ready, u16 *crc)
-{
-	CRC_SPI0.w = 0xFFFF;
-
-	ptrCRC_SPI0 = crc;
-
-	return at25df021_Read_IRQ(0,stAdr, count, ready);
-}
+//ERROR_CODE at25df021_GetCRC16_IRQ(u32 stAdr, u16 count, bool *ready, u16 *crc)
+//{
+//	CRC_SPI0.w = 0xFFFF;
+//
+//	ptrCRC_SPI0 = crc;
+//
+//	return at25df021_Read_IRQ(0,stAdr, count, ready);
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -608,6 +609,8 @@ u16 at25df021_GetCRC16(u32 stAdr, u16 count)
 		t = *pSPI0_RDBR;
 
 		crc.w = tableCRC[crc.b[0] ^ t] ^ crc.b[1];
+		
+		*pWDOG_STAT = 0;
 	};
 	
 	*pSPI0_CTL = 0;
@@ -619,8 +622,10 @@ u16 at25df021_GetCRC16(u32 stAdr, u16 count)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE WritePage(byte *data, u32 stAdr, u16 count )
+static ERROR_CODE WritePage(const byte *data, u32 stAdr, u16 count )
 {
+	static byte buf[4];
+
     ERROR_CODE Result = NO_ERR;
 
 	if ((stAdr & 0xFF) != 0 || count > 256 || count == 0)
@@ -638,20 +643,22 @@ ERROR_CODE WritePage(byte *data, u32 stAdr, u16 count )
 	}
     else
     {
-        SetupSPI();
+		buf[0] = SPI_PP;
+		buf[1] = stAdr >> 16;
+		buf[2] = stAdr >> 8;
+		buf[3] = stAdr;
 
-        /* send the bulk erase command to the flash */
-        WriteFlash(SPI_PP );
-        WriteFlash((stAdr) >> 16);
-        WriteFlash((stAdr) >> 8);
-        WriteFlash(stAdr);
+		SetupSPIDMA();
 
-		for ( ; count > 0; count--)
-		{
-	        WriteFlash(*data++);
-		};
+		WriteSyncDMA(buf, sizeof(buf));
 
-        SPI_OFF();
+		WriteSyncDMA(data, count);
+
+		*pSPI0_CTL = 0;
+
+		*pDMA5_CONFIG = 0;
+
+		SPI_OFF();
     };
 
 	return Wait_For_Status(WIP);
@@ -659,7 +666,96 @@ ERROR_CODE WritePage(byte *data, u32 stAdr, u16 count )
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE VerifyPage(byte *data, u32 stAdr, u16 count )
+//ERROR_CODE WritePage(const byte *data, u32 stAdr, u16 count )
+//{
+//    ERROR_CODE Result = NO_ERR;
+//
+//	if ((stAdr & 0xFF) != 0 || count > 256 || count == 0)
+//	{
+//		return INVALID_BLOCK;
+//	};
+//
+//    SendSingleCommand(SPI_WREN);
+//
+//    Result = Wait_For_WEL();
+//
+//    if( POLL_TIMEOUT == Result )
+//	{
+//		return Result;
+//	}
+//    else
+//    {
+//        SetupSPI();
+//
+//        /* send the bulk erase command to the flash */
+//        WriteFlash(SPI_PP );
+//        WriteFlash((stAdr) >> 16);
+//        WriteFlash((stAdr) >> 8);
+//        WriteFlash(stAdr);
+//
+//		for ( ; count > 0; count--)
+//		{
+//	        WriteFlash(*data++);
+//		};
+//
+//        SPI_OFF();
+//    };
+//
+//	return Wait_For_Status(WIP);
+//}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//ERROR_CODE VerifyPage(const byte *data, u32 stAdr, u16 count )
+//{
+//    ERROR_CODE Result = NO_ERR;
+//
+//	if ((stAdr & 0xFF) != 0 || count > 256 || count == 0)
+//	{
+//		return INVALID_BLOCK;
+//	};
+//
+//	u16 t = 0;
+//
+//	static byte buf[5];
+//
+//    buf[0] = SPI_FAST_READ;
+//    buf[1] = stAdr >> 16;
+//    buf[2] = stAdr >> 8;
+//    buf[3] = stAdr;
+//    buf[4] = 0;
+//
+//	SetupSPIDMA();
+//
+//	WriteSyncDMA(buf, sizeof(buf));
+//
+//	*pDMA5_CONFIG = 0;
+//
+//	*pSPI0_CTL = COMMON_SPI_SETTINGS|TIMOD01;
+//
+////	t = *pSPI0_RDBR;
+//
+//	for ( ; count > 0; count--)
+//	{
+////		t = WaitReadSPI0(); //while ((*pSPI0_STAT & RXS) == 0);
+//
+//		if (ReadFlash() != *data)
+//		{
+//			Result = VERIFY_WRITE;
+//			break;
+//		};
+//	};
+//	
+//	*pSPI0_CTL = 0;
+//
+//	SPI_OFF();
+//
+//	return Result;
+//}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static ERROR_CODE VerifyPage(const byte *data, u32 stAdr, u16 count )
 {
     ERROR_CODE Result = NO_ERR;
 
@@ -668,47 +764,34 @@ ERROR_CODE VerifyPage(byte *data, u32 stAdr, u16 count )
 		return INVALID_BLOCK;
 	};
 
-	u16 t = 0;
+	SetupSPI();
 
-	static byte buf[5];
-
-    buf[0] = SPI_FAST_READ;
-    buf[1] = stAdr >> 16;
-    buf[2] = stAdr >> 8;
-    buf[3] = stAdr;
-    buf[4] = 0;
-
-	SetupSPIDMA();
-
-	WriteSyncDMA(buf, sizeof(buf));
-
-	*pDMA5_CONFIG = 0;
-
-	*pSPI0_CTL = SPE|COMMON_SPI_DMA_SETTINGS|0;
-
-	t = *pSPI0_RDBR;
+        /* send the bulk erase command to the flash */
+    WriteFlash(SPI_FAST_READ);
+    WriteFlash((stAdr) >> 16);
+    WriteFlash((stAdr) >> 8);
+    WriteFlash(stAdr);
+    WriteFlash(0);
 
 	for ( ; count > 0; count--)
 	{
-		t = WaitReadSPI0(); //while ((*pSPI0_STAT & RXS) == 0);
-
 		if (ReadFlash() != *data)
 		{
 			Result = VERIFY_WRITE;
 			break;
 		};
-	};
-	
-	*pSPI0_CTL = 0;
 
-	SPI_OFF();
+		data++;
+	};
+
+    SPI_OFF();
 
 	return Result;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE at25df021_Write(byte *data, u32 stAdr, u32 count, bool verify)
+ERROR_CODE at25df021_Write(const byte *data, u32 stAdr, u32 count, bool verify)
 {
     ERROR_CODE Result = NO_ERR;
 
@@ -757,7 +840,7 @@ ERROR_CODE at25df021_Write(byte *data, u32 stAdr, u32 count, bool verify)
 //  	ERROR_CODE - value if any error occurs
 //  	NO_ERR     - otherwise
 
-ERROR_CODE ResetFlash()
+static ERROR_CODE ResetFlash()
 {
 	SetupSPI();
 
@@ -841,7 +924,7 @@ static void GlobalUnProtect()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE UnProtectBlock(u32 adr)
+static ERROR_CODE UnProtectBlock(u32 adr)
 {
 	ERROR_CODE 	  ErrorCode   = NO_ERR;		//tells us if there was an error erasing flash
 
@@ -916,8 +999,6 @@ ERROR_CODE EraseBlock(int nBlock)
 	// Sector erase takes time
 	ErrorCode = Wait_For_Status(WIP);
 
-
-
  	// block erase should be complete
 	return ErrorCode;
 }
@@ -938,7 +1019,7 @@ ERROR_CODE EraseBlock(int nBlock)
 //  	NO_ERR     - otherwise
 
 
-ERROR_CODE PollToggleBit(void)
+static ERROR_CODE PollToggleBit(void)
 {
 	ERROR_CODE ErrorCode = NO_ERR;	// flag to indicate error
 	char status_register = 0;
@@ -978,7 +1059,7 @@ ERROR_CODE PollToggleBit(void)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE GetCodes(int *pnManCode, int *pnDevCode)
+static ERROR_CODE GetCodes(int *pnManCode, int *pnDevCode)
 {
 	//Open the SPI, Deasserting CS
 	SetupSPI();
@@ -1011,7 +1092,7 @@ ERROR_CODE GetCodes(int *pnManCode, int *pnDevCode)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE GetSectorNumber( unsigned long ulAddr, int *pnSector )
+static ERROR_CODE GetSectorNumber( unsigned long ulAddr, int *pnSector )
 {
 	int nSector = 0;
 	int i;
@@ -1065,7 +1146,7 @@ ERROR_CODE GetSectorNumber( unsigned long ulAddr, int *pnSector )
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ERROR_CODE GetSectorStartEnd( unsigned long *ulStartOff, unsigned long *ulEndOff, int nSector )
+static ERROR_CODE GetSectorStartEnd( unsigned long *ulStartOff, unsigned long *ulEndOff, int nSector )
 {
 	u32 ulSectorSize = SECTOR_SIZE;
 
@@ -1096,7 +1177,7 @@ ERROR_CODE GetSectorStartEnd( unsigned long *ulStartOff, unsigned long *ulEndOff
 //	RETURN VALUE
 //		unsigned long - Flash start address
 
-unsigned long GetFlashStartAddress( unsigned long ulAddr)
+static unsigned long GetFlashStartAddress( unsigned long ulAddr)
 {
 
 	unsigned long ulFlashStartAddr;			//flash start address
@@ -1121,7 +1202,7 @@ unsigned long GetFlashStartAddress( unsigned long ulAddr)
 //  	ERROR_CODE - value if any error occurs
 //  	NO_ERR     - otherwise
 
-byte ReadFlash()
+static byte ReadFlash()
 {
 	asm("R0 = W[%0];" : : "p" (pSPI0_RDBR));
 	Wait_For_SPIF();
@@ -1147,7 +1228,7 @@ byte ReadFlash()
 //  	ERROR_CODE - value if any error occurs
 //  	NO_ERR     - otherwise
 
-void WriteFlash(byte usValue )
+static void WriteFlash(byte usValue )
 {
 	*pSPI0_TDBR = usValue;
 	
@@ -1167,15 +1248,13 @@ void WriteFlash(byte usValue )
 //
 //////////////////////////////////////////////////////////////
 
-byte ReadStatusRegister(void)
+static byte ReadStatusRegister(void)
 {
 	SetupSPI(); // Turn on the SPI
 
-	*pSPI0_TDBR = (SPI_RDSR);
+	WriteFlash(SPI_RDSR);
 
-	while((*pSPI0_STAT & SPIF) == 0);
-
-	byte usStatus = *pSPI0_RDBR;
+	byte usStatus = ReadFlash();
 
 	SPI_OFF();		// Turn off the SPI
 
@@ -1195,7 +1274,7 @@ byte ReadStatusRegister(void)
 //
 //////////////////////////////////////////////////////////////
 
-ERROR_CODE Wait_For_WEL(void)
+static ERROR_CODE Wait_For_WEL(void)
 {
 	volatile int n, i;
 	char status_register = 0;
@@ -1213,6 +1292,8 @@ ERROR_CODE Wait_For_WEL(void)
 		for(n=0; n<DELAY; n++)
 			asm("nop;");
 		ErrorCode = POLL_TIMEOUT;	// Time out error
+
+		*pWDOG_STAT = 0;
 	}
 
 
@@ -1233,7 +1314,7 @@ ERROR_CODE Wait_For_WEL(void)
 //
 //////////////////////////////////////////////////////////////
 
-ERROR_CODE Wait_For_Status( char Statusbit )
+static ERROR_CODE Wait_For_Status( char Statusbit )
 {
 	volatile int n, i;
 	char status_register = 0xFF;
@@ -1251,7 +1332,9 @@ ERROR_CODE Wait_For_Status( char Statusbit )
 		for(n=0; n<DELAY; n++)
 			asm("nop;");
 		ErrorCode = POLL_TIMEOUT;	// Time out error
-	}
+
+		*pWDOG_STAT = 0;
+	};
 
 
 	return ErrorCode;
@@ -1268,7 +1351,7 @@ ERROR_CODE Wait_For_Status( char Statusbit )
 // returns- none
 //
 //////////////////////////////////////////////////////////////
-void SendSingleCommand( const int iCommand )
+static void SendSingleCommand( const int iCommand )
 {
 	volatile int n;
 
@@ -1299,7 +1382,7 @@ void SendSingleCommand( const int iCommand )
 // Inputs - spi_setting
 // returns- none
 //////////////////////////////////////////////////////////////
-void SetupSPI()
+static void SetupSPI()
 {
     volatile int i;
 
@@ -1322,9 +1405,9 @@ void SetupSPI()
 //	}
 
 	*pSPI0_BAUD = BAUD_RATE_DIVISOR;
+	*pSPI0_CTL = COMMON_SPI_SETTINGS|TIMOD01;	
 	*pPORTFIO_CLEAR = PF8;
 
-	*pSPI0_CTL = COMMON_SPI_SETTINGS|TIMOD01;	
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1337,7 +1420,7 @@ void SetupSPI()
 //
 //////////////////////////////////////////////////////////////
 
-void SPI_OFF(void)
+static void SPI_OFF(void)
 {
 	volatile int i;
 
@@ -1368,7 +1451,7 @@ void SPI_OFF(void)
 // returns- none
 //
 //////////////////////////////////////////////////////////////
-ERROR_CODE Wait_For_nStatus(void)
+static ERROR_CODE Wait_For_nStatus(void)
 {
 	volatile int i;
 	char status_register = 0;

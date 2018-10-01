@@ -4,6 +4,8 @@
 
 #include "at25df021.h"
 
+#include <bfrom.h>
+
 static ComPort com;
 //static ComPort::WriteBuffer wb;
 //
@@ -14,6 +16,9 @@ static byte spTime[3];
 static byte spGain[3];
 static u16	spLen[3];
 static u16	spDelay[3];
+
+static u16	maxAmp[4];
+static u16	power[4];
 
 
 //static u16 spd2[512*2];
@@ -28,10 +33,10 @@ static bool ready1 = false, ready2 = false;
 //static u32 CRCOK = 0;
 //static u32 CRCER = 0;
 
-static byte sampleTime[3] = { 9, 19, 19};
-static byte gain[3] = { 3, 3, 3 };
-static u16 sampleLen[3] = {512, 512, 512};
-static u16 sampleDelay[3] = { 0, 0, 0};
+static byte sampleTime[3] = { 5, 10, 10};
+static byte gain[3] = { 0, 1, 1 };
+static u16 sampleLen[3] = {1024, 1024, 1024};
+static u16 sampleDelay[3] = { 200, 500, 500};
 
 
 static byte netAdr = 1;
@@ -46,26 +51,52 @@ static u32 flashLen = 0;
 
 static u16 vectorCount = 0;
 
+static u16 lastErasedBlock = ~0;
+
+
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//#pragma pack(1)
 
-struct Request
+//struct Request
+//{
+//	byte adr;
+//	byte func;
+//	
+//	union
+//	{
+//		struct  { byte n; word crc; } f1;  // старт оцифровки
+//		struct  { byte n; byte chnl; word crc; } f2;  // чтение вектора
+//		struct  { u16 st[3]; u16 sl[3]; u16 sd[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
+//		struct  { byte ka[3]; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
+//
+////		struct  { byte subfunc; ka[3]; word crc; } fAD;  // Перепрошивка флэшки
+//	};
+//};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma pack(1)
+
+struct NewRequest
 {
+	byte len;
 	byte adr;
 	byte func;
 	
 	union
 	{
-		struct  { byte n; word crc; } f1;  // старт оцифровки
+		struct  { byte n; u16 vc; word crc; } f1;  // старт оцифровки
 		struct  { byte n; byte chnl; word crc; } f2;  // чтение вектора
-		struct  { u16 st[3]; u16 sl[3]; u16 sd[3]; word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
-		struct  { byte ka[3]; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
-
-//		struct  { byte subfunc; ka[3]; word crc; } fAD;  // Перепрошивка флэшки
+		struct  { u16 st[3]; u16 sl[3]; u16 sd[3]; word crc; } f3;  // установка шага и длины оцифровки вектора
+		struct  { byte ka[3]; word crc; } f4;  // установка коэффициента усиления
+		struct  { word crc; } f5;  // запрос контрольной суммы и длины программы во флэш-памяти
+		struct  { u16 stAdr; u16 len; word crc; byte data[258]; } f6;  // запись страницы во флэш
+		struct  { word crc; } f7;  // перезагрузить блэкфин
 	};
 };
+
+#pragma pack()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -77,14 +108,13 @@ struct Response
 	union
 	{
 		struct  { word crc; } f1;  // старт оцифровки
-//		struct  { byte n; byte chnl; byte count[4]; byte time; byte gain; byte delay; byte filtr; u16 len; u16 data[512]; word crc; } f2;  // чтение вектора
-//		struct  { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[1024*4]; word crc; } f2;  // чтение вектора
 		struct  { word crc; } f3;  // установка периода дискретизации вектора и коэффициента усиления
-		struct  { word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
+		struct  { u16 maxAmp[4]; u16 power[4]; word crc; } f4;  // старт оцифровки с установкой периода дискретизации вектора и коэффициента усиления
+		struct  { u16 flashLen; u16 flashCRC; word crc; } f5;  // запрос контрольной суммы и длины программы во флэш-памяти
+		struct  { u16 res; word crc; } f6;  // запись страницы во флэш
 	};
 };
 
-#pragma pack()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -98,17 +128,19 @@ struct Response02 { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 d
 
 static Response02 rsp02;
 
-static byte rspBuf[10];
+static byte rspBuf[64];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
+static bool RequestFunc01(const NewRequest *req, ComPort::WriteBuffer *wb)
 {
-	const Request *req = (Request*)rb->data;
+//	const Request *req = (Request*)rb->data;
 	Response &rsp = *((Response*)rspBuf);
 
 	byte n = req->f1.n;
 	if (n > 2) n = 2;
+
+	vectorCount = req->f1.vc;
 
 	spTime[n] = sampleTime[n];
 	spGain[n] = gain[n];
@@ -136,9 +168,9 @@ bool RequestFunc01(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
+static bool RequestFunc02(const NewRequest *req, ComPort::WriteBuffer *wb)
 {
-	const Request *req = (Request*)rb->data;
+//	const Request *req = (Request*)rb->data;
 
 	if (req->f2.n > 2)
 	{
@@ -192,9 +224,9 @@ bool RequestFunc02(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool RequestFunc03(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
+static bool RequestFunc03(const NewRequest *req, ComPort::WriteBuffer *wb)
 {
-	const Request *req = (Request*)rb->data;
+//	const Request *req = (Request*)rb->data;
 	Response &rsp = *((Response*)rspBuf);
 
 	sampleTime[0] = req->f3.st[0];
@@ -227,9 +259,9 @@ bool RequestFunc03(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool RequestFunc04(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
+static bool RequestFunc04(const NewRequest *req, ComPort::WriteBuffer *wb)
 {
-	const Request *req = (Request*)rb->data;
+//	const Request *req = (Request*)rb->data;
 	Response &rsp = *((Response*)rspBuf);
 
 	gain[0] = req->f4.ka[0];
@@ -239,60 +271,145 @@ bool RequestFunc04(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool
 	if (req->adr == 0) return  false;
 
 	rsp.adr = req->adr;
-	rsp.func = req->func;
-	rsp.f3.crc = GetCRC16(&rsp, 2);
+	rsp.func = 4;
+
+	rsp.f4.maxAmp[0] = maxAmp[0];
+	rsp.f4.maxAmp[1] = maxAmp[1];
+	rsp.f4.maxAmp[2] = maxAmp[2];
+	rsp.f4.maxAmp[3] = maxAmp[3];
+
+	rsp.f4.power[0] = power[0];
+	rsp.f4.power[1] = power[1];
+	rsp.f4.power[2] = power[2];
+	rsp.f4.power[3] = power[3];
+
+	rsp.f4.crc = GetCRC16(&rsp, sizeof(rsp.f4));
 
 	wb->data = &rsp;
-	wb->len = sizeof(rsp.f4)+2;
+	wb->len = sizeof(rsp.f4) + 2;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool RequestFuncAD(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb, bool crcok)
+static bool RequestFunc05(const NewRequest *req, ComPort::WriteBuffer *wb)
 {
-	const Request *req = (Request*)rb->data;
+//	const Request *req = (Request*)rb->data;
 	Response &rsp = *((Response*)rspBuf);
 
 	if (req->adr == 0) return  false;
 
 	rsp.adr = req->adr;
 	rsp.func = req->func;
-	rsp.f3.crc = GetCRC16(&rsp, 2);
+	rsp.f5.flashLen = flashLen;
+	rsp.f5.flashCRC = flashCRC;
+
+	rsp.f5.crc = GetCRC16(&rsp, sizeof(rsp.f5));
 
 	wb->data = &rsp;
-	wb->len = sizeof(rsp.f4)+2;
+	wb->len = sizeof(rsp.f5)+2;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool RequestFunc(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+static bool RequestFunc06(const NewRequest *req, ComPort::WriteBuffer *wb)
 {
-	if (rb == 0 || rb->len < 2 || rb->len > sizeof(Request)) return false;
+//	const Request *req = (Request*)rb->data;
+	Response &rsp = *((Response*)rspBuf);
 
-	const Request *req = (Request*)rb->data;
+	ERROR_CODE Result = NO_ERR;
 
-	if (req->adr != 0 && req->adr != netAdr) return false;
+	if (req->adr == 0 || GetCRC16(req->f6.data, req->f6.len+2) != 0) return  false;
 
-	bool crcok = (GetCRC16(rb->data, rb->len) == 0);
-	bool result = false;
+	u32 stAdr = 0 + req->f6.stAdr;
 
-	if (!crcok && req->func != 1)
+	u16 block = stAdr/4096;
+
+	if (lastErasedBlock != block)
 	{
-		return false;
+		Result = EraseBlock(block);
+		lastErasedBlock = block;
 	};
 
-	switch(req->func)
+	if (Result == NO_ERR)
 	{
-		case 1: result = RequestFunc01 (rb, wb, crcok); break;
-		case 2: result = RequestFunc02 (rb, wb, crcok); break;
-		case 3: result = RequestFunc03 (rb, wb, crcok); break;
-		case 4: result = RequestFunc04 (rb, wb, crcok); break;
+		Result = at25df021_Write(req->f6.data, stAdr, req->f6.len, true);
+	};
 
-		case 0xAD: result = RequestFuncAD (rb, wb, crcok); break;
+	rsp.f6.res = Result;
+
+	rsp.adr = req->adr;
+	rsp.func = req->func;
+
+	rsp.f6.crc = GetCRC16(&rsp, sizeof(rsp.f6));
+
+	wb->data = &rsp;
+	wb->len = sizeof(rsp.f6)+2;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestFunc07(const NewRequest *req, ComPort::WriteBuffer *wb)
+{
+//	bfrom_SpiBoot(0x10000, (BFLAG_PERIPHERAL/*|BFLAG_HOOK | BFLAG_NOAUTO | BFLAG_FASTREAD|BFLAG_TYPE3*/), 0, 0);
+
+	while(1)
+	{
+
+	};
+
+	return false;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestFunc(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
+{
+	static NewRequest nulReq;
+	static const byte fl[7] = { sizeof(nulReq.f1)+2, sizeof(nulReq.f2)+2, sizeof(nulReq.f3)+2, sizeof(nulReq.f4)+2, sizeof(nulReq.f5)+2, sizeof(nulReq.f6)+2-sizeof(nulReq.f6.data), sizeof(nulReq.f7)+2 };
+
+	if (rb == 0 || rb->len < 2) return false;
+
+	bool result = false;
+
+	u16 rlen = rb->len;
+
+	byte *p = (byte*)rb->data;
+
+	while(rlen > 5)
+	{
+		byte len = p[0];
+		byte func = p[2]-1;
+
+		if (func < 7 && len == fl[func] && len < rlen && GetCRC16(p+1, len) == 0)
+		{
+			NewRequest *req = (NewRequest*)p;
+
+			if (req->adr != 0 && req->adr != netAdr) return false;
+
+			switch(req->func)
+			{
+				case 1: result = RequestFunc01 (req, wb); break;
+				case 2: result = RequestFunc02 (req, wb); break;
+				case 3: result = RequestFunc03 (req, wb); break;
+				case 4: result = RequestFunc04 (req, wb); break;
+				case 5: result = RequestFunc05 (req, wb); break;
+				case 6: result = RequestFunc06 (req, wb); break;
+				case 7: result = RequestFunc07 (req, wb); break;
+			};
+
+			break;
+		}
+		else
+		{
+			p += 1;
+			rlen -= 1;
+		};
 	};
 
 	return result;
@@ -305,7 +422,7 @@ static void UpdateBlackFin()
 	static byte i = 0;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
-	static byte buf[sizeof(Request)+10];
+	static byte buf[sizeof(NewRequest)+10];
 
 	switch(i)
 	{
@@ -355,166 +472,14 @@ static void UpdateBlackFin()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//#define NCoef 1
-
-//i32 iir(i16 NewSample)
-//{
-//	const i16 A0 = 0.08658549734431006400 * 32768;
-//	const i16 A1 = 0.08658549734431006400 * 32768;
-//
-////	float B0 = 1.00000000000000000000;
-//	const i16 B1 = -0.82727194597247566000 * 32768;
-//
-//	static i32 y[2]; //output samples
-//	static i16 x[2]; //input samples
-//
-//	//shift the old samples
-//	x[1] = x[0];
-//	y[1] = y[0];
-//
-//	//Calculate the new output
-//	x[0] = NewSample;
-//	y[0] = (A0 * x[0] + A1 * x[1] - B1 * y[1]) / 32768;
-//
-//	return y[0];
-//}
-
-static const i16 RC[100] = {
-	0.024819*32768,
-	0.049023*32768,
-	0.072625*32768,
-	0.095642*32768,
-	0.118088*32768,
-	0.139977*32768,
-	0.161322*32768,
-	0.182138*32768,
-	0.202437*32768,
-	0.222232*32768,
-	0.241536*32768,
-	0.260360*32768,
-	0.278718*32768,
-	0.296620*32768,
-	0.314077*32768,
-	0.331102*32768,
-	0.347703*32768,
-	0.363893*32768,
-	0.379681*32768,
-	0.395077*32768,
-	0.410091*32768,
-	0.424732*32768,
-	0.439010*32768,
-	0.452933*32768,
-	0.466511*32768,
-	0.479752*32768,
-	0.492665*32768,
-	0.505256*32768,
-	0.517536*32768,
-	0.529510*32768,
-	0.541188*32768,
-	0.552575*32768,
-	0.563680*32768,
-	0.574509*32768,
-	0.585070*32768,
-	0.595368*32768,
-	0.605411*32768,
-	0.615204*32768,
-	0.624755*32768,
-	0.634068*32768,
-	0.643150*32768,
-	0.652007*32768,
-	0.660644*32768,
-	0.669067*32768,
-	0.677281*32768,
-	0.685290*32768,
-	0.693101*32768,
-	0.700718*32768,
-	0.708146*32768,
-	0.715390*32768,
-	0.722454*32768,
-	0.729342*32768,
-	0.736060*32768,
-	0.742611*32768,
-	0.748999*32768,
-	0.755229*32768,
-	0.761304*32768,
-	0.767228*32768,
-	0.773006*32768,
-	0.778639*32768,
-	0.784133*32768,
-	0.789491*32768,
-	0.794716*32768,
-	0.799811*32768,
-	0.804780*32768,
-	0.809625*32768,
-	0.814350*32768,
-	0.818958*32768,
-	0.823451*32768,
-	0.827833*32768,
-	0.832106*32768,
-	0.836273*32768,
-	0.840337*32768,
-	0.844299*32768,
-	0.848164*32768,
-	0.851932*32768,
-	0.855607*32768,
-	0.859191*32768,
-	0.862686*32768,
-	0.866094*32768,
-	0.869417*32768,
-	0.872658*32768,
-	0.875819*32768,
-	0.878901*32768,
-	0.881907*32768,
-	0.884838*32768,
-	0.887696*32768,
-	0.890483*32768,
-	0.893201*32768,
-	0.895852*32768,
-	0.898437*32768,
-	0.900958*32768,
-	0.903416*32768,
-	0.905813*32768,
-	0.908151*32768,
-	0.910430*32768,
-	0.912653*32768,
-	0.914821*32768,
-	0.916935*32768,
-	0.918997*32768
-};
-
-
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 static void UpdateSport()
 {
-	const i16 A0 = 0.96952119255082503000 * 32768;
-	const i16 A1 = -0.9695211925508250300 * 32768;
-
-//	float B0 = 1.00000000000000000000;
-	const i16 B1 = -0.93906250582030759000 * 32768;
-
-	const u16 freq0 = 4000;
-
-	const u16 freq[3] = {40000, 10000, 10000}; // М, ДХ, ДУ
-
-
-	static i32 y[2]; //output samples
-	static i16 x[2]; //input samples
-
-	static i16 C0 = 0.118089 * 32768;
-	static i32 F0 = 0;
-
 	static byte n = 0;
 	static byte chnl = 0;
 	static u16 len = 0;
 	static byte st = 0;
 	static byte sg = 0;
 	static u16 sd = 0;
-
-	byte ch = 0;
-	byte cl = 0;
-	byte t = 0;
 
 	Response02 &rsp = rsp02;
 
@@ -533,13 +498,6 @@ static void UpdateSport()
 				sg = spGain[n];
 				sd = spDelay[n];
 
-				t = freq[n] * st / freq0;
-
-				if (t > 0) t -= 1;
-				if (t >= ArraySize(RC)) t = ArraySize(RC) - 1;
-
-				C0 = RC[t];
-
 				sportState++;
 			};
 
@@ -554,11 +512,6 @@ static void UpdateSport()
 			rsp.len = len; 
 			rsp.delay = spDelay[n];
 
-			//x[0] = 0;
-			//y[0] = 0;
-
-			//F0 = 0;
-
 			*pPORTFIO_SET = 1<<8;
 
 			{
@@ -572,30 +525,60 @@ static void UpdateSport()
 				u16 *p3 = rsp.data+len*2;
 				u16 *p4 = rsp.data+len*3;
 
+				u16 max[4] = {0, 0, 0, 0};
+				u16 min[4] = {65535, 65535, 65535, 65535 };
+
+				u32 pow[4] = {0, 0, 0, 0};
+
+				u16 t;
+
+				i16 x;
+
 				for (u16 i = 0; i < len; i++)
 				{
-					*p1++ = spd[0][i*2+0] - 0x8000;
-					*p2++ = spd[0][i*2+1] - 0x8000;
-					*p3++ = spd[1][i*2+0] - 0x8000;
-					*p4++ = spd[1][i*2+1] - 0x8000;
+					t = spd[0][i*2+0];
+
+					if (t > max[0]) { max[0] = t; };
+					if (t < min[0]) { min[0] = t; };
+
+					*p1++ = x = t - 0x8000;
+
+					pow[0] += (x > 0) ? x : (-x);
+
+					t = spd[0][i*2+1];
+
+					if (t > max[1]) { max[1] = t; };
+					if (t < min[1]) { min[1] = t; };
+
+					*p2++ = x = t - 0x8000;
+
+					pow[1] += (x > 0) ? x : (-x);
+
+					t = spd[1][i*2+0];
+
+					if (t > max[2]) { max[2] = t; };
+					if (t < min[2]) { min[2] = t; };
+
+					*p3++ = x = t - 0x8000;
+
+					pow[2] += (x > 0) ? x : (-x);
+
+					t = spd[1][i*2+1];
+
+					if (t > max[3]) { max[3] = t; };
+					if (t < min[3]) { min[3] = t; };
+
+					*p4++ = x = t - 0x8000;
+
+					pow[3] += (x > 0) ? x : (-x);
+				};
+
+				for (byte i = 0; i < 4; i++)
+				{
+					maxAmp[i] = max[i] - min[i];
+					power[i] = (len > 0) ? (pow[i] / len) : 0;
 				};
 			};
-
-			//for (u16 i = 0; i < len; i++)
-			//{
-			//	//x[1] = x[0];
-			//	//y[1] = y[0];
-
-			//	x[0] = spd[ch][i*2+cl] - 0x8000;
-			//	//y[0] = (A0 * x[0] + A1 * x[1] - B1 * y[1]) / 32768;
-
-			//	//rsp.f2.data[i] = y[0];
-
-			//	//F0 += ((spd[ch][i*2+cl] - 0x8000) - F0/32768) * C0;
-			//	//rsp.f2.data[i] = F0/32768;
-
-			//	rsp.f2.data[i] = x[0];
-			//};
 
 			*pPORTFIO_CLEAR = 1<<8;
 
@@ -702,7 +685,7 @@ static void CheckFlash()
 
 	flashLen = adr;
 
-	flashCRC = at25df021_GetCRC16(0, adr);
+	flashCRC = at25df021_GetCRC16(0, flashLen);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -720,7 +703,7 @@ void main( void )
 
 	InitNetAdr();
 
-//	CheckFlash();
+	CheckFlash();
 
 	while (1)
 	{

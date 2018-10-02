@@ -71,6 +71,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\bootloader.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\ComPort.cpp"
 				>
 			</File>
@@ -84,6 +88,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\heaptab.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\initcode.cpp"
 				>
 			</File>
 			<File
@@ -132,11 +140,11 @@
 			>
 		</Filter>
 		<File
-			RelativePath=".\g26p.ldf"
+			RelativePath=".\cpp\g26p_basiccrt.s"
 			>
 		</File>
 		<File
-			RelativePath=".\cpp\g26p_basiccrt.s"
+			RelativePath=".\initcode.ldf"
 			>
 		</File>
 		<File

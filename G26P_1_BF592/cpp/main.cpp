@@ -39,7 +39,7 @@ static u16 sampleLen[3] = {1024, 1024, 1024};
 static u16 sampleDelay[3] = { 200, 500, 500};
 
 
-static byte netAdr = 1;
+//static byte netAdr = 1;
 
 static U32u fadc = 0;
 
@@ -156,7 +156,7 @@ static bool RequestFunc01(const NewRequest *req, ComPort::WriteBuffer *wb)
 
 	if (req->adr == 0) return  false;
 
-	rsp.adr = netAdr;
+	rsp.adr = GetNetAdr();
 	rsp.func = 1;
 	rsp.f1.crc = GetCRC16(&rsp, 2);
 
@@ -324,7 +324,7 @@ static bool RequestFunc06(const NewRequest *req, ComPort::WriteBuffer *wb)
 
 	if (req->adr == 0 || GetCRC16(req->f6.data, req->f6.len+2) != 0) return  false;
 
-	u32 stAdr = 0 + req->f6.stAdr;
+	u32 stAdr = FLASH_START_ADR + req->f6.stAdr;
 
 	u16 block = stAdr/4096;
 
@@ -356,7 +356,9 @@ static bool RequestFunc06(const NewRequest *req, ComPort::WriteBuffer *wb)
 
 static bool RequestFunc07(const NewRequest *req, ComPort::WriteBuffer *wb)
 {
-//	bfrom_SpiBoot(0x10000, (BFLAG_PERIPHERAL/*|BFLAG_HOOK | BFLAG_NOAUTO | BFLAG_FASTREAD|BFLAG_TYPE3*/), 0, 0);
+//	bfrom_SpiBoot(FLASH_START_ADR, (BFLAG_PERIPHERAL/*|BFLAG_HOOK | BFLAG_NOAUTO | BFLAG_FASTREAD|BFLAG_TYPE3*/), 0, 0);
+
+//	bfrom_SysControl(SYSCTRL_SOFTRESET, 0, 0);
 
 	while(1)
 	{
@@ -390,7 +392,7 @@ static bool RequestFunc(const ComPort::ReadBuffer *rb, ComPort::WriteBuffer *wb)
 		{
 			NewRequest *req = (NewRequest*)p;
 
-			if (req->adr != 0 && req->adr != netAdr) return false;
+			if (req->adr != 0 && req->adr != GetNetAdr()) return false;
 
 			switch(req->func)
 			{
@@ -505,7 +507,7 @@ static void UpdateSport()
 
 		case 1:
 
-			rsp.rw = 0xAA30 + (n<<4) + netAdr-1;
+			rsp.rw = 0xAA30 + (n<<4) + GetNetAdr()-1;
 			rsp.cnt = vectorCount++;
 			rsp.gain = sg; 
 			rsp.st = st; 
@@ -603,52 +605,23 @@ static void UpdateSport()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateNetAdr()
-{
-	netAdr = (GetADC() / 398) + 1;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void InitNetAdr()
-{
-	u32 t = GetRTT();
-
-	while ((GetRTT()-t) < 10000000)
-	{
-		UpdateHardware();
-	};
-
-	UpdateNetAdr();
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//static word GetFlashCRC16(u32 count)
+//static void UpdateNetAdr()
 //{
-//	DataCRC CRC = { 0xFFFF };
+//	netAdr = (GetADC() / 398) + 1;
+//}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//static void InitNetAdr()
+//{
+//	u32 t = GetRTT();
 //
-//	byte buf[256];
-//
-//	u32 adr = 0;
-//
-//	while (count > 0)
+//	while ((GetRTT()-t) < 10000000)
 //	{
-//		u16 len = (count > sizeof(buf)) ? sizeof(buf) : count;
-//
-//		at25df021_Read(buf, adr, len);
-//
-//		adr += len;
-//
-//		byte *s = buf;
-//
-//		for ( ; len > 0; len--)
-//		{
-//			CRC.w = tableCRC[CRC.b[0] ^ *(s++)] ^ CRC.b[1];
-//		};
+//		UpdateHardware();
 //	};
 //
-//	return CRC.w;
+////	UpdateNetAdr();
 //}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -659,14 +632,14 @@ static void CheckFlash()
 
 	byte *p = (byte*)&bh;
 
-	u32 count = 0;
+//	u32 stAdr = 0x8000;
 	u32 adr = 0;
 
-	bool ready = false;
+//	bool ready = false;
 
 	while (1)
 	{
-		at25df021_Read(p, adr, sizeof(bh));
+		at25df021_Read(p, FLASH_START_ADR + adr, sizeof(bh));
 
 //		while(!ready) {};
 
@@ -683,9 +656,9 @@ static void CheckFlash()
 		};
 	};
 
-	flashLen = adr;
+	flashLen = adr + 2;
 
-	flashCRC = at25df021_GetCRC16(0, flashLen);
+	flashCRC = at25df021_GetCRC16(FLASH_START_ADR, flashLen);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -701,7 +674,7 @@ void main( void )
 
 	com.Connect(6250000, 0);
 
-	InitNetAdr();
+//	InitNetAdr();
 
 	CheckFlash();
 
@@ -718,7 +691,6 @@ void main( void )
 		{
 			CALL( UpdateBlackFin()	);
 			CALL( UpdateHardware()	);
-			CALL( UpdateNetAdr()	);
 			CALL( UpdateSport()		);
 		};
 

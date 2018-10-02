@@ -74,7 +74,7 @@ static u16 manReqWord = 0xAA00;
 static u16 manReqMask = 0xFF00;
 
 static u16 numDevice = 0;
-static u16 verDevice = 0x101;
+static u16 verDevice = 0x102;
 
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
@@ -1174,7 +1174,7 @@ void CallBackRcvReq06(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReq06(byte adr, u16 stAdr, u16 count, void* data, u16 tryCount)
+REQ* CreateRcvReq06(byte adr, u16 stAdr, u16 count, void* data, u16 count2, void* data2, u16 tryCount)
 {
 	static Req06 req;
 	static Rsp06 rsp;
@@ -1201,10 +1201,18 @@ REQ* CreateRcvReq06(byte adr, u16 stAdr, u16 count, void* data, u16 tryCount)
 
 	u16 max = sizeof(req.data)-2;
 
-	if (count > max) count = max;
+	if (count > max)
+	{
+		count = max;
+		count2 = 0;
+	}
+	else if ((count + count2) > max)
+	{
+		count2 = max - count;
+	};
 
 	req.stAdr = stAdr;
-	req.count = count;
+	req.count = count+count2;
 
 	req.crc = GetCRC16(&req.adr, sizeof(req)-sizeof(req.data)-3);
 
@@ -1217,7 +1225,18 @@ REQ* CreateRcvReq06(byte adr, u16 stAdr, u16 count, void* data, u16 tryCount)
 		count--;
 	};
 
-	u16 crc = GetCRC16(data, req.count);
+	if (data2 != 0)
+	{
+		s = (byte*)data2;
+
+		while(count2 > 0)
+		{
+			*d++ = *s++;
+			count2--;
+		};
+	};
+
+	u16 crc = GetCRC16(req.data, req.count);
 
 	d[0] = crc;
 	d[1] = crc>>8;
@@ -2356,7 +2375,7 @@ static void InitNumStations()
 {
 	u32 t = GetRTT();
 
-	while ((GetRTT()-t) < MS2RT(1000))
+	while ((GetRTT()-t) < MS2RT(200))
 	{
 		UpdateADC();
 	};
@@ -2894,8 +2913,8 @@ static void FlashRcv()
 {
 	REQ *req = 0;
 
-	flashLen = sizeof(flashPages);
-	flashCRC = GetCRC16(flashPages, flashLen);
+	flashLen = sizeof(flashPages)+2;
+	flashCRC = GetCRC16(flashPages, flashLen-2);
 
 	for (byte i = 1; i <= numStations; i++)
 	{
@@ -2910,7 +2929,7 @@ static void FlashRcv()
 			rcvFlashLen[i-1] = rsp->flashLen;
 			rcvFlashCRC[i-1] = rsp->flashCRC;
 
-			if (rsp->flashCRC != flashCRC || rsp->flashLen != flashLen)
+			if (rsp->flashCRC != 0 || rsp->flashLen != flashLen)
 			{
 				u16 count = flashLen;
 				u16 adr = 0;
@@ -2918,9 +2937,27 @@ static void FlashRcv()
 
 				while (count > 0)
 				{
-					u16 len = (count > 256) ? 256 : count;
+					u16 len;
+					
+					if (count > 256)
+					{
+						len = 256;
 
-					req = CreateRcvReq06(i, adr, len, p, 2);
+						req = CreateRcvReq06(i, adr, len, p, 0, 0, 2);
+					}
+					else
+					{
+						len = count;
+
+						if (len > 2)
+						{
+							req = CreateRcvReq06(i, adr, len-2, p, sizeof(flashCRC), &flashCRC, 2);
+						}
+						else
+						{
+							req = CreateRcvReq06(i, adr, sizeof(flashCRC), &flashCRC, 0, 0, 2);
+						};
+					};
 
 					qrcv.Add(req); while(!req->ready) { qrcv.Update(); };
 
@@ -2928,11 +2965,11 @@ static void FlashRcv()
 					p += len;
 					adr += len;
 				};
+
+				req = CreateRcvReq07(i);
+
+				qrcv.Add(req); while(!req->ready) { qrcv.Update();	};
 			};
-
-			req = CreateRcvReq07(i);
-
-			qrcv.Add(req); while(!req->ready) { qrcv.Update();	};
 		};
 	};
 }
@@ -2963,7 +3000,7 @@ int main()
 //	combf.Connect(3, 6250000, 0);
 	comrcv.Connect(2, 6250000, 0);
 
-//	FlashRcv();
+	FlashRcv();
 
 	InitRcv();
 

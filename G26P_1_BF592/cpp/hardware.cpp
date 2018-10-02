@@ -13,9 +13,12 @@ const u32 sysCLK = SCLK;
 U32u adcValue;
 
 u16 pgaValue = 0x2A01;
+
 bool pgaSet = true;
 
 bool adcEnable = true;
+
+byte netAdr = 1;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -28,12 +31,6 @@ static void InitRTT()
 	*pTIMER0_CONFIG = PERIOD_CNT|PWM_OUT|OUT_DIS;
 	*pTIMER0_PERIOD = 0xFFFFFFFF;
 	*pTIMER_ENABLE = TIMEN0;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-void BootHook(ADI_BOOT_DATA *) 
-{
-
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -291,6 +288,8 @@ static void UpdateADC()
 
 				*pSPI1_CTL = 0;
 
+				netAdr = (GetADC() / 398) + 1;
+
 				i++;
 			};
 
@@ -350,7 +349,7 @@ void InitHardware()
 
 	u32 t = GetRTT();
 
-	while((GetRTT() - t) < 100000)
+	while((GetRTT() - t) < 10000000)
 	{
 		UpdateHardware();
 	};

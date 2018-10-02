@@ -1,17 +1,9 @@
-/*******************************************************************************/
-/*                                                                             */
-/*   (C) Copyright 2008 - Analog Devices, Inc.  All rights reserved.           */
-/*                                                                             */
-/*    FILE:     at25df021.h                                                       */
-/*																			   */
-/*    PURPOSE:  This header file defines items specific to the M25P16 flash.   */
-/*                                                                             */
-/*******************************************************************************/
-
 #ifndef AT25DF021_H__14_09_2016__08_29
 #define AT25DF021_H__14_09_2016__08_29
 
 #include "types.h"
+
+#define FLASH_START_ADR 0 	
 
 enum ERROR_CODE
 {
@@ -57,6 +49,7 @@ struct BOOT_HEADER
 
 #define BAUD_RATE_DIVISOR 	2
 #define PE4 0x0010
+
 
 
 extern ERROR_CODE at25df021_Read(byte *data, u32 stAdr, u16 count );

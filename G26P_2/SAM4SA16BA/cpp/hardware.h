@@ -38,9 +38,11 @@ struct MRB
 
 struct MTB
 {
-	bool	ready;
-	u16		len;
-	const u16		*data;
+	bool		ready;
+	u16			len1;
+	const u16	*data1;
+	u16			len2;
+	const u16	*data2;
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

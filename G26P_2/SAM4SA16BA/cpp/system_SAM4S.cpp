@@ -282,8 +282,8 @@ static __irq void MLT3_TrmIRQ()
 
 			MltZ();
 		
-			data = mltTB->data;
-			len = mltTB->len;
+			data = mltTB->data1;
+			len = mltTB->len1;
 
 //			pw = 0;
 			tw = Encode_4B5B(*data);
@@ -362,7 +362,7 @@ static __irq void MLT3_TrmIRQ()
 
 bool SendMLT3(MTB *mtb)
 {
-	if (mltBusy || mtb == 0 || mtb->data == 0 || mtb->len == 0)
+	if (mltBusy || mtb == 0 || mtb->data1 == 0 || mtb->len1 == 0)
 	{
 		return false;
 	};
@@ -410,8 +410,8 @@ static __irq void ManTrmIRQ()
 
 			ManDisable();
 		
-			data = manTB->data;
-			len = manTB->len;
+			data = manTB->data1;
+			len = manTB->len1;
 			stateManTrans = 1;
 
 			break;
@@ -467,7 +467,24 @@ static __irq void ManTrmIRQ()
 
 			if (count == 0)
 			{
-				stateManTrans = (len > 0) ? 1 : 6;
+				if (len > 0)
+				{
+					stateManTrans = 1;
+				}
+				else if (manTB->len2 != 0 && manTB->data2 != 0)
+				{
+					len = manTB->len2;
+					data = manTB->data2;
+
+					manTB->len2 = 0;
+					manTB->data2 = 0;
+
+					stateManTrans = 1;
+				}
+				else
+				{
+					stateManTrans = 6;
+				};
 			}
 			else
 			{
@@ -519,7 +536,7 @@ static __irq void ManTrmIRQ()
 
 bool SendManData(MTB *mtb)
 {
-	if (trmBusy || rcvBusy || mtb == 0 || mtb->data == 0 || mtb->len == 0)
+	if (trmBusy || rcvBusy || mtb == 0 || mtb->data1 == 0 || mtb->len1 == 0)
 	{
 		return false;
 	};

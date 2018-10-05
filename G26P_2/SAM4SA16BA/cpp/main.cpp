@@ -44,9 +44,10 @@ static RequestQuery qrcv(&comrcv);
 static RequestQuery qtrm(&comtr);
 static RequestQuery qmem(&commem);
 
-static R02 r02[2];
+static R02 r02[8];
 
-static Rsp02 manVec[6];
+static R02* manVec[3] = {0};
+static R02* curManVec[3] = {0};
 
 static RspMan60 rspMan60;
 
@@ -1523,7 +1524,7 @@ static void CallBackMemReq02(REQ *q)
 
 //RMEM reqMem;
 
-static void CreateMemReq02(R02 &r, bool crc)
+static void CreateMemReq02(R02 &r, bool crc, bool free)
 {
 	//R02 &r = *r02;
 
@@ -1541,7 +1542,7 @@ static void CreateMemReq02(R02 &r, bool crc)
 	q.preTimeOut = MS2RT(1);
 	q.postTimeOut = 1;
 	q.ready = false;
-	q.ptr = &r;
+	q.ptr = (free) ? &r : 0;
 	q.checkCRC = false;
 	q.updateCRC = crc;
 	
@@ -1609,8 +1610,10 @@ static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 	manTrmData[1] = numDevice;
 	manTrmData[2] = verDevice;
 
-	mtb->data = manTrmData;
-	mtb->len = 3;
+	mtb->data1 = manTrmData;
+	mtb->len1 = 3;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
 
 	return true;
 }
@@ -1644,8 +1647,10 @@ static bool RequestMan_10(u16 *buf, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
 
-	mtb->data = manTrmData;
-	mtb->len = 1+12*3;
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1+12*3;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
 
 	return true;
 }
@@ -1672,8 +1677,10 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	manTrmData[13] = gRoll % 360;
 	manTrmData[14] = gt;
  
-	mtb->data = manTrmData;
-	mtb->len = 15;
+	mtb->data1 = manTrmData;
+	mtb->len1 = 15;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
 
 	return true;
 }
@@ -1688,9 +1695,9 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 
 //	__packed struct St { Hdr h;  };
 
-	struct Rsp { u16 rw; u16 data[128]; };
+//	struct Rsp { u16 rw; u16 data[128]; };
 	
-	static Rsp rsp; 
+//	static Rsp rsp; 
 
 //	Hdr hdr;
 
@@ -1703,7 +1710,10 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 	//off 0...2005
 
 //return false;
-	if (buf == 0 || len < 3 || len > 4 || mtb == 0) return false;
+
+//	if (buf == 0 || len < 3 || len > 4 || mtb == 0) return false;
+
+	if (buf == 0 || len == 0 || len > 4 || mtb == 0) return false;
 
 	byte nf = ((req.rw>>4)-3)&3;
 	byte nr = req.rw & 7;
@@ -1715,74 +1725,234 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 	//u16 diglen = 500;
 	//u16 hdrlen = (sizeof(hdr)/2);
 
-	u16 sz = 6 + sampleLen[nf]*4;
 
-	//manVec[nf].len = 29;
-	//manVec[nf].gain = 0;
-	//manVec[nf].st = 10;
-	//manVec[nf].delay = 0;
-
-	if (req.off == 0)
-	{
-		curVec[nf] = (curVec[nf] + 1) & 1;
-	};
-
-	if (len == 1)
-	{
-		off = 0;
-		c = sz;
-	}
-	else
-	{
-		off = req.off;
-		c = req.len;
-
-		if (off > maxOff)
-		{
-			maxOff = off;
-		};
-
-		if (off >= sz)
-		{
-			c = 0; off = 0;
-		}
-		else if ((off+c) > sz)
-		{
-			c = sz-off;
-		};
-	};
-
-
-	mtb->data = (u16*)&rsp;
-	mtb->len = c+1;
-
-	u16 *p = rsp.data;
-
-	u16 *s = (u16*)&manVec[nf*2 + ((curVec[nf] + 1) & 1)];
-
-	s += off + 1;
-
-	while (c > 0)
-	{
-		*p++ = *s++; c--;
-	};
+	struct Rsp { u16 rw; };
+	
+	static Rsp rsp; 
 
 	rsp.rw = req.rw;
+
+	mtb->data1 = (u16*)&rsp;
+	mtb->len1 = sizeof(rsp)/2;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+//	u16 n = nf*2 + (curVec[nf] & 1);
+
+	R02 *r02 = curManVec[nf];
+
+	//if (r02 == 0)
+	//{
+	//	r02 = curManVec[nf] = manVec[nf];
+
+	//	if (r02 == 0)
+	//	{
+	//		return true;
+	//	};
+	//};
+
+	u16 sz = 6 + /*r02->rsp.len*4*/ sampleLen[nf]*4;
+
+	if (len < 3)
+	{
+		if (r02 != 0)
+		{
+			freeR02.Add(r02);
+		};
+
+		r02 = curManVec[nf] = manVec[nf];
+
+		manVec[nf] = 0;
+
+		if (r02 != 0)
+		{
+			mtb->data2 = ((u16*)&r02->rsp)+1;
+			mtb->len2 = sz;
+		};
+	}
+	else if (data[1] == 0)
+	{
+		if (r02 != 0)
+		{
+			freeR02.Add(r02);
+		};
+
+		r02 = curManVec[nf] = manVec[nf];
+
+		manVec[nf] = 0;
+
+		if (r02 != 0)
+		{
+			u16 len = data[2];
+
+			if (len > sz) len = sz;
+
+			mtb->data2 = ((u16*)&r02->rsp)+1;
+			mtb->len2 = len;
+		};
+	}
+	else if (sz >= data[1] && r02 != 0)
+	{
+		u16 maxlen = sz - data[1];
+		u16 len = data[2];
+
+		if (len > maxlen) len = maxlen;
+
+		mtb->data2 = (u16*)&r02->rsp + data[1]+1;
+		mtb->len2 = len;
+	};
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+//static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
+//{
+//	__packed struct Req { u16 rw; u16 off; u16 len; };
+//
+////	__packed struct Hdr { u32 cnt; u16 gain; u16 st; u16 len; u16 delay; };
+//
+////	__packed struct St { Hdr h;  };
+//
+//	struct Rsp { u16 rw; u16 data[128]; };
+//	
+//	static Rsp rsp; 
+//
+////	Hdr hdr;
+//
+////	static u16 max = 0;
+//
+//
+//
+//	Req &req = *((Req*)data);
+//
+//	//off 0...2005
+//
+////return false;
+//	if (buf == 0 || len < 3 || len > 4 || mtb == 0) return false;
+//
+//	byte nf = ((req.rw>>4)-3)&3;
+//	byte nr = req.rw & 7;
+//
+//	curRcv[nf] = nr;
+//
+//	u16 c = 0;
+//	u16 off = 0;
+//	//u16 diglen = 500;
+//	//u16 hdrlen = (sizeof(hdr)/2);
+//
+//	u16 sz = 6 + sampleLen[nf]*4;
+//
+//	//manVec[nf].len = 29;
+//	//manVec[nf].gain = 0;
+//	//manVec[nf].st = 10;
+//	//manVec[nf].delay = 0;
+//
+//	if (req.off == 0)
+//	{
+//		curVec[nf] = (curVec[nf] + 1) & 1;
+//	};
+//
+//	if (len == 1)
+//	{
+//		off = 0;
+//		c = sz;
+//	}
+//	else
+//	{
+//		off = req.off;
+//		c = req.len;
+//
+//		if (off > maxOff)
+//		{
+//			maxOff = off;
+//		};
+//
+//		if (off >= sz)
+//		{
+//			c = 0; off = 0;
+//		}
+//		else if ((off+c) > sz)
+//		{
+//			c = sz-off;
+//		};
+//	};
+//
+//
+//	mtb->data1 = (u16*)&rsp;
+//	mtb->len1 = c+1;
+//	mtb->data2 = 0;
+//	mtb->len2 = 0;
+//
+//	u16 *p = rsp.data;
+//
+//	u16 *s = (u16*)&manVec[nf*2 + ((curVec[nf] + 1) & 1)];
+//
+//	s += off + 1;
+//
+//	while (c > 0)
+//	{
+//		*p++ = *s++; c--;
+//	};
+//
+//	rsp.rw = req.rw;
+//
+//	return true;
+//}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static bool RequestMan_60(u16 *data, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
+	struct Rsp { u16 rw; };
+	
+	static Rsp rsp; 
 
-	rspMan60.rw = manReqWord|0x60;
-	rspMan60.cnt = fireCounter;
- 
-	mtb->data = (u16*)&rspMan60;
-	mtb->len = sizeof(rspMan60)/2;
+	if (buf == 0 || len == 0 || len > 4 || mtb == 0) return false;
+
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	if (len < 3)
+	{
+		rspMan60.rw = manReqWord|0x60;
+		rspMan60.cnt = fireCounter;
+
+		mtb->data1 = (u16*)&rspMan60;
+		mtb->len1 = sizeof(rspMan60)/2;
+	}
+	else if (data[1] == 0)
+	{
+		rspMan60.rw = manReqWord|0x60;
+		rspMan60.cnt = fireCounter;
+
+		u16 maxlen = sizeof(rspMan60)/2;
+		u16 len = data[2]+1;
+
+		if (len > maxlen) len = maxlen;
+
+		mtb->data1 = (u16*)&rspMan60;
+		mtb->len1 = len;
+	}
+	else
+	{
+		rsp.rw = manReqWord|0x60;
+
+		mtb->data1 = (u16*)&rsp;
+		mtb->len1 = sizeof(rsp)/2;
+
+		if (sizeof(rspMan60)/2 > data[1])
+		{
+			u16 maxlen = sizeof(rspMan60)/2 - data[1] - 1;
+			u16 len = data[2];
+
+			if (len > maxlen) len = maxlen;
+
+			mtb->data2 = ((u16*)&rspMan60) + data[1]+1;
+			mtb->len2 = len;
+		};
+	};
 
 	return true;
 }
@@ -1810,8 +1980,10 @@ static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x80;
 
-	mtb->data = manTrmData;
-	mtb->len = 1;
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
 
 	return true;
 }
@@ -1881,8 +2053,10 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x90;
 
-	mtb->data = manTrmData;
-	mtb->len = 1;
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
 
 	return true;
 }
@@ -1897,8 +2071,10 @@ static bool RequestMan_F0(u16 *data, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0xF0;
 
-	mtb->data = manTrmData;
-	mtb->len = 1;
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
 
 	return true;
 }
@@ -2455,6 +2631,7 @@ static void MainMode()
 				if (r02->q.crcOK)
 				{
 					bool crc = false;
+					bool free = true;
 
 					u16 rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
 					
@@ -2467,25 +2644,21 @@ static void MainMode()
 
 					//u16 *p = (u16*)&r02->rsp;
 
+					u16 n = fireType;
+
 					if (curRcv[fireType] == (rcv-1))
 					{
-						//CopyData(&r02->rsp, &manVec[fireType*2 + curVec[fireType]], r02->rb.len);
-
-						//while(!CheckCopyDataComplete()) {};
-
-						u32 *s = (u32*)&r02->rsp;
-						u32 *d = (u32*)&manVec[fireType*2 + curVec[fireType]];
-						u16 c = (r02->rb.len+3)/4;
-
-						while (c-- > 0)
+						if (manVec[n] != 0)
 						{
-							*d++ = *s++;
+							freeR02.Add(manVec[n]);
 						};
 
-						manVec[fireType].cnt = fireCounter;
+						manVec[n] = r02;
+
+						free = false;
 					};
 
-					CreateMemReq02(*r02, crc);
+					CreateMemReq02(*r02, crc, free);
 
 					//freeR02.Add(r02);
 
@@ -3000,7 +3173,7 @@ int main()
 //	combf.Connect(3, 6250000, 0);
 	comrcv.Connect(2, 6250000, 0);
 
-	FlashRcv();
+//	FlashRcv();
 
 	InitRcv();
 

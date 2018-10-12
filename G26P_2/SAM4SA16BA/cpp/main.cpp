@@ -52,7 +52,7 @@ static R02* curManVec[3] = {0};
 static RspMan60 rspMan60;
 
 static byte curRcv[3] = {0};
-static byte curVec[3] = {0};
+//static byte curVec[3] = {0};
 
 static List<R02> freeR02;
 
@@ -1513,7 +1513,22 @@ static void CallBackMemReq02(REQ *q)
 	
 		if (r != 0)
 		{
-			freeR02.Add(r); 
+			byte nf = ((r->rsp.rw>>4)-3)&3;
+			byte nr = r->rsp.rw & 7;
+
+			if (curRcv[nf] == nr)
+			{
+				if (manVec[nf] != 0)
+				{
+					freeR02.Add(manVec[nf]);
+				};
+
+				manVec[nf] = r;
+			}
+			else
+			{
+				freeR02.Add(r); 
+			};
 		};
 	};
 }
@@ -1524,7 +1539,7 @@ static void CallBackMemReq02(REQ *q)
 
 //RMEM reqMem;
 
-static void CreateMemReq02(R02 &r, bool crc, bool free)
+static void CreateMemReq02(R02 &r, bool crc)
 {
 	//R02 &r = *r02;
 
@@ -1542,12 +1557,12 @@ static void CreateMemReq02(R02 &r, bool crc, bool free)
 	q.preTimeOut = MS2RT(1);
 	q.postTimeOut = 1;
 	q.ready = false;
-	q.ptr = (free) ? &r : 0;
+	q.ptr = &r;
 	q.checkCRC = false;
 	q.updateCRC = crc;
 	
 	wb.data = &r.rsp;
-	wb.len = r.rb.len-2;// l*4*2 + sizeof(req) - sizeof(req.data);
+	wb.len = r.rb.len - ((crc) ? 2 : 0);// l*4*2 + sizeof(req) - sizeof(req.data);
 
 	//rb.data = &rsp;
 	//rb.maxLen = sizeof(rsp);
@@ -1739,7 +1754,6 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 
 //	u16 n = nf*2 + (curVec[nf] & 1);
 
-	R02 *r02 = curManVec[nf];
 
 	//if (r02 == 0)
 	//{
@@ -1753,19 +1767,25 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 
 	u16 sz = 6 + /*r02->rsp.len*4*/ sampleLen[nf]*4;
 
+	R02 *r02 = curManVec[nf];
+
 	if (len < 3)
 	{
 		if (r02 != 0)
 		{
 			freeR02.Add(r02);
+
+			curManVec[nf] = 0;
 		};
+		
+		r02 = manVec[nf];
 
-		r02 = curManVec[nf] = manVec[nf];
-
-		manVec[nf] = 0;
-
-		if (r02 != 0)
+		if (r02 != 0 && r02->rsp.rw == req.rw)
 		{
+			curManVec[nf] = r02;
+
+			manVec[nf] = 0;
+
 			mtb->data2 = ((u16*)&r02->rsp)+1;
 			mtb->len2 = sz;
 		};
@@ -1775,14 +1795,18 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 		if (r02 != 0)
 		{
 			freeR02.Add(r02);
+
+			curManVec[nf] = 0;
 		};
 
-		r02 = curManVec[nf] = manVec[nf];
+		r02 = manVec[nf];
 
-		manVec[nf] = 0;
-
-		if (r02 != 0)
+		if (r02 != 0 && r02->rsp.rw == req.rw)
 		{
+			curManVec[nf] = r02;
+
+			manVec[nf] = 0;
+
 			u16 len = data[2];
 
 			if (len > sz) len = sz;
@@ -2631,7 +2655,7 @@ static void MainMode()
 				if (r02->q.crcOK)
 				{
 					bool crc = false;
-					bool free = true;
+					//bool free = true;
 
 					u16 rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
 					
@@ -2644,21 +2668,21 @@ static void MainMode()
 
 					//u16 *p = (u16*)&r02->rsp;
 
-					u16 n = fireType;
+					//u16 n = fireType;
 
-					if (curRcv[fireType] == (rcv-1))
-					{
-						if (manVec[n] != 0)
-						{
-							freeR02.Add(manVec[n]);
-						};
+					//if (curRcv[fireType] == (rcv-1))
+					//{
+					//	if (manVec[n] != 0)
+					//	{
+					//		freeR02.Add(manVec[n]);
+					//	};
 
-						manVec[n] = r02;
+					//	manVec[n] = r02;
 
-						free = false;
-					};
+					//	free = false;
+					//};
 
-					CreateMemReq02(*r02, crc, free);
+					CreateMemReq02(*r02, crc);
 
 					//freeR02.Add(r02);
 

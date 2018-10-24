@@ -1,5 +1,5 @@
-#pragma O3
-#pragma Otime
+//#pragma O0
+//#pragma Otime
 
 //#include <stdio.h>
 //#include <conio.h>
@@ -24,7 +24,7 @@
 #define __DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 #define __DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 
-#define __PCR (SMD(1) | SP(8) | RSTEN(1) | TSTEN(1))
+#define __PCR (SMD(1) | SP(9) | RSTEN(1) | TSTEN(1))
 
 #define __FDR (STEP(0x3FF) | DM(1))
 
@@ -88,7 +88,7 @@ bool ComPort::Connect(byte port, dword speed, byte parity)
 	((u32*)&HW::SCU_CLK->CGATCLR0)[cb.gateIndex*3] = cb.gateMask;
 	((u32*)&HW::SCU_RESET->PRCLR0)[cb.gateIndex*3] = cb.gateMask;
 
-	_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(3);
+	_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
 
 	_SU->FDR = _FDR;
 	_SU->BRG = __BRG;
@@ -192,31 +192,46 @@ void ComPort::EnableTransmit(void* src, word count)
 {
 #ifndef WIN32
 
+	if (count == 0) return;
+
+//	count -= 1;
+
 	HW::P5->BTGL(9);
 
-	_SU->CCR = _ModeRegister|TBIEN;	// Disable transmit and receive
+	__disable_irq();
 
 	_pm->BSET(_pinRTS);
 
-	_SU->KSCFG = BPNOM|NOMCFG(0);
+//	_SU->KSCFG = BPNOM|NOMCFG(0);
 
-	_SU->PSCR = TBIF|TSIF|TFF;
+//	_SU->PSCR = TBIF|TSIF|TFF;
 
-	_SU->INPR = 0;
 
 	_dma->DMACFGREG = 1;
 
-	_chdma->CTLL = DINC(2)|SINC(2)|TT_FC(1)|DEST_MSIZE(0)|SRC_MSIZE(0);
-	_chdma->CTLH = BLOCK_TS(count);
+	_chdma->CTLL = DINC(2)|SINC(0)|TT_FC(1)|DEST_MSIZE(0)|SRC_MSIZE(0);
 
-	_chdma->SAR = (u32)src;
 	_chdma->DAR = (u32)&_SU->TBUF[0];
 	_chdma->CFGL = HS_SEL_SRC;
 	_chdma->CFGH = PROTCTL(1)|DEST_PER(_dlr);
 
+	_SU->CCR = _ModeRegister|TBIEN;
+	_SU->INPR = 0;
+
+	if ((_SU->PSR & TBIF) == 0)
+	{
+		_SU->FMR = USIC_CH_FMR_SIO0_Msk;
+	};
+
+//	_SU->CCR = _SU->CCR & ~0xF | _ModeRegister;	// Disable transmit and receive
+
+//	_SU->TBUF[1] = *((byte*)src);
+
+	_chdma->CTLH = BLOCK_TS(count);
+	_chdma->SAR = (u32)src;
 	_dma->CHENREG = _dmaChMask|(_dmaChMask<<8);
 
-	_SU->FMR = USIC_CH_FMR_SIO0_Msk;
+	__enable_irq();
 
 
 /*	_SU->CCR = 0;	// Disable transmit and receive
@@ -270,6 +285,7 @@ void ComPort::DisableTransmit()
 {
 #ifndef WIN32
 	
+//	_dma->CLEARBLOCK = _dmaChMask;
 	_SU->CCR = _ModeRegister;
 	_pm->BCLR(_pinRTS);
 //	_SU->KSCFG = BPNOM|NOMCFG(3);
@@ -346,14 +362,13 @@ bool ComPort::Update()
 	switch (_status485)
 	{
 		case WRITEING:
-
+			
 			if (IsTransmited())
 			{
 				_pWriteBuffer->transmited = true;
 				_status485 = READ_END;
 
 				DisableTransmit();
-//				DisableReceive();
 
 				r = false;
 			};

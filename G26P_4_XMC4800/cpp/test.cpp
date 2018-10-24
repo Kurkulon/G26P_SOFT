@@ -10,16 +10,20 @@
 //#pragma O3
 //#pragma Otime
 
-byte buf[4000];
+byte buf[4000] = {0x55,0,0,0,0,0,0,0,0,0x55};
 
 static ComPort com1;
 
 u32 fps = 0;
 u32 f = 0;
 
-ComPort::WriteBuffer wb = { .transmited = false, .len = 10, .data = buf };
+ComPort::WriteBuffer wb = { .transmited = false, .len = 0, .data = buf };
 
 static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len);
+static void Init_UART_DMA();
+static void Send_UART_DMA();
+
+static byte len = 1;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -38,7 +42,7 @@ static void UpdateMisc()
 	{
 		CALL( UpdateEMAC();	);
 		CALL( UpdateTraps();	);
-		CALL( if (tm.Check(1000)) {	HW::P5->BTGL(8); fps = f; f = 0; com1.Write(&wb); } else { com1.Update(); };	);
+		CALL( if (tm.Check(1000)) {	HW::P5->BTGL(8); fps = f; f = 0; wb.len += 1; com1.Write(&wb); } else { com1.Update(); };	);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -102,6 +106,166 @@ static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void Init_UART_DMA()
+{
+	T_HW::GPDMA_Type &dma = *HW::DMA0;
+	T_HW::GPDMA_CH_Type &ch = HW::DMA0->CH[1];
+	T_HW::USIC_CH_Type	&uart = *HW::USIC1_CH0; 
+
+	HW::SCU_CLK->CGATCLR2 = SCU_CLK_CGATCLR2_DMA0_Msk;
+	HW::SCU_RESET->PRCLR2 = SCU_RESET_PRCLR2_DMA0RS_Msk;
+
+	dma.DMACFGREG = 1;
+
+	ch.SAR = 0;
+
+	ch.DAR = (u32)&HW::USIC1_CH0->TBUF[0];
+	ch.LLP = 0;
+	ch.CTLH = 0;
+	ch.CTLL = TT_FC(1)|SRC_MSIZE(2)|DEST_MSIZE(0)|SINC(0)|DINC(2)|INT_EN;
+
+	ch.CFGL = GPDMA0_CH_CFGL_HS_SEL_SRC_Msk;
+
+	ch.SGR = 0;
+	ch.DSR = 0;
+
+	ch.CFGH = PROTCTL(1)|DEST_PER(1);
+          
+	//XMC_DMA_EnableRequestLine(dma, line, peripheral);
+	HW::DLR->SRSEL0 = SRSEL0(10,11,0,0,0,0,0,0);
+	HW::DLR->LNEN |= 3;
+
+    ch.CFGL &= (uint32_t)~GPDMA0_CH_CFGL_HS_SEL_DST_Msk;
+
+	HW::DMA0->CLEARTFR = 2;
+	HW::DMA0->CLEARBLOCK = 2;
+	HW::DMA0->CLEARSRCTRAN = 2;
+	HW::DMA0->CLEARDSTTRAN = 2;
+	HW::DMA0->CLEARERR = 2;
+
+
+	HW::DMA0->MASKBLOCK = 0x101<<1;
+
+//	XMC_DMA_CH_EnableEvent(XMC_DMA0, 2, XMC_DMA_CH_EVENT_BLOCK_TRANSFER_COMPLETE);
+
+	/* Enable DMA event handling */
+//	NVIC_SetPriority(GPDMA0_0_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 63, 0));
+//	NVIC_EnableIRQ(GPDMA0_0_IRQn);
+
+
+	HW::SCU_CLK->CGATCLR1 = SCU_CLK_CGATCLR1_USIC1_Msk;
+	HW::SCU_RESET->PRCLR1 = SCU_RESET_PRCLR1_USIC1RS_Msk;
+
+	uart.KSCFG = (USIC_CH_KSCFG_MODEN_Msk | USIC_CH_KSCFG_BPMODEN_Msk);
+
+	while ((uart.KSCFG & USIC_CH_KSCFG_MODEN_Msk) == 0U)
+	{
+	/* Wait till the channel is enabled */
+	}
+
+
+	uart.FDR = STEP(970)|DM(1);
+
+	uart.BRG = DCTQ(15)/*|PDIV(0x3A)*/;
+
+	uart.PCR_ASCMode = SMD(1)|SP(9)|RSTEN(1)|TSTEN(1);
+
+	uart.SCTR = PDL(1)|TRM(1)|FLE(7)|WLE(7);
+
+	/* Enable transfer buffer */
+	uart.TCSR = (0x1UL << USIC_CH_TCSR_TDEN_Pos) | USIC_CH_TCSR_TDSSM_Msk;
+
+	/* Clear protocol status */
+	uart.PSCR = 0xFFFFFFFFUL;
+
+	/* Set parity settings */
+	uart.CCR = 0;
+
+	uart.DX0CR = (uint32_t)(uart.DX0CR & (~(USIC_CH_DX0CR_INSW_Msk|USIC_CH_DX0CR_DSEN_Msk)));
+
+	uart.CCR |= TBIEN;
+	uart.PCR_ASCMode |= 0;
+
+	uart.INPR = 0;
+
+	uart.CCR = uart.CCR & (~USIC_CH_CCR_MODE_Msk) | 2;
+
+	uart.FMR = USIC_CH_FMR_SIO0_Msk;
+
+	//ch.CTLH = len++;
+
+	//ch.SAR = (u32)buf;
+
+	//dma.CHENREG = (uint32_t)(0x101UL << 1);   
+
+	//HW::DLR->SRSEL0 = SRSEL0(10,11,0,0,0,0,0,0);
+	//HW::DLR->SRSEL1 = SRSEL1(0,0,0,0);
+	//HW::DLR->LNEN |= 3;
+
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Send_UART_DMA()
+{
+	T_HW::GPDMA_Type &dma = *HW::DMA0;
+	T_HW::GPDMA_CH_Type &ch = HW::DMA0->CH[1];
+	T_HW::USIC_CH_Type	&uart = *HW::USIC1_CH0; 
+
+	ch.DAR = (u32)&HW::USIC1_CH0->TBUF[0];
+	ch.CTLL = TT_FC(1)|SRC_MSIZE(2)|DEST_MSIZE(0)|SINC(0)|DINC(2)|INT_EN;
+
+	ch.CFGL = GPDMA0_CH_CFGL_HS_SEL_SRC_Msk;
+
+	ch.CFGH = PROTCTL(1)|DEST_PER(1);
+          
+    ch.CFGL &= (uint32_t)~GPDMA0_CH_CFGL_HS_SEL_DST_Msk;
+
+
+	HW::SCU_CLK->CGATCLR1 = SCU_CLK_CGATCLR1_USIC1_Msk;
+	HW::SCU_RESET->PRCLR1 = SCU_RESET_PRCLR1_USIC1RS_Msk;
+
+	uart.KSCFG = (USIC_CH_KSCFG_MODEN_Msk | USIC_CH_KSCFG_BPMODEN_Msk);
+
+	while ((uart.KSCFG & USIC_CH_KSCFG_MODEN_Msk) == 0U)
+	{
+	/* Wait till the channel is enabled */
+	}
+
+	uart.FDR = STEP(970)|DM(1);
+
+	uart.BRG = DCTQ(15)/*|PDIV(0x3A)*/;
+
+	uart.PCR_ASCMode = SMD(1)|SP(9)|RSTEN(1)|TSTEN(1);
+
+	uart.SCTR = PDL(1)|TRM(1)|FLE(7)|WLE(7);
+
+	uart.TCSR = (0x1UL << USIC_CH_TCSR_TDEN_Pos) | USIC_CH_TCSR_TDSSM_Msk;
+
+	uart.PSCR = 0xFFFFFFFFUL;
+
+	uart.CCR = 0;
+
+	uart.DX0CR = (uint32_t)(uart.DX0CR & (~(USIC_CH_DX0CR_INSW_Msk|USIC_CH_DX0CR_DSEN_Msk)));
+
+	uart.CCR |= TBIEN;
+	uart.PCR_ASCMode |= 0;
+
+	uart.INPR = 0;
+
+	uart.CCR = uart.CCR & (~USIC_CH_CCR_MODE_Msk) | 2;
+
+//	uart.FMR = USIC_CH_FMR_SIO0_Msk;
+
+
+	ch.CTLH = len++;
+
+	ch.SAR = (u32)buf;
+
+	dma.CHENREG = (uint32_t)(0x101UL << 1);   
+}
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 	com1.Connect(1, 6250000, 0);
@@ -113,6 +277,8 @@ int main()
 	InitTraps();
 
 	FLASH_Init();
+
+//	Init_UART_DMA();
 
 	while(1)
 	{

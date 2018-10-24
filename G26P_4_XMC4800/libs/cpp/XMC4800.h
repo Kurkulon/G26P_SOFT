@@ -5240,7 +5240,7 @@ namespace T_HW
 #define LOCK_B          	(0x20000UL)               /*!< GPDMA1_CH CFGL: LOCK_B (Bitfield-Mask: 0x01)                */
 #define DST_HS_POL      	(0x40000UL)               /*!< GPDMA1_CH CFGL: DST_HS_POL (Bitfield-Mask: 0x01)            */
 #define SRC_HS_POL      	(0x80000UL)               /*!< GPDMA1_CH CFGL: SRC_HS_POL (Bitfield-Mask: 0x01)            */
-#define MAX_ABRST(v)		(((v)&3)<<7)                    /*!< GPDMA1_CH CFGL: MAX_ABRST (Bit 20)                          */
+#define MAX_ABRST(v)		(((v)&0x3FF)<<20)                    /*!< GPDMA1_CH CFGL: MAX_ABRST (Bit 20)                          */
 #define RELOAD_SRC			(0x40000000UL)            /*!< GPDMA0_CH0_1 CFGL: RELOAD_SRC (Bitfield-Mask: 0x01)         */
 #define RELOAD_DST			(0x80000000UL)            /*!< GPDMA0_CH0_1 CFGL: RELOAD_DST (Bitfield-Mask: 0x01)         */
 

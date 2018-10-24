@@ -79,7 +79,7 @@ class ComPort
 	u32					_dmaChMask;
 	u32					_dlr;
 
-	bool IsTransmited() { return AND(_SU->PSR, TBIF|TSIF|TFF); }
+	bool IsTransmited() { return (_SU->PSR & BUSY) == 0 && !(_dma->CHENREG & _dmaChMask); }
 
 #else
 

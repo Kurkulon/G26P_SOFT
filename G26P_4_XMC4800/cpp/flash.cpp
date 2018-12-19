@@ -4195,7 +4195,7 @@ static void SaveVars()
 	static DSCTWI dsc;
 
 	static byte i = 0;
-	static RTM32 tm;
+//	static RTM32 tm;
 
 	switch (i)
 	{

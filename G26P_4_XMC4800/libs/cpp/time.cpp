@@ -1,7 +1,7 @@
 #include "time.h"
 #include "core.h"
 
-#include <stdlib.h>
+//#include <stdlib.h>
 
 #ifdef WIN32
 
@@ -331,14 +331,25 @@ void RTT_Init()
 {
 	using namespace HW;
 
-	//PMC->PCER0 = PID::TC0_M;
-	//TC0->C0.CMR = 4; // SCLK
-	//TC0->C0.CCR = 5;
+	T_HW::CCU4_GLOBAL_Type * const module = HW::CCU43;
+	T_HW::CCU4_CC4_Type * const slice = HW::CCU43_CC43;
 
-	//RTT->MR = 0x40001;
-//	RTT->MR = 0x100000;
+	HW::SCU_CLK->CLKSET = SCU_CLK_CLKSET_CCUCEN_Msk;
 
+	HW::SCU_CLK->CGATCLR1 = SCU_CLK_CGATCLR1_CCU43_Msk;
 
+	HW::SCU_RESET->PRCLR1 = SCU_RESET_PRCLR1_CCU43RS_Msk;
+
+	module->GCTRL = 0;
+
+	module->GIDLC = CCU4_GIDLC_CS3I_Msk|CCU4_GIDLC_SPRB_Msk;
+
+	slice->PRS = 0xFFFF;
+	slice->PSC = 11; //20.48us
+
+	module->GCSS = CCU4_GCSS_S3SE_Msk;  
+
+	slice->TCSET = 1;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

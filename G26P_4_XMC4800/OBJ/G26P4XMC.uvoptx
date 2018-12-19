@@ -118,7 +118,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name>€рF</Name>
+          <Name>Ап:</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -150,18 +150,18 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>369</LineNumber>
+          <LineNumber>348</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134231546</Address>
+          <Address>134218630</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\libs\cpp\ComPort.cpp</Filename>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\cpp\test.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26P4XMC\cpp/ComPort.cpp\369</Expression>
+          <Expression>\\G26P4XMC\cpp/test.cpp\348</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -355,6 +355,14 @@
       <pSingCmds></pSingCmds>
       <pMultCmds></pMultCmds>
       <SystemViewers>
+        <Entry>
+          <Name>System Viewer\CCU43</Name>
+          <WinId>35902</WinId>
+        </Entry>
+        <Entry>
+          <Name>System Viewer\CCU43_CC40</Name>
+          <WinId>35901</WinId>
+        </Entry>
         <Entry>
           <Name>System Viewer\GPDMA0</Name>
           <WinId>35904</WinId>

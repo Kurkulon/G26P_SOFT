@@ -266,11 +266,70 @@ static void Send_UART_DMA()
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void Init_Timer()
+{
+	T_HW::CCU4_GLOBAL_Type *module = HW::CCU42;
+	T_HW::CCU4_CC4_Type *slice = HW::CCU42_CC40;
+
+	u32 gctrl;
+
+//	module->GCTRL = 0;
+
+	HW::SCU_CLK->CLKSET = SCU_CLK_CLKSET_CCUCEN_Msk;
+
+	HW::SCU_CLK->CGATCLR0 = SCU_CLK_CGATCLR0_CCU42_Msk;
+
+//	HW::SCU_RESET->PRSET0 = SCU_RESET_PRSET0_CCU40RS_Msk;
+	HW::SCU_RESET->PRCLR0 = SCU_RESET_PRCLR0_CCU42RS_Msk;
+
+//	module->GIDLC |= CCU4_GIDLC_SPRB_Msk;
+
+	//gctrl = module->GCTRL;
+	//gctrl &= ~CCU4_GCTRL_MSDE_Msk;
+	//gctrl |= 0 << CCU4_GCTRL_MSDE_Pos;
+
+	module->GCTRL = 0;
+
+	module->GIDLC = CCU4_GIDLC_CS0I_Msk|CCU4_GIDLC_SPRB_Msk;
+
+	/* Program the timer mode */
+//	slice->TC = 0;
+	/* Enable the timer concatenation */
+//	slice->CMC = 0 << CCU4_CC4_CMC_TCE_Pos;
+	/* Program initial prescaler divider value */
+//	slice->PSC = 0;
+	/* Program the dither compare value */
+//	slice->DITS = 0;
+	/* Program timer output passive level */
+//	slice->PSL = 0;
+	/* Program floating prescaler compare value */
+//	slice->FPCS = 0;
+	
+	slice->PRS = 65500U;
+
+	slice->CRS = 32000U;
+
+	module->GCSS = CCU4_GCSS_S0SE_Msk;  
+
+	//slice->CMC = 0;//(slice->CMC & ~CCU4_CC4_CMC_STRTS_Msk) | (0 << CCU4_CC4_CMC_STRTS_Pos);
+
+	//slice->TC |= CCU4_CC4_TC_STRM_Msk;
+
+	slice->TCSET = 1;
+
+	//HW::SCU_GENERAL->CCUCON |= SCU_GENERAL_CCUCON_GSC42_Msk;
+
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
-	com1.Connect(1, 6250000, 0);
+	com1.Connect(0, 115200, 0);
 
 	InitTimer();
+
+	RTT_Init();
 
 	InitEMAC();
 
@@ -280,11 +339,15 @@ int main()
 
 //	Init_UART_DMA();
 
+	Init_Timer();
+
 	while(1)
 	{
 		f++;
 
 		Update();
+
+		buf[0] = HW::CCU40_CC40->TIMER;
 	};
 
 }

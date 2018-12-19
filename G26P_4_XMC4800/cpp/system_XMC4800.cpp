@@ -504,7 +504,7 @@ void SystemInit(void)
 
 	P2->PPS = 0;
 
-	P3->ModePin0(	I2DPU	);
+	P3->ModePin0(	A3PP	);
 	P3->ModePin1(	I2DPU	);
 	P3->ModePin2(	I2DPU	);
 	P3->ModePin3(	I2DPU	);
@@ -529,7 +529,7 @@ void SystemInit(void)
 	P4->ModePin3(	I2DPU	);
 	P4->ModePin4(	I2DPU	);
 	P4->ModePin5(	I2DPU	);
-	P4->ModePin6(	I2DPU	);
+	P4->ModePin6(	A3PP	);
 	P4->ModePin7(	I2DPU	);
 
 	P4->PPS = 0;

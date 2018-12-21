@@ -108,8 +108,8 @@ inline word GetMillisecondsLow()
 #endif
 }
 
-#define US2RT(x) ((x*25+256)/512)
-#define MS2RT(x) ((x*3125+32)/64)
+#define US2RT(x) (((x)*25+256)/512)
+#define MS2RT(x) (((x)*3125+32)/64)
 
 inline u16 GetRTT() { return HW::CCU43_CC43->TIMER; }
 
@@ -145,7 +145,7 @@ struct RTM16
 	u16 pt;
 
 	RTM16() : pt(0) {}
-	bool Check(u16 v) { if ((GetRTT() - pt) >= v) { pt = GetRTT(); return true; } else { return false; }; }
+	bool Check(u16 v) { if ((u16)(GetRTT() - pt) >= v) { pt = GetRTT(); return true; } else { return false; }; }
 	void Reset() { pt = GetRTT(); }
 };
 

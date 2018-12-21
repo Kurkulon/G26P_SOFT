@@ -10,7 +10,7 @@
 //#pragma O3
 //#pragma Otime
 
-byte buf[4000] = {0x55,0,0,0,0,0,0,0,0,0x55};
+byte buf[5000] = {0x55,0,0,0,0,0,0,0,0,0x55};
 
 static ComPort com1;
 
@@ -18,6 +18,7 @@ u32 fps = 0;
 u32 f = 0;
 
 ComPort::WriteBuffer wb = { .transmited = false, .len = 0, .data = buf };
+ComPort::ReadBuffer rb = { .recieved = false, .len = 0, .maxLen = sizeof(buf), .data = buf };
 
 static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len);
 static void Init_UART_DMA();
@@ -325,7 +326,10 @@ static void Init_Timer()
 
 int main()
 {
-	com1.Connect(0, 115200, 0);
+	RTM16 rtm;
+
+//	com1.Connect(0, 115200, 0);
+	com1.Connect(0, 6250000, 0);
 
 	InitTimer();
 
@@ -341,11 +345,27 @@ int main()
 
 	Init_Timer();
 
+	buf[4999] = 0x55;
+
+	wb.len = 5000;
+
 	while(1)
 	{
 		f++;
 
-		Update();
+//		Update();
+
+		if(!com1.Update())
+		{
+			//com1.Read(&rb, -1, US2RT(500));
+//			com1.Write(&wb);
+		};
+
+		if (rtm.Check(MS2RT(100)))
+		{	
+			HW::P5->BTGL(8); fps = f; f = 0; 
+			com1.Write(&wb);
+		};
 
 		buf[0] = HW::CCU40_CC40->TIMER;
 	};

@@ -31,6 +31,16 @@ class ComPort
 		void*	data;
 	};
 
+	struct LLI
+	{
+		volatile void*	SAR;
+		volatile void*	DAR;
+		LLI*	LLP;
+		u32		CTLL;
+		u32		CTLH;
+		u32		DSTAT;
+	};
+
   protected:
 
 	enum STATUS485 { WRITEING = 0, WAIT_READ = 1, READING = 2, READ_END = 3 };
@@ -40,13 +50,14 @@ class ComPort
 	struct ComBase
 	{
 		bool used;
+		const byte dsel;
 		T_HW::USIC_CH_Type* const HU;
 		T_HW::PORT_Type* const pm;
 		const dword pinRTS;
-		u32	gateIndex;
-		u32 gateMask;
+		const u32	gateIndex;
+		const u32 gateMask;
 		T_HW::GPDMA_Type* const dma;
-		u32 dmaCh;
+		const u32 dmaCh;
 	};
 
 	static ComBase _bases[2];
@@ -60,6 +71,8 @@ class ComPort
 	ReadBuffer		*_pReadBuffer;
 	WriteBuffer		*_pWriteBuffer;
 
+	LLI				_lli[4];
+
 
 
 #ifndef WIN32
@@ -71,8 +84,10 @@ class ComPort
 	T_HW::PORT_Type		*_pm;
 	dword				_startTransmitTime;
 	dword				_startReceiveTime;
-	dword				_preReadTimeout;
+//	dword				_preReadTimeout;
 	dword				_postReadTimeout;
+	dword				_readTimeout;
+
 	T_HW::USIC_CH_Type 	*_SU;
 	T_HW::GPDMA_Type*	_dma;
 	T_HW::GPDMA_CH_Type* _chdma;

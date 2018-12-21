@@ -5221,6 +5221,8 @@ namespace T_HW
 #define DEST_MSIZE(v)		(((v)&7)<<11)        	/*!< GPDMA1_CH CTLL: DEST_MSIZE (Bit 11)                         */
 #define SRC_MSIZE(v)		(((v)&7)<<14)        	/*!< GPDMA1_CH CTLL: SRC_MSIZE (Bit 14)                          */
 #define TT_FC(v)			(((v)&7)<<20)        	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
+#define LLP_DST_EN		    (0x8000000UL)             /*!< GPDMA0_CH0_1 CTLL: LLP_DST_EN (Bitfield-Mask: 0x01)         */
+#define LLP_SRC_EN			(0x10000000UL)            /*!< GPDMA0_CH0_1 CTLL: LLP_SRC_EN (Bitfield-Mask: 0x01)         */
 
 /* -------------------------------  GPDMA1_CH_CTLH  ------------------------------- */
 

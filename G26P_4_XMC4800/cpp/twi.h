@@ -7,11 +7,13 @@
 
 struct DSCTWI
 {
-	u32		MMR;
-	u32		IADR;
-	u32		CWGR;
-	void*	data;
-	u16		len;
+	void*	wdata;
+	void*	rdata;
+	void*	wdata2;
+	u16		wlen;
+	u16		wlen2;
+	u16		rlen;
+	byte	adr;
 	bool	ready;
 };
 
@@ -20,8 +22,7 @@ struct TWI
 //	u32		smask;
 	DSCTWI* dsc;
 
-//	T_HW::S_TWI *hw;
-	u32		*hw;
+	T_HW::USIC_CH_Type *hw;
 
 	TWI() : hw(0), dsc(0) {}
 

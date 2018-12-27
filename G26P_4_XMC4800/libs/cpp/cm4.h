@@ -96,6 +96,12 @@ namespace CM4_TYPES
 		IO8  IP[240];                 /*!< Offset: 0x300 (R/W)  Interrupt Priority Register (8Bit wide) */
 		u32 RESERVED5[644];
 		O32 STIR;                    /*!< Offset: 0xE00 ( /W)  Software Trigger Interrupt Register     */
+
+		void SET_ER(u32 n) { ISER[n>>5] = 1 << (n&31); }
+		void CLR_ER(u32 n) { ICER[n>>5] = 1 << (n&31); }
+		void SET_PR(u32 n) { ISPR[n>>5] = 1 << (n&31); }
+		void CLR_PR(u32 n) { ICPR[n>>5] = 1 << (n&31); }
+
 	}  NVIC_T;
 
 //brief  Structure type to access the System Control Block (SCB).

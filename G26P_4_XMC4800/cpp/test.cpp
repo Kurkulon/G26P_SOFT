@@ -4,6 +4,7 @@
 #include "flash.h"
 #include "time.h"
 #include "ComPort.h"
+#include "twi.h"
 
 #pragma diag_suppress 546,550,177
 
@@ -13,6 +14,7 @@
 byte buf[5000] = {0x55,0,0,0,0,0,0,0,0,0x55};
 
 static ComPort com1;
+static TWI twi;
 
 u32 fps = 0;
 u32 f = 0;
@@ -324,12 +326,22 @@ static void Init_Timer()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void Init_TWI()
+{
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 	RTM16 rtm;
 
 //	com1.Connect(0, 115200, 0);
 	com1.Connect(0, 6250000, 0);
+
+	__breakpoint(0);
+
+	twi.Init(0);
 
 	InitTimer();
 

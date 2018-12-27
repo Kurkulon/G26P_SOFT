@@ -4143,11 +4143,11 @@ static void LoadVars()
 
 	static DSCTWI dsc;
 
-	dsc.MMR = 0x500200;
-	dsc.IADR = 0;
-	dsc.CWGR = 0x7575;
-	dsc.data = buf;
-	dsc.len = sizeof(buf);
+	//dsc.MMR = 0x500200;
+	//dsc.IADR = 0;
+	//dsc.CWGR = 0x7575;
+	//dsc.data = buf;
+	//dsc.len = sizeof(buf);
 
 	if (twi.Read(&dsc))
 	{
@@ -4236,11 +4236,11 @@ static void SaveVars()
 
 		case 1:
 
-			dsc.MMR = 0x500200;
-			dsc.IADR = 0;
-			dsc.CWGR = 0x07575; 
-			dsc.data = buf;
-			dsc.len = sizeof(buf);
+			//dsc.MMR = 0x500200;
+			//dsc.IADR = 0;
+			//dsc.CWGR = 0x07575; 
+			//dsc.data = buf;
+			//dsc.len = sizeof(buf);
 
 			for (byte j = 0; j < 2; j++)
 			{
@@ -4269,11 +4269,11 @@ static void SaveVars()
 
 				u32 adr = sa+sizeof(si)*nvv.index;
 
-				dsc.MMR = 0x500200;
-				dsc.IADR = adr;
-				dsc.CWGR = 0x7575;
-				dsc.data = buf;
-				dsc.len = sizeof(si);
+				//dsc.MMR = 0x500200;
+				//dsc.IADR = adr;
+				//dsc.CWGR = 0x7575;
+				//dsc.data = buf;
+				//dsc.len = sizeof(si);
 
 				p.CRC.w = 0xFFFF;
 				p.WriteArrayB(&si, sizeof(si.f));
@@ -4286,11 +4286,11 @@ static void SaveVars()
 
 		case 4:
 
-			dsc.MMR = 0x500200;
-			dsc.IADR = sa;
-			dsc.CWGR = 0x7575;
-			dsc.data = nvsi;
-			dsc.len = sizeof(nvsi);
+			//dsc.MMR = 0x500200;
+			//dsc.IADR = sa;
+			//dsc.CWGR = 0x7575;
+			//dsc.data = nvsi;
+			//dsc.len = sizeof(nvsi);
 
 			i = (twi.Write(&dsc)) ? 2 : 0;
 
@@ -4316,11 +4316,11 @@ static void LoadSessions()
 
 		u32 adr = sa+sizeof(si)*i;
 
-		dsc.MMR = 0x500200;
-		dsc.IADR = adr;
-		dsc.CWGR = 0x7575;
-		dsc.data = &si;
-		dsc.len = sizeof(si);
+		//dsc.MMR = 0x500200;
+		//dsc.IADR = adr;
+		//dsc.CWGR = 0x7575;
+		//dsc.data = &si;
+		//dsc.len = sizeof(si);
 
 		if (twi.Read(&dsc))
 		{
@@ -4342,11 +4342,11 @@ static void LoadSessions()
 			si.f.stop_rtc.time = 0;
 			si.crc = GetCRC16(&si, sizeof(si.f));
 
-			dsc.MMR = 0x500200;
-			dsc.IADR = adr;
-			dsc.CWGR = 0x07575; 
-			dsc.data = &si;
-			dsc.len = sizeof(si);
+			//dsc.MMR = 0x500200;
+			//dsc.IADR = adr;
+			//dsc.CWGR = 0x07575; 
+			//dsc.data = &si;
+			//dsc.len = sizeof(si);
 
 			twi.Write(&dsc);
 

@@ -296,7 +296,7 @@ static __irq void Timer_Handler (void)
 						}
 						else
 						{
-							timeBDC.mon = 0;
+							timeBDC.mon = 1;
 
 							timeBDC.year += 1;
 						};
@@ -314,6 +314,11 @@ static __irq void Timer_Handler (void)
 void InitTimer()
 {
 	enum { freq = 1000 };
+
+	timeBDC.day = 1;
+	timeBDC.mon = 1;
+	timeBDC.year = 2000;
+	timeBDC.time = 0;
 
 	CM4::SysTick->LOAD = (MCK+freq/2)/freq;
 	VectorTableInt[15] = Timer_Handler;

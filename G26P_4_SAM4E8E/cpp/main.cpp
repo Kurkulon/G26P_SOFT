@@ -29,6 +29,9 @@ u32 readsFlash = 0;
 static const u16 manReqWord = 0x3B00;
 static const u16 manReqMask = 0xFF00;
 
+static u16 numDevice = 111;
+static u16 verDevice = 0x101;
+
 
 static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
 
@@ -54,8 +57,8 @@ static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
 	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0;
-	manTrmData[1] = 0xEC00;
-	manTrmData[2] = 0xEC00;
+	manTrmData[1] = numDevice;
+	manTrmData[2] = verDevice;
 
 	mtb->data = manTrmData;
 	mtb->len = 3;
@@ -88,7 +91,7 @@ static bool ReqMan20(u16 *buf, u16 len, MTB* mtb)
 	Rsp &rsp = *((Rsp*)&manTrmData);
 
 	rsp.rw = (manReqWord & manReqMask) | 0x20;
-	rsp.device = 0xEC00;  
+	rsp.device = 0xAA00;  
 	rsp.session = FLASH_Session_Get();	  
 	rsp.rcvVec =  FLASH_Vectors_Recieved_Get();
 	rsp.rejVec = FLASH_Vectors_Rejected_Get();

@@ -631,7 +631,7 @@ static __irq void WaitManCmdSync()
 {
 	u32 t = ManTmr.CV;
 
-	HW::PIOB->SODR = 1<<13;
+//	HW::PIOB->SODR = 1<<13;
 
 	ManTmr.CCR = CLKEN|SWTRG;
 
@@ -664,7 +664,7 @@ static __irq void WaitManCmdSync()
 
 	t = HW::PIOE->ISR;
 
-	HW::PIOB->CODR = 1<<13;
+//	HW::PIOB->CODR = 1<<13;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

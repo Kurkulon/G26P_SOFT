@@ -154,9 +154,16 @@ extern "C" void SystemInit (void)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void ManDisable()	{ HW::PIOA->ODSR = 0x05;} // 0101  
-inline void ManOne()		{ HW::PIOA->ODSR = 0x05; __nop(); __nop(); __nop(); HW::PIOA->ODSR = 0x03;} // 1100
-inline void ManZero()		{ HW::PIOA->ODSR = 0x05; __nop(); __nop(); __nop(); HW::PIOA->ODSR = 0x0C;} // 0011
+#define L1 2
+#define H1 1
+#define L2 8
+#define H2 4
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline void ManDisable()	{ HW::PIOA->ODSR = H1|H2;} // 0110  
+inline void ManOne()		{ HW::PIOA->SODR = H1; HW::PIOA->CODR = L2; __nop(); __nop(); __nop(); HW::PIOA->ODSR = L1|H1; } // 1100
+inline void ManZero()		{ HW::PIOA->SODR = H2; HW::PIOA->CODR = L1; __nop(); __nop(); __nop(); HW::PIOA->ODSR = L2|H2; } // 0011
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

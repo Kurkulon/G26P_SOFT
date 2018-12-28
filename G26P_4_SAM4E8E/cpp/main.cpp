@@ -7,7 +7,7 @@
 #include "flash.h"
 #include "vector.h"
 #include "list.h"
-//#include "fram.h"
+#include "main.h"
 
 #pragma diag_suppress 546,550,177
 
@@ -29,8 +29,6 @@ u32 readsFlash = 0;
 static const u16 manReqWord = 0x3B00;
 static const u16 manReqMask = 0xFF00;
 
-static u16 numDevice = 111;
-static u16 verDevice = 0x101;
 
 
 static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
@@ -57,8 +55,8 @@ static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
 	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0;
-	manTrmData[1] = numDevice;
-	manTrmData[2] = verDevice;
+	manTrmData[1] = GetNumDevice();
+	manTrmData[2] = VERSION;
 
 	mtb->data = manTrmData;
 	mtb->len = 3;
@@ -182,9 +180,10 @@ static bool ReqMan80(u16 *buf, u16 len, MTB* mtb)
 	mtb->data = manTrmData;
 	mtb->len = 1;
 
-	if (buf[1] == 2)
+	switch (buf[1])
 	{
-		SetTrmBoudRate(buf[2]-1);
+		case 1:		SetNumDevice(buf[2]);		break;
+		case 2:		SetTrmBoudRate(buf[2]-1);	break;
 	};
 
 	return true;

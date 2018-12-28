@@ -2,8 +2,8 @@
 #include "time.h"
 #include "hardware.h"
 
-#pragma O3
-#pragma Otime
+//#pragma O3
+//#pragma Otime
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -71,11 +71,16 @@ static void InitVectorTable()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#define L1 1
+#define H1 2
+#define L2 8
+#define H2 4
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void ManDisable()	{ HW::PIOB->ODSR = 0x06;} // 0110  
-inline void ManOne()		{ HW::PIOB->ODSR = 0x06; __nop(); __nop(); __nop(); HW::PIOB->ODSR = 0x03;} // 1100
-inline void ManZero()		{ HW::PIOB->ODSR = 0x06; __nop(); __nop(); __nop(); HW::PIOB->ODSR = 0x0C;} // 0011
+inline void ManDisable()	{ HW::PIOB->ODSR = H1|H2;} // 0110  
+inline void ManOne()		{ HW::PIOB->SODR = H1; HW::PIOB->CODR = L2; __nop(); __nop(); __nop(); HW::PIOB->ODSR = L1|H1; } // 1100
+inline void ManZero()		{ HW::PIOB->SODR = H2; HW::PIOB->CODR = L1; __nop(); __nop(); __nop(); HW::PIOB->ODSR = L2|H2; } // 0011
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -626,7 +631,7 @@ static __irq void WaitManCmdSync()
 {
 	u32 t = ManTmr.CV;
 
-//	HW::PIOB->SODR = 1<<10;
+	HW::PIOB->SODR = 1<<13;
 
 	ManTmr.CCR = CLKEN|SWTRG;
 
@@ -659,7 +664,7 @@ static __irq void WaitManCmdSync()
 
 	t = HW::PIOE->ISR;
 
-//	HW::PIOB->CODR = 1<<10;
+	HW::PIOB->CODR = 1<<13;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

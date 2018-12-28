@@ -210,6 +210,9 @@ extern void NAND_Idle();
 extern void NAND_FullErase();
 //extern void NAND_NextSession();
 
+extern void SetNumDevice(u16 num);
+extern u16 GetNumDevice();
+
 extern void StartSendSession();
 extern FileDsc* GetSessionInfo(u16 session, u64 adr);
 

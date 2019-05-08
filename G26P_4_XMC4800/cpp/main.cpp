@@ -486,36 +486,20 @@ int main()
 
 	while(1)
 	{
-//		HW::PIOB->SODR = 1<<13;
+		HW::P2->BSET(6);
 
 		Update();		
 
-		//static byte i = 0;
-
-		//#define CALL(p) case (__LINE__-S): p; break;
-
-		//enum C { S = (__LINE__+3) };
-		//switch(i++)
-		//{
-		//	CALL( UpdateEMAC();		);
-		//	CALL( UpdateMisc();		);
-		//};
-
-		//i = (i > (__LINE__-S-3)) ? 0 : i;
-
-		//#undef CALL
-
-	
-//		HW::PIOB->CODR = 1<<13;
+		HW::P2->BCLR(6);
 
 		RTC rtc;
 
 		GetTime(&rtc);
 
-		if (rtc.msec > 999)
-		{
-			__breakpoint(0);
-		};
+		//if (rtc.msec > 999)
+		//{
+		//	__breakpoint(0);
+		//};
 		
 		f++;
 

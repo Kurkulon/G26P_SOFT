@@ -26,7 +26,11 @@
 // SDA_2_1 P3.5 
 // SCL_2_1 P4.2 P3.6
 
+//ARM_IHP VectorTableInt[16] __attribute__((at(0x1FFE8000)));;
+//ARM_IHP VectorTableExt[112] __attribute__((at(0x1FFE8040)));;
 
+//ARM_IHP * const VectorTableInt = (ARM_IHP*)0x1FFE8000;
+//ARM_IHP * const VectorTableExt = (ARM_IHP*)0x1FFE8040;
 
 /*******************************************************************************
  * MACROS
@@ -35,7 +39,7 @@
 
 #define CHIPID_LOC ((uint8_t *)0x20000000UL)
 
-#define PMU_FLASH_WS          (0x4U)
+#define PMU_FLASH_WS          (0x3U)
 
 #define FOSCREF               (2500000U)
 
@@ -67,7 +71,7 @@
 //    <i> Defines external crystal frequency
 //    <i> Default: 8MHz
 */
-#define OSCHP_FREQUENCY (12000000U)
+#define OSCHP_FREQUENCY (25000000U)
 
 /* USB PLL settings, fUSBPLL = 200MHz */
 /* Note: Implicit divider of 2, fUSBPLLVCO = 400MHz */
@@ -83,8 +87,12 @@
 #define USB_PDIV (3U)
 #define USB_NDIV (99U)
 
+#elif OSCHP_FREQUENCY == 25000000U
+#define USB_PDIV (4U)
+#define USB_NDIV (79U)
+
 #else
-#error "External crystal frequency not supported"
+//#error "External crystal frequency not supported"
 
 #endif
 
@@ -136,7 +144,13 @@
 	#define PLL_NDIV (35U)
 	#define PLL_K2DIV (0U)
 
+	#elif OSCHP_FREQUENCY == 25000000U
+	#define PLL_PDIV (1U)
+	#define PLL_NDIV (7U)
+	#define PLL_K2DIV (0U)
+
 	#else
+
 	#error "External crystal frequency not supported"
 
 	#endif
@@ -372,70 +386,69 @@ static void delay(uint32_t cycles)
  *******************************************************************************/
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void IntDummyHandler()
-{
-	__breakpoint(0);
-}
+//static __irq void IntDummyHandler()
+//{
+//	__breakpoint(0);
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void HardFaultHandler()
-{
-	__breakpoint(0);
-}
+//static __irq void HardFaultHandler()
+//{
+//	__breakpoint(0);
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void MemFaultHandler()
-{
-	__breakpoint(0);
-}
+//static __irq void MemFaultHandler()
+//{
+//	__breakpoint(0);
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void BusFaultHandler()
-{
-	__breakpoint(0);
-}
+//static __irq void BusFaultHandler()
+//{
+//	__breakpoint(0);
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void UsageFaultHandler()
-{
-	__breakpoint(0);
-}
+//static __irq void UsageFaultHandler()
+//{
+//	__breakpoint(0);
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void ExtDummyHandler()
-{
-	__breakpoint(0);
-}
+//static __irq void ExtDummyHandler()
+//{
+//	__breakpoint(0);
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void InitVectorTable()
-{
-	for (u32 i = 0; i < ArraySize(VectorTableInt); i++)
-	{
-		VectorTableInt[i] = IntDummyHandler;
-	};
-
-	for (u32 i = 0; i < ArraySize(VectorTableExt); i++)
-	{
-		VectorTableExt[i] = ExtDummyHandler;
-	};
-
-	VectorTableInt[3] = HardFaultHandler;
-	VectorTableInt[4] = MemFaultHandler;
-	VectorTableInt[5] = BusFaultHandler;
-	VectorTableInt[6] = UsageFaultHandler;
-
-	CM4::SCB->VTOR = (u32)VectorTableInt;
-}
+//static void InitVectorTable()
+//{
+//	for (u32 i = 0; i < ArraySize(VectorTableInt); i++)
+//	{
+//		VectorTableInt[i] = IntDummyHandler;
+//	};
+//
+//	for (u32 i = 0; i < ArraySize(VectorTableExt); i++)
+//	{
+//		VectorTableExt[i] = ExtDummyHandler;
+//	};
+//
+//	VectorTableInt[3] = HardFaultHandler;
+//	VectorTableInt[4] = MemFaultHandler;
+//	VectorTableInt[5] = BusFaultHandler;
+//	VectorTableInt[6] = UsageFaultHandler;
+//
+//	CM4::SCB->VTOR = (u32)VectorTableInt;
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -450,17 +463,17 @@ void SystemInit(void)
 	SystemCoreSetup();
 	MyCoreClockSetup();
 
-	P0->ModePin0(	I2DPU	);
-	P0->ModePin1(	A2OD	);
+	P0->ModePin0(	G_PP	);
+	P0->ModePin1(	G_PP	);
 	P0->ModePin2(	HWIO1	);
 	P0->ModePin3(	HWIO1	);
 	P0->ModePin4(	HWIO1	);
 	P0->ModePin5(	HWIO1	);
-	P0->ModePin6(	G_PP	);
+	P0->ModePin6(	I2DPU	);
 	P0->ModePin7(	HWIO1	);
 	P0->ModePin8(	HWIO1	);
 	P0->ModePin9(	G_PP	);
-	P0->ModePin10(	A2OD	);
+	P0->ModePin10(	G_PP	);
 	P0->ModePin11(	G_PP	);
 	P0->ModePin12(	G_PP	);
 
@@ -472,12 +485,12 @@ void SystemInit(void)
 	P1->ModePin3(	G_PP	);
 	P1->ModePin4(	I2DPU	);
 	P1->ModePin5(	A2PP	);
-	P1->ModePin6(	I2DPU	);
-	P1->ModePin7(	I2DPU	);
+	P1->ModePin6(	G_PP	);
+	P1->ModePin7(	G_PP	);
 	P1->ModePin8(	G_PP	);
 	P1->ModePin9(	G_PP	);
 	P1->ModePin10(	G_PP	);
-	P1->ModePin11(	I2DPU	);
+	P1->ModePin11(	G_PP	);
 	P1->ModePin12(	G_PP	);
 	P1->ModePin13(	G_PP	);
 	P1->ModePin14(	HWIO1	);
@@ -485,79 +498,69 @@ void SystemInit(void)
 
 	P1->PPS = 0;
 
+	P1->SET(0xF|(0xF<<6));
+
 	P2->ModePin0(	HWIO0	);
 	P2->ModePin1(	I2DPU	);
 	P2->ModePin2(	I2DPU	);
 	P2->ModePin3(	I2DPU	);
 	P2->ModePin4(	I2DPU	);
 	P2->ModePin5(	A1PP	);
-	P2->ModePin6(	I2DPU	);
+	P2->ModePin6(	G_PP	);
 	P2->ModePin7(	A1PP	);
 	P2->ModePin8(	A1PP	);
 	P2->ModePin9(	A1PP	);
-	P2->ModePin10(	I2DPU	);
-	P2->ModePin11(	I2DPU	);
-	P2->ModePin12(	I2DPU	);
-	P2->ModePin13(	I2DPU	);
+	P2->ModePin10(	G_PP	);
 	P2->ModePin14(	A2PP	);
 	P2->ModePin15(	I2DPU	);
 
 	P2->PPS = 0;
 
-	P3->ModePin0(	A3PP	);
-	P3->ModePin1(	I2DPU	);
+	P3->ModePin0(	HWIO0	);
+	P3->ModePin1(	HWIO0	);
 	P3->ModePin2(	I2DPU	);
-	P3->ModePin3(	I2DPU	);
+	P3->ModePin3(	G_PP	);
 	P3->ModePin4(	I2DPU	);
-	P3->ModePin5(	I2DPU	);
-	P3->ModePin6(	I2DPU	);
-	P3->ModePin7(	I2DPU	);
-	P3->ModePin8(	I2DPU	);
-	P3->ModePin9(	I2DPU	);
-	P3->ModePin10(	I2DPU	);
-	P3->ModePin11(	I2DPU	);
-	P3->ModePin12(	I2DPU	);
-	P3->ModePin13(	I2DPU	);
-	P3->ModePin14(	I2DPU	);
-	P3->ModePin15(	I2DPU	);
+	P3->ModePin5(	HWIO1	);
+	P3->ModePin6(	HWIO1	);
 
 	P3->PPS = 0;
 
-	P4->ModePin0(	I2DPU	);
-	P4->ModePin1(	I2DPU	);
-	P4->ModePin2(	I2DPU	);
-	P4->ModePin3(	I2DPU	);
-	P4->ModePin4(	I2DPU	);
-	P4->ModePin5(	I2DPU	);
-	P4->ModePin6(	A3PP	);
-	P4->ModePin7(	I2DPU	);
+	P4->ModePin0(	G_PP	);
+	P4->ModePin1(	G_PP	);
 
 	P4->PPS = 0;
 
-	P5->ModePin0(	I2DPU	);
-	P5->ModePin1(	I2DPU	);
-	P5->ModePin2(	I2DPU	);
-	P5->ModePin3(	I2DPU	);
-	P5->ModePin4(	I2DPU	);
-	P5->ModePin5(	I2DPU	);
-	P5->ModePin6(	I2DPU	);
-	P5->ModePin7(	I2DPU	);
-	P5->ModePin8(	G_PP	);
-	P5->ModePin9(	G_PP	);
-	P5->ModePin10(	I2DPU	);
-	P5->ModePin11(	I2DPU	);
+	P5->ModePin0(	HWIO0	);
+	P5->ModePin1(	G_PP	);
+	P5->ModePin2(	A1OD	);
+	P5->ModePin7(	G_PP	);
 
 	P5->PPS = 0;
 
-	P6->ModePin0(	I2DPU	);
-	P6->ModePin1(	I2DPU	);
-	P6->ModePin2(	I2DPU	);
-	P6->ModePin3(	I2DPU	);
-	P6->ModePin4(	I2DPU	);
-	P6->ModePin5(	I2DPU	);
-	P6->ModePin6(	I2DPU	);
+	P14->ModePin0(	I0DNP	);
+	P14->ModePin1(	I2DPU	);
+	P14->ModePin2(	I2DPU	);
+	P14->ModePin3(	I2DPU	);
+	P14->ModePin4(	I2DPU	);
+	P14->ModePin5(	I2DPU	);
+	P14->ModePin6(	I2DPU	);
+	P14->ModePin7(	I2DPU	);
+	P14->ModePin8(	I2DPU	);
+	P14->ModePin9(	I2DPU	);
+	P14->ModePin12(	I2DPU	);
+	P14->ModePin13(	I2DPU	);
+	P14->ModePin14(	I2DPU	);
+	P14->ModePin15(	I2DPU	);
 
-	P6->PPS = 0;
+	P14->PPS = 0;
+
+	P15->ModePin2(	I2DPU	);
+	P15->ModePin3(	I2DPU	);
+	P15->ModePin8(	I2DPU	);
+	P15->ModePin9(	I2DPU	);
+
+	P15->PPS = 0;
 
 	HW::SCU_CLK->CGATCLR2 = SCU_CLK_CGATCLR2_DMA0_Msk;
 	HW::SCU_CLK->CGATCLR2 = SCU_CLK_CGATCLR2_DMA1_Msk;
@@ -580,7 +583,7 @@ void SystemCoreSetup(void)
   __disable_irq();
 //  SCB->VTOR = (uint32_t)(&__Vectors);
   
-  InitVectorTable();
+ // InitVectorTable();  
 
   __DSB();
   __enable_irq();

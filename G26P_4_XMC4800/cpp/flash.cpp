@@ -144,7 +144,7 @@ byte savesSessionsCount = 0;
 
 byte eraseSessionsCount = 0;
 
-static TWI	twi;
+//static TWI	twi;
 
 static void SaveVars();
 
@@ -4137,7 +4137,7 @@ bool FLASH_Reset()
 
 static void LoadVars()
 {
-	twi.Init(1);
+	Init_TWI();
 
 	PointerCRC p(buf);
 
@@ -4149,9 +4149,9 @@ static void LoadVars()
 	//dsc.data = buf;
 	//dsc.len = sizeof(buf);
 
-	if (twi.Read(&dsc))
+	if (Read_TWI(&dsc))
 	{
-		while (twi.Update());
+		while (!Update_TWI());
 	};
 
 //	bool c = false;
@@ -4249,13 +4249,13 @@ static void SaveVars()
 				p.WriteW(p.CRC.w);
 			};
 
-			i = (twi.Write(&dsc)) ? (i+1) : 0;
+			i = (Write_TWI(&dsc)) ? (i+1) : 0;
 
 			break;
 
 		case 2:
 
-			if (!twi.Update())
+			if (!Update_TWI())
 			{
 				i = 0;
 			};
@@ -4279,7 +4279,7 @@ static void SaveVars()
 				p.WriteArrayB(&si, sizeof(si.f));
 				p.WriteW(p.CRC.w);
 
-				i = (twi.Write(&dsc)) ? 2 : 0;
+				i = (Write_TWI(&dsc)) ? 2 : 0;
 			};
 
 			break;
@@ -4292,7 +4292,7 @@ static void SaveVars()
 			//dsc.data = nvsi;
 			//dsc.len = sizeof(nvsi);
 
-			i = (twi.Write(&dsc)) ? 2 : 0;
+			i = (Write_TWI(&dsc)) ? 2 : 0;
 
 			break;
 	};
@@ -4322,9 +4322,9 @@ static void LoadSessions()
 		//dsc.data = &si;
 		//dsc.len = sizeof(si);
 
-		if (twi.Read(&dsc))
+		if (Read_TWI(&dsc))
 		{
-			while (twi.Update());
+			while (Update_TWI());
 		};
 
 		if (GetCRC16(&si, sizeof(si)) != 0)
@@ -4348,9 +4348,9 @@ static void LoadSessions()
 			//dsc.data = &si;
 			//dsc.len = sizeof(si);
 
-			twi.Write(&dsc);
+			Write_TWI(&dsc);
 
-			while (twi.Update());
+			while (Update_TWI());
 		};
 	};
 }

@@ -57,206 +57,35 @@
 
 #define __BRG (DCTQ(24))
 
-#define __DX0CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(1) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
-#define __DX1CR (DSEL(1) | INSW(0) | DFEN(0) | DSEN(1) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+#define __DX0CR (DSEL(1) | INSW(0) | DFEN(0) | DSEN(1) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+#define __DX1CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(1) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 #define __DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 #define __DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 
-#define __PCR (STIM | SMD(1) | SP(9) | RSTEN(1) | TSTEN(1))
+#define __PCR (STIM)
 
 #define __FDR (STEP(0x3FF) | DM(1))
 
 #define __TCSR (TDEN(1)|TDSSM(1))
 
-#define TWI1 (HW::USIC1_CH1)
+#define TWI (HW::USIC2_CH0)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static byte *twi_wrPtr = 0;
-static byte *twi_rdPtr = 0;
-static u16 twi_wrCount = 0;
-static u16 twi_rdCount = 0;
-static byte *twi_wrPtr2 = 0;
-static u16 twi_wrCount2 = 0;
-static byte twi_adr = 0;
-static DSCTWI* twi_dsc = 0;
+static byte *wrPtr = 0;
+static byte *rdPtr = 0;
+static u16 wrCount = 0;
+static u16 rdCount = 0;
+static byte *wrPtr2 = 0;
+static u16 wrCount2 = 0;
+static byte adr = 0;
+static DSCTWI* dsc = 0;
+static DSCTWI* lastDsc = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool TWI::Init(byte num)
+bool Update_TWI()
 {
-	using namespace HW;
-
-	//num &= 1;
-
-	hw = TWI1;
-
-
-	SCU_CLK->CGATCLR1 = SCU_CLK_CGATSTAT1_USIC1_Msk;
-	SCU_RESET->PRCLR1 = SCU_RESET_PRCLR1_USIC1RS_Msk;
-
-	hw->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
-
-	hw->SCTR = __SCTR;
-
-	hw->FDR = (1024 - (((MCK + 400000/2) / 400000 + 8) / 16)) | DM(1);
-	hw->BRG = __BRG;
-    
-	hw->TCSR = __TCSR;
-
-	hw->PSCR = ~0;
-
-	hw->CCR = 0;
-
-	hw->DX0CR = __DX0CR;
-	hw->DX1CR = __DX1CR;
-
-	hw->CCR = __CCR;
-
- 	P0->ModePin13(A2OD);
-	P3->ModePin15(A2OD);
-
-//	hw->PCR_IICMode = __PCR;
-
-  //XMC_I2C_CH_MasterStart(XMC_I2C1_CH0, IO_EXPANDER_ADDRESS, XMC_I2C_CH_CMD_WRITE);
-
-	while(hw->TCSR & USIC_CH_TCSR_TDV_Msk);
-
-	hw->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
-
-	hw->TBUF[0] = 0xA0 | TDF_MASTER_START | 1;
-
-
-	while((hw->PSR_IICMode & USIC_CH_PSR_IICMode_ACK_Msk) == 0U);
-  
-	hw->PSCR = USIC_CH_PSR_IICMode_ACK_Msk;
-
-  //XMC_I2C_CH_MasterTransmit(XMC_I2C1_CH0, IO_DIR);
-
-	while(hw->TCSR & USIC_CH_TCSR_TDV_Msk);
-
-	hw->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
-
-	hw->TBUF[0] = 0 | TDF_MASTER_RECEIVE_NACK;
-
-
-	while((hw->PSR_IICMode & USIC_CH_PSR_IICMode_ACK_Msk) == 0U);
-  
-	hw->PSCR = USIC_CH_PSR_IICMode_ACK_Msk;
-
-
- // XMC_I2C_CH_MasterTransmit(XMC_I2C1_CH0, 0xffU);
-
-
-	while(hw->TCSR & USIC_CH_TCSR_TDV_Msk);
-
-	hw->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
-
-	hw->TBUF[0] = 0xFF | TDF_MASTER_RECEIVE_NACK;
-
-
-	while((hw->PSR_IICMode & USIC_CH_PSR_IICMode_ACK_Msk) == 0U);
-  
-	hw->PSCR = USIC_CH_PSR_IICMode_ACK_Msk;
-
-
-
-
-
-
-
-	//VectorTableExt[USIC1_1_IRQn] = Handler0;
-	//CM4::NVIC->CLR_PR(USIC1_1_IRQn);
-	//CM4::NVIC->SET_ER(USIC1_1_IRQn);
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool TWI::Write(DSCTWI *d)
-{
-	using namespace HW;
-
-	if (twi_dsc != 0 || d == 0) { return false; };
-	if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
-
-//	smask = 1<<13;
-	dsc = d;
-
-	VectorTableExt[USIC1_1_IRQn] = Handler0;
-	CM4::NVIC->CLR_PR(USIC1_1_IRQn);
-	CM4::NVIC->SET_ER(USIC1_1_IRQn);
-
-	dsc->ready = false;
-
-	twi_wrPtr = (byte*)twi_dsc->wdata;	
-	twi_rdPtr = (byte*)twi_dsc->rdata;	
-	twi_wrPtr2 = (byte*)twi_dsc->wdata2;	
-	twi_wrCount = twi_dsc->wlen;
-	twi_wrCount2 = twi_dsc->wlen2;
-	twi_rdCount = twi_dsc->rlen;
-	twi_adr = twi_dsc->adr;
-
-	if (twi_wrPtr2 == 0) twi_wrCount2 = 0;
-
-	__disable_irq();
-
-	while(hw->TCSR & USIC_CH_TCSR_TDV_Msk);
-
-	hw->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
-
-	hw->TBUF[0] = TDF_MASTER_START | (twi_dsc->adr << 1) | ((twi_wrCount == 0) ? 1 : 0);
-
-	hw->PCR_IICMode |= ACKIEN;
-
-	__enable_irq();
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool TWI::Read(DSCTWI *d)
-{
-	//if (dsc != 0 || d == 0) { return false; };
-	//if (d->data == 0 || d->len == 0) { return false; }
-
-	//dsc = d;
-
-	//__enable_irq();
-
-	//dsc->ready = false;
-	//hw->CR = 0x80;
-	//hw->MMR = dsc->MMR|0x1000;
-	//hw->IADR = dsc->IADR;
-	//hw->CWGR = dsc->CWGR;
-	//hw->CR = 0x24;
-
-	//hw->PDC.RPR = dsc->data;
-	//
-	//if (dsc->len > 1)
-	//{
-	//	hw->PDC.RCR = dsc->len-1;
-	//	hw->IER = 1<<12;
-	//	hw->PDC.PTCR = 0x201;
-	//	hw->CR = 0x1;
-	//}
-	//else
-	//{
-	//	hw->IER = 2;
-	//	hw->CR = 0x3;
-	//};
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool TWI::Update()
-{
-	return false;
-
 	if (dsc == 0)
 	{ 
 		return false; 
@@ -279,57 +108,243 @@ bool TWI::Update()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__irq void TWI::Handler0()
+static __irq void Handler_TWI()
 {
 	using namespace HW;
 
-//	__breakpoint(0);
+	HW::P5->BSET(7);
 
-	u32 a = TWI1->PSR_IICMode;
+	u32 a = TWI->PSR_IICMode;
 
-	if(a & NACK) // NACK
+	if(a & ACK)
 	{
-		//TWI1->PDC.PTCR = 0x202;;
-		//TWI1->IDR = 3<<12;
-	}
-	else if(a & ACK) // ENDTX
-	{
-		if (twi_wrCount > 0)
+		if (wrCount > 0)
 		{
-			TWI1->TBUF[0] = TDF_MASTER_SEND | *twi_wrPtr++;
+			TWI->TBUF[0] = TDF_MASTER_SEND | *wrPtr++;
 
-			twi_wrCount--;
+			wrCount--;
 
-			if(twi_wrCount == 0 && twi_wrCount2 != 0)
+			if(wrCount == 0 && wrCount2 != 0)
 			{
-				twi_wrPtr = twi_wrPtr2;
-				twi_wrCount = twi_wrCount2;
-				twi_wrCount2 = 0;
+				wrPtr = wrPtr2;
+				wrCount = wrCount2;
+				wrCount2 = 0;
 			};
 		}
-		else if (twi_rdCount > 0)
+		else if (rdCount > 0)
 		{
-			TWI1->TBUF[0] = TDF_MASTER_RESTART | (twi_adr << 1) | 1;
+			if(a & (SCR|RSCR))
+			{
+				TWI->TBUF[0] = TDF_MASTER_RECEIVE_ACK; 
+			}
+			else if (a & (RIF|AIF))
+			{
+				*rdPtr++ = TWI->RBUF; // receive data
+
+				rdCount--;
+
+				TWI->TBUF[0] = (rdCount > 0) ? TDF_MASTER_RECEIVE_ACK : TDF_MASTER_STOP; 
+			}
+			else
+			{
+				TWI->TBUF[0] = TDF_MASTER_RESTART | (adr << 1) | 1;
+			};
 		}
 		else
 		{
-			TWI1->TBUF[0] = TDF_MASTER_STOP;
+			TWI->TBUF[0] = TDF_MASTER_STOP;
+		};
+	}
+	else //if(a & (PCR|NACK)) // STOP
+	{
+		dsc->ready = true;
+
+		if (dsc->next != 0)
+		{
+			dsc = dsc->next;
+
+			dsc->ready = false;
+
+			wrPtr = (byte*)dsc->wdata;	
+			rdPtr = (byte*)dsc->rdata;	
+			wrPtr2 = (byte*)dsc->wdata2;	
+			wrCount = dsc->wlen;
+			wrCount2 = dsc->wlen2;
+			rdCount = dsc->rlen;
+			adr = dsc->adr;
+
+			TWI->PCR_IICMode |= ACKIEN|RIEN|AIEN|PCRIEN;
+
+			TWI->TBUF[0] = TDF_MASTER_START | (dsc->adr << 1) | ((wrCount == 0) ? 1 : 0);
 		};
 
-		TWI1->PSCR = ACK;
-	}
-	else if(a & (1<<12)) // ENDRX
-	{
-		//TWI1->PDC.PTCR = 2;
-		//TWI1->IDR = 1<<12;
-		//TWI1->CR = 2;
-		//TWI1->IER = 2;
-	}
-	else if(a & 2) // RXRDY
-	{
-		//TWI1->IDR = 2;
-		//*(T_HW::AT91_REG*)TWI1->PDC.RPR = TWI1->RHR;
+		lastDsc = dsc = 0;
+
+//		TWI->PSCR = PCR|NACK;
 	};
+
+	TWI->PSCR = a;
+
+	HW::P5->BCLR(7);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool Write_TWI(DSCTWI *d)
+{
+	using namespace HW;
+
+	if (dsc != 0 || d == 0) { return false; };
+	if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
+
+	lastDsc = dsc = d;
+
+	VectorTableExt[USIC2_0_IRQn] = Handler_TWI;
+	CM4::NVIC->CLR_PR(USIC2_0_IRQn);
+	CM4::NVIC->SET_ER(USIC2_0_IRQn);
+
+	d->ready = false;
+
+	wrPtr = (byte*)dsc->wdata;	
+	rdPtr = (byte*)dsc->rdata;	
+	wrPtr2 = (byte*)dsc->wdata2;	
+	wrCount = dsc->wlen;
+	wrCount2 = dsc->wlen2;
+	rdCount = dsc->rlen;
+	adr = dsc->adr;
+
+	if (wrPtr2 == 0) wrCount2 = 0;
+
+	__disable_irq();
+
+	while(TWI->TCSR & USIC_CH_TCSR_TDV_Msk);
+
+	TWI->PSCR = ~0;//RIF|AIF|TBIF|ACK|NACK|PCR;
+
+	TWI->TBUF[0] = TDF_MASTER_START | (dsc->adr << 1) | ((wrCount == 0) ? 1 : 0);
+
+	TWI->PCR_IICMode |= ACKIEN|RIEN|AIEN|PCRIEN;
+
+	__enable_irq();
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool AddRequest_TWI(DSCTWI *d)
+{
+	d->next = 0;
+
+	__disable_irq();
+
+	if (lastDsc == 0)
+	{
+		lastDsc = d;
+
+		__enable_irq();
+
+		return Write_TWI(d);
+	}
+	else
+	{
+
+		lastDsc->next = d;
+		lastDsc = d;
+
+		__enable_irq();
+	};
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void Init_TWI()
+{
+	using namespace HW;
+
+	//num &= 1;
+
+
+	SCU_CLK->CGATCLR1 = CGAT1_USIC2;
+	SCU_RESET->PRCLR1 = PR1_USIC2;
+
+	TWI->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+
+	TWI->SCTR = __SCTR;
+
+	TWI->FDR = (1024 - (((MCK + 400000/2) / 400000 + 8) / 16)) | DM(1);
+	TWI->BRG = __BRG;
+    
+	TWI->TCSR = __TCSR;
+
+	TWI->PSCR = ~0;
+
+	TWI->CCR = 0;
+
+	TWI->DX0CR = __DX0CR;
+	TWI->DX1CR = __DX1CR;
+
+	TWI->CCR = __CCR;
+
+ 	P5->ModePin0(A1OD);
+	P5->ModePin2(A1OD);
+
+	TWI->PCR_IICMode = __PCR;
+
+  //XMC_I2C_CH_MasterStart(XMC_I2C1_CH0, IO_EXPANDER_ADDRESS, XMC_I2C_CH_CMD_WRITE);
+
+/*	while(TWI->TCSR & USIC_CH_TCSR_TDV_Msk);
+
+	TWI->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
+
+	TWI->TBUF[0] = 0xA0 | TDF_MASTER_START | 1;
+
+
+	while((TWI->PSR_IICMode & USIC_CH_PSR_IICMode_ACK_Msk) == 0U);
+  
+	TWI->PSCR = USIC_CH_PSR_IICMode_ACK_Msk;
+
+  //XMC_I2C_CH_MasterTransmit(XMC_I2C1_CH0, IO_DIR);
+
+	while(TWI->TCSR & USIC_CH_TCSR_TDV_Msk);
+
+	TWI->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
+
+	TWI->TBUF[0] = 0 | TDF_MASTER_RECEIVE_NACK;
+
+
+	while((TWI->PSR_IICMode & USIC_CH_PSR_IICMode_ACK_Msk) == 0U);
+  
+	TWI->PSCR = USIC_CH_PSR_IICMode_ACK_Msk;
+
+
+ // XMC_I2C_CH_MasterTransmit(XMC_I2C1_CH0, 0xffU);
+
+
+	while(TWI->TCSR & USIC_CH_TCSR_TDV_Msk);
+
+	TWI->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
+
+	TWI->TBUF[0] = 0xFF | TDF_MASTER_RECEIVE_NACK;
+
+
+	while((TWI->PSR_IICMode & USIC_CH_PSR_IICMode_ACK_Msk) == 0U);
+  
+	TWI->PSCR = USIC_CH_PSR_IICMode_ACK_Msk;
+*/
+
+
+
+
+
+
+	//VectorTableExt[USIC1_1_IRQn] = Handler0;
+	//CM4::NVIC->CLR_PR(USIC1_1_IRQn);
+	//CM4::NVIC->SET_ER(USIC1_1_IRQn);
+
+//	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

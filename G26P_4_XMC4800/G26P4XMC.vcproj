@@ -104,10 +104,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\system_SAM4E.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\system_XMC4800.cpp"
 				>
 			</File>
@@ -200,10 +196,6 @@
 		</Filter>
 		<File
 			RelativePath=".\makeobj"
-			>
-		</File>
-		<File
-			RelativePath=".\cpp\startup_SAM4E.s"
 			>
 		</File>
 		<File

@@ -62,9 +62,12 @@
 extern uint32_t SystemCoreClock;     /*!< System Clock Frequency (Core Clock)  */
 extern uint8_t g_chipid[16];
 
-typedef void(*ARM_IHP)() __irq;
-extern ARM_IHP VectorTableInt[16];
-extern ARM_IHP VectorTableExt[112];
+//typedef void(*ARM_IHP)() __irq;
+//extern ARM_IHP VectorTableInt[16]; //0x1FFE8000
+//extern ARM_IHP VectorTableExt[112];
+
+//ARM_IHP * const VectorTableInt = (ARM_IHP*)0x1FFE8000;
+//ARM_IHP * const VectorTableExt = (ARM_IHP*)0x1FFE8040;
 
 /*******************************************************************************
  * API PROTOTYPES

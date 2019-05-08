@@ -7,6 +7,7 @@
 
 struct DSCTWI
 {
+	DSCTWI*	next;
 	void*	wdata;
 	void*	rdata;
 	void*	wdata2;
@@ -17,25 +18,11 @@ struct DSCTWI
 	bool	ready;
 };
 
-struct TWI
-{
-//	u32		smask;
-	DSCTWI* dsc;
+extern void Init_TWI();
 
-	T_HW::USIC_CH_Type *hw;
-
-	TWI() : hw(0), dsc(0) {}
-
-	bool Init(byte num);
-
-	bool Write(DSCTWI *d);
-	bool Read(DSCTWI *d);
-	bool Update();
-
-	static __irq void Handler0();
-
-
-
-};
+extern bool Write_TWI(DSCTWI *d);
+inline bool Read_TWI(DSCTWI *d) { return Write_TWI(d); }
+extern bool Update_TWI();
+extern bool AddRequest_TWI(DSCTWI *d);
 
 #endif // TWI_H__24_04_13__11_25

@@ -75,7 +75,7 @@ compiler_options6 = $(debug_compiler_options) --gnu -save-temps --interleave -g 
 
 ##################################################################################################
 
-asm_options = --cpu CORTEX-M4.fp.sp -g --apcs /interwork --xref --diag_style=ide --pd "__MICROLIB SETA 1"
+asm_options = --cpu CORTEX-M4.fp.sp -g --apcs /interwork --xref --diag_style=ide --pd "__MICROLIB SETA 1" --pd "__PROGNAME__ SETS \"KAPCAP G26P.4.1(8AD73_MDM_UPR)-2.1\"" --cpreproc
 
 ##################################################################################################
 
@@ -97,7 +97,7 @@ win32_link_options = -NOLOGO -SUBSYSTEM:CONSOLE -DEBUG -MACHINE:X86 kernel32.lib
 ##################################################################################################
 !ifneq version Win32_Debug
 
-$(objdir)\G26P4XMC.axf : $(libname) $(objdir)\startup_XMC4800.o test.o system_XMC4800.o emac.o xtrap.o trap.o flash.o twi.o # $(modules_obj)
+$(objdir)\G26P4XMC.axf : $(libname) $(objdir)\startup_XMC4800.o test.o system_XMC4800.o emac.o xtrap.o trap.o flash.o twi.o hardware.o # $(modules_obj)
 	@echo Linking ...
 	@$(bindir)\armlink	$(link_options) &
 	--feedback "$^*.fed" &

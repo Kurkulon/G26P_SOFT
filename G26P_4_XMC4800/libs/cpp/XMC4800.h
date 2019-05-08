@@ -5759,6 +5759,13 @@ namespace T_HW
 #define SCU_CLK_CLKSTAT_WDTCST_Pos            (5UL)                     /*!< SCU_CLK CLKSTAT: WDTCST (Bit 5)                             */
 #define SCU_CLK_CLKSTAT_WDTCST_Msk            (0x20UL)                  /*!< SCU_CLK CLKSTAT: WDTCST (Bitfield-Mask: 0x01)               */
 
+#define CLK_USB             (0x1UL)                   /*!< SCU_CLK CLKSTAT: USBCST (Bitfield-Mask: 0x01)               */
+#define CLK_MMC             (0x2UL)                   /*!< SCU_CLK CLKSTAT: MMCCST (Bitfield-Mask: 0x01)               */
+#define CLK_ETH0            (0x4UL)                   /*!< SCU_CLK CLKSTAT: ETH0CST (Bitfield-Mask: 0x01)              */
+#define CLK_EBU             (0x8UL)                   /*!< SCU_CLK CLKSTAT: EBUCST (Bitfield-Mask: 0x01)               */
+#define CLK_CCU             (0x10UL)                  /*!< SCU_CLK CLKSTAT: CCUCST (Bitfield-Mask: 0x01)               */
+#define CLK_WDT             (0x20UL)                  /*!< SCU_CLK CLKSTAT: WDTCST (Bitfield-Mask: 0x01)               */
+
 /* -------------------------------  SCU_CLK_CLKSET  ------------------------------- */
 #define SCU_CLK_CLKSET_USBCEN_Pos             (0UL)                     /*!< SCU_CLK CLKSET: USBCEN (Bit 0)                              */
 #define SCU_CLK_CLKSET_USBCEN_Msk             (0x1UL)                   /*!< SCU_CLK CLKSET: USBCEN (Bitfield-Mask: 0x01)                */
@@ -5913,6 +5920,18 @@ namespace T_HW
 #define SCU_CLK_CGATSTAT0_ERU1_Pos            (16UL)                    /*!< SCU_CLK CGATSTAT0: ERU1 (Bit 16)                            */
 #define SCU_CLK_CGATSTAT0_ERU1_Msk            (0x10000UL)               /*!< SCU_CLK CGATSTAT0: ERU1 (Bitfield-Mask: 0x01)               */
 
+#define CGAT0_VADC             (0x1UL)                   /*!< SCU_CLK CGATSTAT0: VADC (Bitfield-Mask: 0x01)               */
+#define CGAT0_DSD              (0x2UL)                   /*!< SCU_CLK CGATSTAT0: DSD (Bitfield-Mask: 0x01)                */
+#define CGAT0_CCU40            (0x4UL)                   /*!< SCU_CLK CGATSTAT0: CCU40 (Bitfield-Mask: 0x01)              */
+#define CGAT0_CCU41            (0x8UL)                   /*!< SCU_CLK CGATSTAT0: CCU41 (Bitfield-Mask: 0x01)              */
+#define CGAT0_CCU42            (0x10UL)                  /*!< SCU_CLK CGATSTAT0: CCU42 (Bitfield-Mask: 0x01)              */
+#define CGAT0_CCU80            (0x80UL)                  /*!< SCU_CLK CGATSTAT0: CCU80 (Bitfield-Mask: 0x01)              */
+#define CGAT0_CCU81            (0x100UL)                 /*!< SCU_CLK CGATSTAT0: CCU81 (Bitfield-Mask: 0x01)              */
+#define CGAT0_POSIF0           (0x200UL)                 /*!< SCU_CLK CGATSTAT0: POSIF0 (Bitfield-Mask: 0x01)             */
+#define CGAT0_POSIF1           (0x400UL)                 /*!< SCU_CLK CGATSTAT0: POSIF1 (Bitfield-Mask: 0x01)             */
+#define CGAT0_USIC0            (0x800UL)                 /*!< SCU_CLK CGATSTAT0: USIC0 (Bitfield-Mask: 0x01)              */
+#define CGAT0_ERU1             (0x10000UL)               /*!< SCU_CLK CGATSTAT0: ERU1 (Bitfield-Mask: 0x01)               */
+
 /* ------------------------------  SCU_CLK_CGATSET0  ------------------------------ */
 #define SCU_CLK_CGATSET0_VADC_Pos             (0UL)                     /*!< SCU_CLK CGATSET0: VADC (Bit 0)                              */
 #define SCU_CLK_CGATSET0_VADC_Msk             (0x1UL)                   /*!< SCU_CLK CGATSET0: VADC (Bitfield-Mask: 0x01)                */
@@ -5979,6 +5998,15 @@ namespace T_HW
 #define SCU_CLK_CGATSTAT1_PPORTS_Pos          (9UL)                     /*!< SCU_CLK CGATSTAT1: PPORTS (Bit 9)                           */
 #define SCU_CLK_CGATSTAT1_PPORTS_Msk          (0x200UL)                 /*!< SCU_CLK CGATSTAT1: PPORTS (Bitfield-Mask: 0x01)             */
 
+#define CGAT1_CCU43            (0x1UL)                   /*!< SCU_CLK CGATSTAT1: CCU43 (Bitfield-Mask: 0x01)              */
+#define CGAT1_LEDTSCU0         (0x8UL)                   /*!< SCU_CLK CGATSTAT1: LEDTSCU0 (Bitfield-Mask: 0x01)           */
+#define CGAT1_MCAN0            (0x10UL)                  /*!< SCU_CLK CGATSTAT1: MCAN0 (Bitfield-Mask: 0x01)              */
+#define CGAT1_DAC              (0x20UL)                  /*!< SCU_CLK CGATSTAT1: DAC (Bitfield-Mask: 0x01)                */
+#define CGAT1_MMCI             (0x40UL)                  /*!< SCU_CLK CGATSTAT1: MMCI (Bitfield-Mask: 0x01)               */
+#define CGAT1_USIC1            (0x80UL)                  /*!< SCU_CLK CGATSTAT1: USIC1 (Bitfield-Mask: 0x01)              */
+#define CGAT1_USIC2            (0x100UL)                 /*!< SCU_CLK CGATSTAT1: USIC2 (Bitfield-Mask: 0x01)              */
+#define CGAT1_PPORTS           (0x200UL)                 /*!< SCU_CLK CGATSTAT1: PPORTS (Bitfield-Mask: 0x01)             */
+
 /* ------------------------------  SCU_CLK_CGATSET1  ------------------------------ */
 #define SCU_CLK_CGATSET1_CCU43_Pos            (0UL)                     /*!< SCU_CLK CGATSET1: CCU43 (Bit 0)                             */
 #define SCU_CLK_CGATSET1_CCU43_Msk            (0x1UL)                   /*!< SCU_CLK CGATSET1: CCU43 (Bitfield-Mask: 0x01)               */
@@ -6031,6 +6059,14 @@ namespace T_HW
 #define SCU_CLK_CGATSTAT2_ECAT0_Pos           (10UL)                    /*!< SCU_CLK CGATSTAT2: ECAT0 (Bit 10)                           */
 #define SCU_CLK_CGATSTAT2_ECAT0_Msk           (0x400UL)                 /*!< SCU_CLK CGATSTAT2: ECAT0 (Bitfield-Mask: 0x01)              */
 
+#define CGAT2_WDT              (0x2UL)                   /*!< SCU_CLK CGATSTAT2: WDT (Bitfield-Mask: 0x01)                */
+#define CGAT2_ETH0             (0x4UL)                   /*!< SCU_CLK CGATSTAT2: ETH0 (Bitfield-Mask: 0x01)               */
+#define CGAT2_DMA0             (0x10UL)                  /*!< SCU_CLK CGATSTAT2: DMA0 (Bitfield-Mask: 0x01)               */
+#define CGAT2_DMA1             (0x20UL)                  /*!< SCU_CLK CGATSTAT2: DMA1 (Bitfield-Mask: 0x01)               */
+#define CGAT2_FCE              (0x40UL)                  /*!< SCU_CLK CGATSTAT2: FCE (Bitfield-Mask: 0x01)                */
+#define CGAT2_USB              (0x80UL)                  /*!< SCU_CLK CGATSTAT2: USB (Bitfield-Mask: 0x01)                */
+#define CGAT2_ECAT0            (0x400UL)                 /*!< SCU_CLK CGATSTAT2: ECAT0 (Bitfield-Mask: 0x01)              */
+
 /* ------------------------------  SCU_CLK_CGATSET2  ------------------------------ */
 #define SCU_CLK_CGATSET2_WDT_Pos              (1UL)                     /*!< SCU_CLK CGATSET2: WDT (Bit 1)                               */
 #define SCU_CLK_CGATSET2_WDT_Msk              (0x2UL)                   /*!< SCU_CLK CGATSET2: WDT (Bitfield-Mask: 0x01)                 */
@@ -6066,6 +6102,8 @@ namespace T_HW
 /* ------------------------------  SCU_CLK_CGATSTAT3  ----------------------------- */
 #define SCU_CLK_CGATSTAT3_EBU_Pos             (2UL)                     /*!< SCU_CLK CGATSTAT3: EBU (Bit 2)                              */
 #define SCU_CLK_CGATSTAT3_EBU_Msk             (0x4UL)                   /*!< SCU_CLK CGATSTAT3: EBU (Bitfield-Mask: 0x01)                */
+
+#define CGAT3_EBU             (0x4UL)                   /*!< SCU_CLK CGATSTAT3: EBU (Bitfield-Mask: 0x01)                */
 
 /* ------------------------------  SCU_CLK_CGATSET3  ------------------------------ */
 #define SCU_CLK_CGATSET3_EBU_Pos              (2UL)                     /*!< SCU_CLK CGATSET3: EBU (Bit 2)                               */
@@ -6973,6 +7011,18 @@ namespace T_HW
 #define SCU_RESET_PRSTAT0_ERU1RS_Pos          (16UL)                    /*!< SCU_RESET PRSTAT0: ERU1RS (Bit 16)                          */
 #define SCU_RESET_PRSTAT0_ERU1RS_Msk          (0x10000UL)               /*!< SCU_RESET PRSTAT0: ERU1RS (Bitfield-Mask: 0x01)             */
 
+#define PR0_VADC           (0x1UL)                   /*!< SCU_RESET PRSTAT0: VADCRS (Bitfield-Mask: 0x01)             */
+#define PR0_DSD            (0x2UL)                   /*!< SCU_RESET PRSTAT0: DSDRS (Bitfield-Mask: 0x01)              */
+#define PR0_CCU40          (0x4UL)                   /*!< SCU_RESET PRSTAT0: CCU40RS (Bitfield-Mask: 0x01)            */
+#define PR0_CCU41          (0x8UL)                   /*!< SCU_RESET PRSTAT0: CCU41RS (Bitfield-Mask: 0x01)            */
+#define PR0_CCU42          (0x10UL)                  /*!< SCU_RESET PRSTAT0: CCU42RS (Bitfield-Mask: 0x01)            */
+#define PR0_CCU80          (0x80UL)                  /*!< SCU_RESET PRSTAT0: CCU80RS (Bitfield-Mask: 0x01)            */
+#define PR0_CCU81          (0x100UL)                 /*!< SCU_RESET PRSTAT0: CCU81RS (Bitfield-Mask: 0x01)            */
+#define PR0_POSIF0         (0x200UL)                 /*!< SCU_RESET PRSTAT0: POSIF0RS (Bitfield-Mask: 0x01)           */
+#define PR0_POSIF1         (0x400UL)                 /*!< SCU_RESET PRSTAT0: POSIF1RS (Bitfield-Mask: 0x01)           */
+#define PR0_USIC0          (0x800UL)                 /*!< SCU_RESET PRSTAT0: USIC0RS (Bitfield-Mask: 0x01)            */
+#define PR0_ERU1           (0x10000UL)               /*!< SCU_RESET PRSTAT0: ERU1RS (Bitfield-Mask: 0x01)             */
+
 /* ------------------------------  SCU_RESET_PRSET0  ------------------------------ */
 #define SCU_RESET_PRSET0_VADCRS_Pos           (0UL)                     /*!< SCU_RESET PRSET0: VADCRS (Bit 0)                            */
 #define SCU_RESET_PRSET0_VADCRS_Msk           (0x1UL)                   /*!< SCU_RESET PRSET0: VADCRS (Bitfield-Mask: 0x01)              */
@@ -7039,6 +7089,15 @@ namespace T_HW
 #define SCU_RESET_PRSTAT1_PPORTSRS_Pos        (9UL)                     /*!< SCU_RESET PRSTAT1: PPORTSRS (Bit 9)                         */
 #define SCU_RESET_PRSTAT1_PPORTSRS_Msk        (0x200UL)                 /*!< SCU_RESET PRSTAT1: PPORTSRS (Bitfield-Mask: 0x01)           */
 
+#define PR1_CCU43          (0x1UL)                   /*!< SCU_RESET PRSTAT1: CCU43RS (Bitfield-Mask: 0x01)            */
+#define PR1_LEDTSCU0       (0x8UL)                   /*!< SCU_RESET PRSTAT1: LEDTSCU0RS (Bitfield-Mask: 0x01)         */
+#define PR1_MCAN0          (0x10UL)                  /*!< SCU_RESET PRSTAT1: MCAN0RS (Bitfield-Mask: 0x01)            */
+#define PR1_DAC            (0x20UL)                  /*!< SCU_RESET PRSTAT1: DACRS (Bitfield-Mask: 0x01)              */
+#define PR1_MMCI           (0x40UL)                  /*!< SCU_RESET PRSTAT1: MMCIRS (Bitfield-Mask: 0x01)             */
+#define PR1_USIC1          (0x80UL)                  /*!< SCU_RESET PRSTAT1: USIC1RS (Bitfield-Mask: 0x01)            */
+#define PR1_USIC2          (0x100UL)                 /*!< SCU_RESET PRSTAT1: USIC2RS (Bitfield-Mask: 0x01)            */
+#define PR1_PPORTS         (0x200UL)                 /*!< SCU_RESET PRSTAT1: PPORTSRS (Bitfield-Mask: 0x01)           */
+
 /* ------------------------------  SCU_RESET_PRSET1  ------------------------------ */
 #define SCU_RESET_PRSET1_CCU43RS_Pos          (0UL)                     /*!< SCU_RESET PRSET1: CCU43RS (Bit 0)                           */
 #define SCU_RESET_PRSET1_CCU43RS_Msk          (0x1UL)                   /*!< SCU_RESET PRSET1: CCU43RS (Bitfield-Mask: 0x01)             */
@@ -7091,6 +7150,14 @@ namespace T_HW
 #define SCU_RESET_PRSTAT2_ECAT0RS_Pos         (10UL)                    /*!< SCU_RESET PRSTAT2: ECAT0RS (Bit 10)                         */
 #define SCU_RESET_PRSTAT2_ECAT0RS_Msk         (0x400UL)                 /*!< SCU_RESET PRSTAT2: ECAT0RS (Bitfield-Mask: 0x01)            */
 
+#define PR2_WDT            (0x2UL)                   /*!< SCU_RESET PRSTAT2: WDTRS (Bitfield-Mask: 0x01)              */
+#define PR2_ETH0           (0x4UL)                   /*!< SCU_RESET PRSTAT2: ETH0RS (Bitfield-Mask: 0x01)             */
+#define PR2_DMA0           (0x10UL)                  /*!< SCU_RESET PRSTAT2: DMA0RS (Bitfield-Mask: 0x01)             */
+#define PR2_DMA1           (0x20UL)                  /*!< SCU_RESET PRSTAT2: DMA1RS (Bitfield-Mask: 0x01)             */
+#define PR2_FCE            (0x40UL)                  /*!< SCU_RESET PRSTAT2: FCERS (Bitfield-Mask: 0x01)              */
+#define PR2_USB            (0x80UL)                  /*!< SCU_RESET PRSTAT2: USBRS (Bitfield-Mask: 0x01)              */
+#define PR2_ECAT0          (0x400UL)                 /*!< SCU_RESET PRSTAT2: ECAT0RS (Bitfield-Mask: 0x01)            */
+
 /* ------------------------------  SCU_RESET_PRSET2  ------------------------------ */
 #define SCU_RESET_PRSET2_WDTRS_Pos            (1UL)                     /*!< SCU_RESET PRSET2: WDTRS (Bit 1)                             */
 #define SCU_RESET_PRSET2_WDTRS_Msk            (0x2UL)                   /*!< SCU_RESET PRSET2: WDTRS (Bitfield-Mask: 0x01)               */
@@ -7126,6 +7193,8 @@ namespace T_HW
 /* ------------------------------  SCU_RESET_PRSTAT3  ----------------------------- */
 #define SCU_RESET_PRSTAT3_EBURS_Pos           (2UL)                     /*!< SCU_RESET PRSTAT3: EBURS (Bit 2)                            */
 #define SCU_RESET_PRSTAT3_EBURS_Msk           (0x4UL)                   /*!< SCU_RESET PRSTAT3: EBURS (Bitfield-Mask: 0x01)              */
+
+#define PR3_EBU           (0x4UL)                   /*!< SCU_RESET PRSTAT3: EBURS (Bitfield-Mask: 0x01)              */
 
 /* ------------------------------  SCU_RESET_PRSET3  ------------------------------ */
 #define SCU_RESET_PRSET3_EBURS_Pos            (2UL)                     /*!< SCU_RESET PRSET3: EBURS (Bit 2)                             */
@@ -13827,6 +13896,12 @@ namespace T_HW
 #define CCU4_GSTAT_PRB_Pos                    (8UL)                     /*!< CCU4 GSTAT: PRB (Bit 8)                                     */
 #define CCU4_GSTAT_PRB_Msk                    (0x100UL)                 /*!< CCU4 GSTAT: PRB (Bitfield-Mask: 0x01)                       */
 
+#define CCU4_S0I                    			(0x1UL)                   /*!< CCU4 GSTAT: S0I (Bitfield-Mask: 0x01)                       */
+#define CCU4_S1I                    			(0x2UL)                   /*!< CCU4 GSTAT: S1I (Bitfield-Mask: 0x01)                       */
+#define CCU4_S2I                    			(0x4UL)                   /*!< CCU4 GSTAT: S2I (Bitfield-Mask: 0x01)                       */
+#define CCU4_S3I                    			(0x8UL)                   /*!< CCU4 GSTAT: S3I (Bitfield-Mask: 0x01)                       */
+#define CCU4_PRB                    			(0x100UL)                 /*!< CCU4 GSTAT: PRB (Bitfield-Mask: 0x01)                       */
+
 /* ---------------------------------  CCU4_GIDLS  --------------------------------- */
 #define CCU4_GIDLS_SS0I_Pos                   (0UL)                     /*!< CCU4 GIDLS: SS0I (Bit 0)                                    */
 #define CCU4_GIDLS_SS0I_Msk                   (0x1UL)                   /*!< CCU4 GIDLS: SS0I (Bitfield-Mask: 0x01)                      */
@@ -13841,6 +13916,13 @@ namespace T_HW
 #define CCU4_GIDLS_PSIC_Pos                   (9UL)                     /*!< CCU4 GIDLS: PSIC (Bit 9)                                    */
 #define CCU4_GIDLS_PSIC_Msk                   (0x200UL)                 /*!< CCU4 GIDLS: PSIC (Bitfield-Mask: 0x01)                      */
 
+#define CCU4_SS0I                   (0x1UL)                   /*!< CCU4 GIDLS: SS0I (Bitfield-Mask: 0x01)                      */
+#define CCU4_SS1I                   (0x2UL)                   /*!< CCU4 GIDLS: SS1I (Bitfield-Mask: 0x01)                      */
+#define CCU4_SS2I                   (0x4UL)                   /*!< CCU4 GIDLS: SS2I (Bitfield-Mask: 0x01)                      */
+#define CCU4_SS3I                   (0x8UL)                   /*!< CCU4 GIDLS: SS3I (Bitfield-Mask: 0x01)                      */
+#define CCU4_CPRB                   (0x100UL)                 /*!< CCU4 GIDLS: CPRB (Bitfield-Mask: 0x01)                      */
+#define CCU4_PSIC                   (0x200UL)                 /*!< CCU4 GIDLS: PSIC (Bitfield-Mask: 0x01)                      */
+
 /* ---------------------------------  CCU4_GIDLC  --------------------------------- */
 #define CCU4_GIDLC_CS0I_Pos                   (0UL)                     /*!< CCU4 GIDLC: CS0I (Bit 0)                                    */
 #define CCU4_GIDLC_CS0I_Msk                   (0x1UL)                   /*!< CCU4 GIDLC: CS0I (Bitfield-Mask: 0x01)                      */
@@ -13852,6 +13934,12 @@ namespace T_HW
 #define CCU4_GIDLC_CS3I_Msk                   (0x8UL)                   /*!< CCU4 GIDLC: CS3I (Bitfield-Mask: 0x01)                      */
 #define CCU4_GIDLC_SPRB_Pos                   (8UL)                     /*!< CCU4 GIDLC: SPRB (Bit 8)                                    */
 #define CCU4_GIDLC_SPRB_Msk                   (0x100UL)                 /*!< CCU4 GIDLC: SPRB (Bitfield-Mask: 0x01)                      */
+
+#define CCU4_CS0I                   (0x1UL)                   /*!< CCU4 GIDLC: CS0I (Bitfield-Mask: 0x01)                      */
+#define CCU4_CS1I                   (0x2UL)                   /*!< CCU4 GIDLC: CS1I (Bitfield-Mask: 0x01)                      */
+#define CCU4_CS2I                   (0x4UL)                   /*!< CCU4 GIDLC: CS2I (Bitfield-Mask: 0x01)                      */
+#define CCU4_CS3I                   (0x8UL)                   /*!< CCU4 GIDLC: CS3I (Bitfield-Mask: 0x01)                      */
+#define CCU4_SPRB                   (0x100UL)                 /*!< CCU4 GIDLC: SPRB (Bitfield-Mask: 0x01)                      */
 
 /* ----------------------------------  CCU4_GCSS  --------------------------------- */
 #define CCU4_GCSS_S0SE_Pos                    (0UL)                     /*!< CCU4 GCSS: S0SE (Bit 0)                                     */
@@ -13887,6 +13975,23 @@ namespace T_HW
 #define CCU4_GCSS_S3STS_Pos                   (19UL)                    /*!< CCU4 GCSS: S3STS (Bit 19)                                   */
 #define CCU4_GCSS_S3STS_Msk                   (0x80000UL)               /*!< CCU4 GCSS: S3STS (Bitfield-Mask: 0x01)                      */
 
+#define CCU4_S0SE                    (0x1UL)                   /*!< CCU4 GCSS: S0SE (Bitfield-Mask: 0x01)                       */
+#define CCU4_S0DSE                   (0x2UL)                   /*!< CCU4 GCSS: S0DSE (Bitfield-Mask: 0x01)                      */
+#define CCU4_S0PSE                   (0x4UL)                   /*!< CCU4 GCSS: S0PSE (Bitfield-Mask: 0x01)                      */
+#define CCU4_S1SE                    (0x10UL)                  /*!< CCU4 GCSS: S1SE (Bitfield-Mask: 0x01)                       */
+#define CCU4_S1DSE                   (0x20UL)                  /*!< CCU4 GCSS: S1DSE (Bitfield-Mask: 0x01)                      */
+#define CCU4_S1PSE                   (0x40UL)                  /*!< CCU4 GCSS: S1PSE (Bitfield-Mask: 0x01)                      */
+#define CCU4_S2SE                    (0x100UL)                 /*!< CCU4 GCSS: S2SE (Bitfield-Mask: 0x01)                       */
+#define CCU4_S2DSE                   (0x200UL)                 /*!< CCU4 GCSS: S2DSE (Bitfield-Mask: 0x01)                      */
+#define CCU4_S2PSE                   (0x400UL)                 /*!< CCU4 GCSS: S2PSE (Bitfield-Mask: 0x01)                      */
+#define CCU4_S3SE                    (0x1000UL)                /*!< CCU4 GCSS: S3SE (Bitfield-Mask: 0x01)                       */
+#define CCU4_S3DSE                   (0x2000UL)                /*!< CCU4 GCSS: S3DSE (Bitfield-Mask: 0x01)                      */
+#define CCU4_S3PSE                   (0x4000UL)                /*!< CCU4 GCSS: S3PSE (Bitfield-Mask: 0x01)                      */
+#define CCU4_S0STS                   (0x10000UL)               /*!< CCU4 GCSS: S0STS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S1STS                   (0x20000UL)               /*!< CCU4 GCSS: S1STS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S2STS                   (0x40000UL)               /*!< CCU4 GCSS: S2STS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S3STS                   (0x80000UL)               /*!< CCU4 GCSS: S3STS (Bitfield-Mask: 0x01)                      */
+
 /* ----------------------------------  CCU4_GCSC  --------------------------------- */
 #define CCU4_GCSC_S0SC_Pos                    (0UL)                     /*!< CCU4 GCSC: S0SC (Bit 0)                                     */
 #define CCU4_GCSC_S0SC_Msk                    (0x1UL)                   /*!< CCU4 GCSC: S0SC (Bitfield-Mask: 0x01)                       */
@@ -13920,6 +14025,23 @@ namespace T_HW
 #define CCU4_GCSC_S2STC_Msk                   (0x40000UL)               /*!< CCU4 GCSC: S2STC (Bitfield-Mask: 0x01)                      */
 #define CCU4_GCSC_S3STC_Pos                   (19UL)                    /*!< CCU4 GCSC: S3STC (Bit 19)                                   */
 #define CCU4_GCSC_S3STC_Msk                   (0x80000UL)               /*!< CCU4 GCSC: S3STC (Bitfield-Mask: 0x01)                      */
+
+#define CCU4_S0SC                     (0x1UL)                   /*!< CCU4 GCSC: S0SC (Bitfield-Mask: 0x01)                       */
+#define CCU4_S0DSC                    (0x2UL)                   /*!< CCU4 GCSC: S0DSC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S0PSC                    (0x4UL)                   /*!< CCU4 GCSC: S0PSC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S1SC                     (0x10UL)                  /*!< CCU4 GCSC: S1SC (Bitfield-Mask: 0x01)                       */
+#define CCU4_S1DSC                    (0x20UL)                  /*!< CCU4 GCSC: S1DSC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S1PSC                    (0x40UL)                  /*!< CCU4 GCSC: S1PSC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S2SC                     (0x100UL)                 /*!< CCU4 GCSC: S2SC (Bitfield-Mask: 0x01)                       */
+#define CCU4_S2DSC                    (0x200UL)                 /*!< CCU4 GCSC: S2DSC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S2PSC                    (0x400UL)                 /*!< CCU4 GCSC: S2PSC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S3SC                     (0x1000UL)                /*!< CCU4 GCSC: S3SC (Bitfield-Mask: 0x01)                       */
+#define CCU4_S3DSC                    (0x2000UL)                /*!< CCU4 GCSC: S3DSC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S3PSC                    (0x4000UL)                /*!< CCU4 GCSC: S3PSC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S0STC                    (0x10000UL)               /*!< CCU4 GCSC: S0STC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S1STC                    (0x20000UL)               /*!< CCU4 GCSC: S1STC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S2STC                    (0x40000UL)               /*!< CCU4 GCSC: S2STC (Bitfield-Mask: 0x01)                      */
+#define CCU4_S3STC                    (0x80000UL)               /*!< CCU4 GCSC: S3STC (Bitfield-Mask: 0x01)                      */
 
 /* ----------------------------------  CCU4_GCST  --------------------------------- */
 #define CCU4_GCST_S0SS_Pos                    (0UL)                     /*!< CCU4 GCST: S0SS (Bit 0)                                     */
@@ -13955,6 +14077,23 @@ namespace T_HW
 #define CCU4_GCST_CC43ST_Pos                  (19UL)                    /*!< CCU4 GCST: CC43ST (Bit 19)                                  */
 #define CCU4_GCST_CC43ST_Msk                  (0x80000UL)               /*!< CCU4 GCST: CC43ST (Bitfield-Mask: 0x01)                     */
 
+#define CCU4_S0SS                     (0x1UL)                   /*!< CCU4 GCST: S0SS (Bitfield-Mask: 0x01)                       */
+#define CCU4_S0DSS                    (0x2UL)                   /*!< CCU4 GCST: S0DSS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S0PSS                    (0x4UL)                   /*!< CCU4 GCST: S0PSS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S1SS                     (0x10UL)                  /*!< CCU4 GCST: S1SS (Bitfield-Mask: 0x01)                       */
+#define CCU4_S1DSS                    (0x20UL)                  /*!< CCU4 GCST: S1DSS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S1PSS                    (0x40UL)                  /*!< CCU4 GCST: S1PSS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S2SS                     (0x100UL)                 /*!< CCU4 GCST: S2SS (Bitfield-Mask: 0x01)                       */
+#define CCU4_S2DSS                    (0x200UL)                 /*!< CCU4 GCST: S2DSS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S2PSS                    (0x400UL)                 /*!< CCU4 GCST: S2PSS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S3SS                     (0x1000UL)                /*!< CCU4 GCST: S3SS (Bitfield-Mask: 0x01)                       */
+#define CCU4_S3DSS                    (0x2000UL)                /*!< CCU4 GCST: S3DSS (Bitfield-Mask: 0x01)                      */
+#define CCU4_S3PSS                    (0x4000UL)                /*!< CCU4 GCST: S3PSS (Bitfield-Mask: 0x01)                      */
+#define CCU4_CC40ST                   (0x10000UL)               /*!< CCU4 GCST: CC40ST (Bitfield-Mask: 0x01)                     */
+#define CCU4_CC41ST                   (0x20000UL)               /*!< CCU4 GCST: CC41ST (Bitfield-Mask: 0x01)                     */
+#define CCU4_CC42ST                   (0x40000UL)               /*!< CCU4 GCST: CC42ST (Bitfield-Mask: 0x01)                     */
+#define CCU4_CC43ST                   (0x80000UL)               /*!< CCU4 GCST: CC43ST (Bitfield-Mask: 0x01)                     */
+
 /* ----------------------------------  CCU4_MIDR  --------------------------------- */
 #define CCU4_MIDR_MODR_Pos                    (0UL)                     /*!< CCU4 MIDR: MODR (Bit 0)                                     */
 #define CCU4_MIDR_MODR_Msk                    (0xffUL)                  /*!< CCU4 MIDR: MODR (Bitfield-Mask: 0xff)                       */
@@ -13963,6 +14102,9 @@ namespace T_HW
 #define CCU4_MIDR_MODN_Pos                    (16UL)                    /*!< CCU4 MIDR: MODN (Bit 16)                                    */
 #define CCU4_MIDR_MODN_Msk                    (0xffff0000UL)            /*!< CCU4 MIDR: MODN (Bitfield-Mask: 0xffff)                     */
 
+#define CCU4_MODR                     (0xffUL)                  /*!< CCU4 MIDR: MODR (Bitfield-Mask: 0xff)                       */
+#define CCU4_MODT                     (0xff00UL)                /*!< CCU4 MIDR: MODT (Bitfield-Mask: 0xff)                       */
+#define CCU4_MODN                     (0xffff0000UL)            /*!< CCU4 MIDR: MODN (Bitfield-Mask: 0xffff)                     */
 
 /* ================================================================================ */
 /* ================        Group 'CCU4_CC4' Position & Mask        ================ */
@@ -13995,6 +14137,45 @@ namespace T_HW
 #define CCU4_CC4_INS_LPF2M_Pos                (29UL)                    /*!< CCU4_CC4 INS: LPF2M (Bit 29)                                */
 #define CCU4_CC4_INS_LPF2M_Msk                (0x60000000UL)            /*!< CCU4_CC4 INS: LPF2M (Bitfield-Mask: 0x03)                   */
 
+#define CC4_EV0IS(value)	         (((value)&0xF)<<CCU4_CC4_INS_EV0IS_Pos)
+#define CC4_EV1IS(value)	         (((value)&0xF)<<CCU4_CC4_INS_EV1IS_Pos)
+#define CC4_EV2IS(value)	         (((value)&0xF)<<CCU4_CC4_INS_EV2IS_Pos)
+
+#define CC4_EV0EM_NO_ACT            (0<<CCU4_CC4_INS_EV0EM_Pos)    
+#define CC4_EV0EM_RISING_EDGE		(1<<CCU4_CC4_INS_EV0EM_Pos)    
+#define CC4_EV0EM_FALLING_EDGE      (2<<CCU4_CC4_INS_EV0EM_Pos)    
+#define CC4_EV0EM_BOTH_EDGES        (3<<CCU4_CC4_INS_EV0EM_Pos) 
+
+#define CC4_EV1EM_NO_ACT            (0<<CCU4_CC4_INS_EV1EM_Pos)    
+#define CC4_EV1EM_RISING_EDGE		(1<<CCU4_CC4_INS_EV1EM_Pos)    
+#define CC4_EV1EM_FALLING_EDGE      (2<<CCU4_CC4_INS_EV1EM_Pos)    
+#define CC4_EV1EM_BOTH_EDGES        (3<<CCU4_CC4_INS_EV1EM_Pos) 
+													   
+#define CC4_EV2EM_NO_ACT            (0<<CCU4_CC4_INS_EV2EM_Pos)    
+#define CC4_EV2EM_RISING_EDGE		(1<<CCU4_CC4_INS_EV2EM_Pos)    
+#define CC4_EV2EM_FALLING_EDGE      (2<<CCU4_CC4_INS_EV2EM_Pos)    
+#define CC4_EV2EM_BOTH_EDGES        (3<<CCU4_CC4_INS_EV2EM_Pos) 
+
+#define CC4_EV0LM                 (0x400000UL)              /*!< CCU4_CC4 INS: EV0LM (Bitfield-Mask: 0x01)                   */
+#define CC4_EV1LM                 (0x800000UL)              /*!< CCU4_CC4 INS: EV1LM (Bitfield-Mask: 0x01)                   */
+#define CC4_EV2LM                 (0x1000000UL)             /*!< CCU4_CC4 INS: EV2LM (Bitfield-Mask: 0x01)                   */
+
+#define CC4_LPF0M_DISABLE			(0 << CCU4_CC4_INS_LPF0M_Pos) 
+#define CC4_LPF0M_3CLK				(1 << CCU4_CC4_INS_LPF0M_Pos) 
+#define CC4_LPF0M_5CLK				(2 << CCU4_CC4_INS_LPF0M_Pos) 
+#define CC4_LPF0M_7CLK				(3 << CCU4_CC4_INS_LPF0M_Pos) 
+
+#define CC4_LPF1M_DISABLE			(0 << CCU4_CC4_INS_LPF1M_Pos) 
+#define CC4_LPF1M_3CLK				(1 << CCU4_CC4_INS_LPF1M_Pos) 
+#define CC4_LPF1M_5CLK				(2 << CCU4_CC4_INS_LPF1M_Pos) 
+#define CC4_LPF1M_7CLK				(3 << CCU4_CC4_INS_LPF1M_Pos) 
+
+#define CC4_LPF2M_DISABLE			(0 << CCU4_CC4_INS_LPF2M_Pos) 
+#define CC4_LPF2M_3CLK				(1 << CCU4_CC4_INS_LPF2M_Pos) 
+#define CC4_LPF2M_5CLK				(2 << CCU4_CC4_INS_LPF2M_Pos) 
+#define CC4_LPF2M_7CLK				(3 << CCU4_CC4_INS_LPF2M_Pos) 
+
+
 /* --------------------------------  CCU4_CC4_CMC  -------------------------------- */
 #define CCU4_CC4_CMC_STRTS_Pos                (0UL)                     /*!< CCU4_CC4 CMC: STRTS (Bit 0)                                 */
 #define CCU4_CC4_CMC_STRTS_Msk                (0x3UL)                   /*!< CCU4_CC4 CMC: STRTS (Bitfield-Mask: 0x03)                   */
@@ -14021,15 +14202,70 @@ namespace T_HW
 #define CCU4_CC4_CMC_TCE_Pos                  (20UL)                    /*!< CCU4_CC4 CMC: TCE (Bit 20)                                  */
 #define CCU4_CC4_CMC_TCE_Msk                  (0x100000UL)              /*!< CCU4_CC4 CMC: TCE (Bitfield-Mask: 0x01)                     */
 
+#define CC4_STRTS_DEACTIVATED       (0<<CCU4_CC4_CMC_STRTS_Pos)
+#define CC4_STRTS_EVENT0        	(1<<CCU4_CC4_CMC_STRTS_Pos)
+#define CC4_STRTS_EVENT1        	(2<<CCU4_CC4_CMC_STRTS_Pos)
+#define CC4_STRTS_EVENT2        	(3<<CCU4_CC4_CMC_STRTS_Pos)
+
+#define CC4_ENDS_DEACTIVATED		(0<<CCU4_CC4_CMC_ENDS_Pos)
+#define CC4_ENDS_EVENT0     		(1<<CCU4_CC4_CMC_ENDS_Pos)
+#define CC4_ENDS_EVENT1     		(2<<CCU4_CC4_CMC_ENDS_Pos)
+#define CC4_ENDS_EVENT2     		(3<<CCU4_CC4_CMC_ENDS_Pos)
+
+#define CC4_CAP0S_DEACTIVATED		(0<<CCU4_CC4_CMC_CAP0S_Pos)
+#define CC4_CAP0S_EVENT0     		(1<<CCU4_CC4_CMC_CAP0S_Pos)
+#define CC4_CAP0S_EVENT1     		(2<<CCU4_CC4_CMC_CAP0S_Pos)
+#define CC4_CAP0S_EVENT2     		(3<<CCU4_CC4_CMC_CAP0S_Pos)
+
+#define CC4_CAP1S_DEACTIVATED		(0<<CCU4_CC4_CMC_CAP1S_Pos)
+#define CC4_CAP1S_EVENT0     		(1<<CCU4_CC4_CMC_CAP1S_Pos)
+#define CC4_CAP1S_EVENT1     		(2<<CCU4_CC4_CMC_CAP1S_Pos)
+#define CC4_CAP1S_EVENT2     		(3<<CCU4_CC4_CMC_CAP1S_Pos)
+
+#define CC4_GATES_DEACTIVATED		(0<<CCU4_CC4_CMC_GATES_Pos)
+#define CC4_GATES_EVENT0     		(1<<CCU4_CC4_CMC_GATES_Pos)
+#define CC4_GATES_EVENT1     		(2<<CCU4_CC4_CMC_GATES_Pos)
+#define CC4_GATES_EVENT2     		(3<<CCU4_CC4_CMC_GATES_Pos)
+
+#define CC4_UDS_DEACTIVATED			(0<<CCU4_CC4_CMC_UDS_Pos)
+#define CC4_UDS_EVENT0     			(1<<CCU4_CC4_CMC_UDS_Pos)
+#define CC4_UDS_EVENT1     			(2<<CCU4_CC4_CMC_UDS_Pos)
+#define CC4_UDS_EVENT2     			(3<<CCU4_CC4_CMC_UDS_Pos)
+
+#define CC4_LDS_DEACTIVATED			(0<<CCU4_CC4_CMC_LDS_Pos)
+#define CC4_LDS_EVENT0     			(1<<CCU4_CC4_CMC_LDS_Pos)
+#define CC4_LDS_EVENT1     			(2<<CCU4_CC4_CMC_LDS_Pos)
+#define CC4_LDS_EVENT2     			(3<<CCU4_CC4_CMC_LDS_Pos)
+
+#define CC4_CNTS_DEACTIVATED		(0<<CCU4_CC4_CMC_CNTS_Pos)
+#define CC4_CNTS_EVENT0     		(1<<CCU4_CC4_CMC_CNTS_Pos)
+#define CC4_CNTS_EVENT1     		(2<<CCU4_CC4_CMC_CNTS_Pos)
+#define CC4_CNTS_EVENT2     		(3<<CCU4_CC4_CMC_CNTS_Pos)
+
+#define CC4_OFS                   	(0x10000UL)               
+#define CC4_TS                    	(0x20000UL)               
+
+#define CC4_MOS_DEACTIVATED			(0<<CCU4_CC4_CMC_MOS_Pos)
+#define CC4_MOS_EVENT0     			(1<<CCU4_CC4_CMC_MOS_Pos)
+#define CC4_MOS_EVENT1     			(2<<CCU4_CC4_CMC_MOS_Pos)
+#define CC4_MOS_EVENT2     			(3<<CCU4_CC4_CMC_MOS_Pos)
+
+#define CC4_TCE						(0x100000UL)              
+
 /* --------------------------------  CCU4_CC4_TCST  ------------------------------- */
 #define CCU4_CC4_TCST_TRB_Pos                 (0UL)                     /*!< CCU4_CC4 TCST: TRB (Bit 0)                                  */
 #define CCU4_CC4_TCST_TRB_Msk                 (0x1UL)                   /*!< CCU4_CC4 TCST: TRB (Bitfield-Mask: 0x01)                    */
 #define CCU4_CC4_TCST_CDIR_Pos                (1UL)                     /*!< CCU4_CC4 TCST: CDIR (Bit 1)                                 */
 #define CCU4_CC4_TCST_CDIR_Msk                (0x2UL)                   /*!< CCU4_CC4 TCST: CDIR (Bitfield-Mask: 0x01)                   */
 
+#define CC4_TRB                  (0x1UL)                   /*!< CCU4_CC4 TCST: TRB (Bitfield-Mask: 0x01)                    */
+#define CC4_CDIR                 (0x2UL)                   /*!< CCU4_CC4 TCST: CDIR (Bitfield-Mask: 0x01)                   */
+
 /* -------------------------------  CCU4_CC4_TCSET  ------------------------------- */
 #define CCU4_CC4_TCSET_TRBS_Pos               (0UL)                     /*!< CCU4_CC4 TCSET: TRBS (Bit 0)                                */
 #define CCU4_CC4_TCSET_TRBS_Msk               (0x1UL)                   /*!< CCU4_CC4 TCSET: TRBS (Bitfield-Mask: 0x01)                  */
+
+#define CC4_TRBS               (0x1UL)                   /*!< CCU4_CC4 TCSET: TRBS (Bitfield-Mask: 0x01)                  */
 
 /* -------------------------------  CCU4_CC4_TCCLR  ------------------------------- */
 #define CCU4_CC4_TCCLR_TRBC_Pos               (0UL)                     /*!< CCU4_CC4 TCCLR: TRBC (Bit 0)                                */
@@ -14038,6 +14274,10 @@ namespace T_HW
 #define CCU4_CC4_TCCLR_TCC_Msk                (0x2UL)                   /*!< CCU4_CC4 TCCLR: TCC (Bitfield-Mask: 0x01)                   */
 #define CCU4_CC4_TCCLR_DITC_Pos               (2UL)                     /*!< CCU4_CC4 TCCLR: DITC (Bit 2)                                */
 #define CCU4_CC4_TCCLR_DITC_Msk               (0x4UL)                   /*!< CCU4_CC4 TCCLR: DITC (Bitfield-Mask: 0x01)                  */
+
+#define CC4_TRBC                (0x1UL)                   /*!< CCU4_CC4 TCCLR: TRBC (Bitfield-Mask: 0x01)                  */
+#define CC4_TCC                 (0x2UL)                   /*!< CCU4_CC4 TCCLR: TCC (Bitfield-Mask: 0x01)                   */
+#define CC4_DITC                (0x4UL)                   /*!< CCU4_CC4 TCCLR: DITC (Bitfield-Mask: 0x01)                  */
 
 /* ---------------------------------  CCU4_CC4_TC  -------------------------------- */
 #define CCU4_CC4_TC_TCM_Pos                   (0UL)                     /*!< CCU4_CC4 TC: TCM (Bit 0)                                    */
@@ -14078,6 +14318,39 @@ namespace T_HW
 #define CCU4_CC4_TC_EMT_Msk                   (0x1000000UL)             /*!< CCU4_CC4 TC: EMT (Bitfield-Mask: 0x01)                      */
 #define CCU4_CC4_TC_MCME_Pos                  (25UL)                    /*!< CCU4_CC4 TC: MCME (Bit 25)                                  */
 #define CCU4_CC4_TC_MCME_Msk                  (0x2000000UL)             /*!< CCU4_CC4 TC: MCME (Bitfield-Mask: 0x01)                     */
+
+#define CC4_TCM                    (0x1UL)                   /*!< CCU4_CC4 TC: TCM (Bitfield-Mask: 0x01)                      */
+#define CC4_TSSM                   (0x2UL)                   /*!< CCU4_CC4 TC: TSSM (Bitfield-Mask: 0x01)                     */
+#define CC4_CLST                   (0x4UL)                   /*!< CCU4_CC4 TC: CLST (Bitfield-Mask: 0x01)                     */
+#define CC4_CMOD                   (0x8UL)                   /*!< CCU4_CC4 TC: CMOD (Bitfield-Mask: 0x01)                     */
+#define CC4_ECM                    (0x10UL)                  /*!< CCU4_CC4 TC: ECM (Bitfield-Mask: 0x01)                      */
+
+#define CC4_CAPC_NONE				(0<<CCU4_CC4_TC_CAPC_Pos)                  
+#define CC4_CAPC_REG23           	(1<<CCU4_CC4_TC_CAPC_Pos)                  
+#define CC4_CAPC_REG01           	(2<<CCU4_CC4_TC_CAPC_Pos)                  
+#define CC4_CAPC_ALWAYS             (3<<CCU4_CC4_TC_CAPC_Pos)                  
+
+#define CC4_ENDM_STOP               (0<<CCU4_CC4_TC_ENDM_Pos)                
+#define CC4_ENDM_FLUSH              (1<<CCU4_CC4_TC_ENDM_Pos)                
+#define CC4_ENDM_FL_STP             (2<<CCU4_CC4_TC_ENDM_Pos)                
+
+#define CC4_STRM                   (0x400UL)                 /*!< CCU4_CC4 TC: STRM (Bitfield-Mask: 0x01)                     */
+#define CC4_SCE                    (0x800UL)                 /*!< CCU4_CC4 TC: SCE (Bitfield-Mask: 0x01)                      */
+#define CC4_CCS                    (0x1000UL)                /*!< CCU4_CC4 TC: CCS (Bitfield-Mask: 0x01)                      */
+
+#define CC4_DITHE_DISABLED		(0<<CCU4_CC4_TC_DITHE_Pos)               
+#define CC4_DITHE_PERIOD        (1<<CCU4_CC4_TC_DITHE_Pos)               
+#define CC4_DITHE_COMPARE       (2<<CCU4_CC4_TC_DITHE_Pos)               
+#define CC4_DITHE_PER_COMP      (3<<CCU4_CC4_TC_DITHE_Pos)               
+
+#define CC4_DIM                    (0x8000UL)                /*!< CCU4_CC4 TC: DIM (Bitfield-Mask: 0x01)                      */
+#define CC4_FPE                    (0x10000UL)               /*!< CCU4_CC4 TC: FPE (Bitfield-Mask: 0x01)                      */
+#define CC4_TRAPE                  (0x20000UL)               /*!< CCU4_CC4 TC: TRAPE (Bitfield-Mask: 0x01)                    */
+#define CC4_TRPSE                  (0x200000UL)              /*!< CCU4_CC4 TC: TRPSE (Bitfield-Mask: 0x01)                    */
+#define CC4_TRPSW                  (0x400000UL)              /*!< CCU4_CC4 TC: TRPSW (Bitfield-Mask: 0x01)                    */
+#define CC4_EMS                    (0x800000UL)              /*!< CCU4_CC4 TC: EMS (Bitfield-Mask: 0x01)                      */
+#define CC4_EMT                    (0x1000000UL)             /*!< CCU4_CC4 TC: EMT (Bitfield-Mask: 0x01)                      */
+#define CC4_MCME                   (0x2000000UL)             /*!< CCU4_CC4 TC: MCME (Bitfield-Mask: 0x01)                     */
 
 /* --------------------------------  CCU4_CC4_PSL  -------------------------------- */
 #define CCU4_CC4_PSL_PSL_Pos                  (0UL)                     /*!< CCU4_CC4 PSL: PSL (Bit 0)                                   */
@@ -14153,6 +14426,15 @@ namespace T_HW
 #define CCU4_CC4_INTS_TRPF_Pos                (11UL)                    /*!< CCU4_CC4 INTS: TRPF (Bit 11)                                */
 #define CCU4_CC4_INTS_TRPF_Msk                (0x800UL)                 /*!< CCU4_CC4 INTS: TRPF (Bitfield-Mask: 0x01)                   */
 
+#define CC4_PMUS                 (0x1UL)                   /*!< CCU4_CC4 INTS: PMUS (Bitfield-Mask: 0x01)                   */
+#define CC4_OMDS                 (0x2UL)                   /*!< CCU4_CC4 INTS: OMDS (Bitfield-Mask: 0x01)                   */
+#define CC4_CMUS                 (0x4UL)                   /*!< CCU4_CC4 INTS: CMUS (Bitfield-Mask: 0x01)                   */
+#define CC4_CMDS                 (0x8UL)                   /*!< CCU4_CC4 INTS: CMDS (Bitfield-Mask: 0x01)                   */
+#define CC4_E0AS                 (0x100UL)                 /*!< CCU4_CC4 INTS: E0AS (Bitfield-Mask: 0x01)                   */
+#define CC4_E1AS                 (0x200UL)                 /*!< CCU4_CC4 INTS: E1AS (Bitfield-Mask: 0x01)                   */
+#define CC4_E2AS                 (0x400UL)                 /*!< CCU4_CC4 INTS: E2AS (Bitfield-Mask: 0x01)                   */
+#define CC4_TRPF                 (0x800UL)                 /*!< CCU4_CC4 INTS: TRPF (Bitfield-Mask: 0x01)                   */
+
 /* --------------------------------  CCU4_CC4_INTE  ------------------------------- */
 #define CCU4_CC4_INTE_PME_Pos                 (0UL)                     /*!< CCU4_CC4 INTE: PME (Bit 0)                                  */
 #define CCU4_CC4_INTE_PME_Msk                 (0x1UL)                   /*!< CCU4_CC4 INTE: PME (Bitfield-Mask: 0x01)                    */
@@ -14168,6 +14450,14 @@ namespace T_HW
 #define CCU4_CC4_INTE_E1AE_Msk                (0x200UL)                 /*!< CCU4_CC4 INTE: E1AE (Bitfield-Mask: 0x01)                   */
 #define CCU4_CC4_INTE_E2AE_Pos                (10UL)                    /*!< CCU4_CC4 INTE: E2AE (Bit 10)                                */
 #define CCU4_CC4_INTE_E2AE_Msk                (0x400UL)                 /*!< CCU4_CC4 INTE: E2AE (Bitfield-Mask: 0x01)                   */
+
+#define CC4_PME                  (0x1UL)                   /*!< CCU4_CC4 INTE: PME (Bitfield-Mask: 0x01)                    */
+#define CC4_OME                  (0x2UL)                   /*!< CCU4_CC4 INTE: OME (Bitfield-Mask: 0x01)                    */
+#define CC4_CMUE                 (0x4UL)                   /*!< CCU4_CC4 INTE: CMUE (Bitfield-Mask: 0x01)                   */
+#define CC4_CMDE                 (0x8UL)                   /*!< CCU4_CC4 INTE: CMDE (Bitfield-Mask: 0x01)                   */
+#define CC4_E0AE                 (0x100UL)                 /*!< CCU4_CC4 INTE: E0AE (Bitfield-Mask: 0x01)                   */
+#define CC4_E1AE                 (0x200UL)                 /*!< CCU4_CC4 INTE: E1AE (Bitfield-Mask: 0x01)                   */
+#define CC4_E2AE                 (0x400UL)                 /*!< CCU4_CC4 INTE: E2AE (Bitfield-Mask: 0x01)                   */
 
 /* --------------------------------  CCU4_CC4_SRS  -------------------------------- */
 #define CCU4_CC4_SRS_POSR_Pos                 (0UL)                     /*!< CCU4_CC4 SRS: POSR (Bit 0)                                  */
@@ -14199,6 +14489,15 @@ namespace T_HW
 #define CCU4_CC4_SWS_STRPF_Pos                (11UL)                    /*!< CCU4_CC4 SWS: STRPF (Bit 11)                                */
 #define CCU4_CC4_SWS_STRPF_Msk                (0x800UL)                 /*!< CCU4_CC4 SWS: STRPF (Bitfield-Mask: 0x01)                   */
 
+#define CC4_SPM                   (0x1UL)                   /*!< CCU4_CC4 SWS: SPM (Bitfield-Mask: 0x01)                     */
+#define CC4_SOM                   (0x2UL)                   /*!< CCU4_CC4 SWS: SOM (Bitfield-Mask: 0x01)                     */
+#define CC4_SCMU                  (0x4UL)                   /*!< CCU4_CC4 SWS: SCMU (Bitfield-Mask: 0x01)                    */
+#define CC4_SCMD                  (0x8UL)                   /*!< CCU4_CC4 SWS: SCMD (Bitfield-Mask: 0x01)                    */
+#define CC4_SE0A                  (0x100UL)                 /*!< CCU4_CC4 SWS: SE0A (Bitfield-Mask: 0x01)                    */
+#define CC4_SE1A                  (0x200UL)                 /*!< CCU4_CC4 SWS: SE1A (Bitfield-Mask: 0x01)                    */
+#define CC4_SE2A                  (0x400UL)                 /*!< CCU4_CC4 SWS: SE2A (Bitfield-Mask: 0x01)                    */
+#define CC4_STRPF                 (0x800UL)                 /*!< CCU4_CC4 SWS: STRPF (Bitfield-Mask: 0x01)                   */
+
 /* --------------------------------  CCU4_CC4_SWR  -------------------------------- */
 #define CCU4_CC4_SWR_RPM_Pos                  (0UL)                     /*!< CCU4_CC4 SWR: RPM (Bit 0)                                   */
 #define CCU4_CC4_SWR_RPM_Msk                  (0x1UL)                   /*!< CCU4_CC4 SWR: RPM (Bitfield-Mask: 0x01)                     */
@@ -14216,6 +14515,15 @@ namespace T_HW
 #define CCU4_CC4_SWR_RE2A_Msk                 (0x400UL)                 /*!< CCU4_CC4 SWR: RE2A (Bitfield-Mask: 0x01)                    */
 #define CCU4_CC4_SWR_RTRPF_Pos                (11UL)                    /*!< CCU4_CC4 SWR: RTRPF (Bit 11)                                */
 #define CCU4_CC4_SWR_RTRPF_Msk                (0x800UL)                 /*!< CCU4_CC4 SWR: RTRPF (Bitfield-Mask: 0x01)                   */
+
+#define CC4_RPM                   (0x1UL)                   /*!< CCU4_CC4 SWR: RPM (Bitfield-Mask: 0x01)                     */
+#define CC4_ROM                   (0x2UL)                   /*!< CCU4_CC4 SWR: ROM (Bitfield-Mask: 0x01)                     */
+#define CC4_RCMU                  (0x4UL)                   /*!< CCU4_CC4 SWR: RCMU (Bitfield-Mask: 0x01)                    */
+#define CC4_RCMD                  (0x8UL)                   /*!< CCU4_CC4 SWR: RCMD (Bitfield-Mask: 0x01)                    */
+#define CC4_RE0A                  (0x100UL)                 /*!< CCU4_CC4 SWR: RE0A (Bitfield-Mask: 0x01)                    */
+#define CC4_RE1A                  (0x200UL)                 /*!< CCU4_CC4 SWR: RE1A (Bitfield-Mask: 0x01)                    */
+#define CC4_RE2A                  (0x400UL)                 /*!< CCU4_CC4 SWR: RE2A (Bitfield-Mask: 0x01)                    */
+#define CC4_RTRPF                 (0x800UL)                 /*!< CCU4_CC4 SWR: RTRPF (Bitfield-Mask: 0x01)                   */
 
 /* -------------------------------  CCU4_CC4_ECRD0  ------------------------------- */
 #define CCU4_CC4_ECRD0_CAPV_Pos               (0UL)                     /*!< CCU4_CC4 ECRD0: CAPV (Bit 0)                                */

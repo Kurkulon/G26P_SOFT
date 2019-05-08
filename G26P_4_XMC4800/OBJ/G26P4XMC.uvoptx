@@ -101,7 +101,7 @@
         <sRunDeb>0</sRunDeb>
         <sLrtime>0</sLrtime>
         <bEvRecOn>1</bEvRecOn>
-        <nTsel>3</nTsel>
+        <nTsel>6</nTsel>
         <sDll></sDll>
         <sDllPa></sDllPa>
         <sDlgDll></sDlgDll>
@@ -117,13 +117,17 @@
       <TargetDriverDllRegistry>
         <SetRegEntry>
           <Number>0</Number>
+          <Key>DLGUARM</Key>
+        </SetRegEntry>
+        <SetRegEntry>
+          <Number>0</Number>
           <Key>UL2CM3</Key>
           <Name>UL2CM3(-S0 -C0 -P0 ) -FN2 -FC1000 -FD20000000 -FF0XMC4800_2048 -FF1XMC4800c_2048 -FL0100000 -FL1100000 -FS0C000000 -FS18000000 -FP0($$Device:XMC4800-F144x2048$Flash\XMC4800_2048.FLM) -FP1($$Device:XMC4800-F144x2048$Flash\XMC4800c_2048.FLM)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
           <Key>JL2CM3</Key>
-          <Name>-U591119543 -O111 -S2 -ZTIFSpeedSel5000 -A0 -C0 -JU1 -JI127.0.0.1 -JP0 -RST0 -N00("ARM CoreSight SW-DP") -D00(2BA01477) -L00(0) -TO18 -TC10000000 -TP21 -TDS8009 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -TB1 -TFE0 -FO4 -FD1FFE8000 -FC8000 -FN2 -FF0XMC4800_2048.FLM -FS0C000000 -FL0200000 -FP0($$Device:XMC4800-F144x2048$Flash\XMC4800_2048.FLM) -FF1XMC4800c_2048.FLM -FS18000000 -FL1200000 -FP1($$Device:XMC4800-F144x2048$Flash\XMC4800c_2048.FLM)</Name>
+          <Name>-U29999997 -O111 -S2 -ZTIFSpeedSel5000 -A0 -C0 -JU1 -JI127.0.0.1 -JP0 -RST0 -N00("ARM CoreSight SW-DP") -D00(2BA01477) -L00(0) -TO18 -TC10000000 -TP21 -TDS8009 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -TB1 -TFE0 -FO4 -FD1FFE8000 -FC8000 -FN2 -FF0XMC4800_2048.FLM -FS0C000000 -FL0200000 -FP0($$Device:XMC4800-F144x2048$Flash\XMC4800_2048.FLM) -FF1XMC4800c_2048.FLM -FS18000000 -FL1200000 -FP1($$Device:XMC4800-F144x2048$Flash\XMC4800c_2048.FLM)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -133,7 +137,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=1995,100,2402,587,0)(1007=-1,-1,-1,-1,0)(1008=-1,-1,-1,-1,0)(1009=-1,-1,-1,-1,0)(1012=-1,-1,-1,-1,0)</Name>
+          <Name>(1010=1392,230,1832,773,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=-1,-1,-1,-1,0)(1012=2055,165,2522,466,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -145,9 +149,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>96</LineNumber>
+          <LineNumber>119</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134237536</Address>
+          <Address>134236232</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -156,7 +160,23 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\cpp\twi.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26P4XMC\cpp/twi.cpp\96</Expression>
+          <Expression>\\G26P4XMC\cpp/twi.cpp\119</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>224</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134236826</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\cpp\twi.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P4XMC\cpp/twi.cpp\224</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -184,6 +204,16 @@
           <count>4</count>
           <WinNumber>1</WinNumber>
           <ItemText>reqIpCount,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>5</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>SystemCoreClock,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>6</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>timeBDC</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -306,8 +336,8 @@
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
-          <SubType>0</SubType>
-          <ItemText>buf</ItemText>
+          <SubType>1</SubType>
+          <ItemText>0x20000000</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>
@@ -349,14 +379,10 @@
       <pszMrule></pszMrule>
       <pSingCmds></pSingCmds>
       <pMultCmds></pMultCmds>
-      <pMisraNamep></pMisraNamep>
-      <pszMrulep></pszMrulep>
-      <pSingCmdsp></pSingCmdsp>
-      <pMultCmdsp></pMultCmdsp>
       <SystemViewers>
         <Entry>
-          <Name>System Viewer\USIC1_CH1</Name>
-          <WinId>35904</WinId>
+          <Name>System Viewer\USIC2_CH0</Name>
+          <WinId>35905</WinId>
         </Entry>
       </SystemViewers>
     </TargetOption>

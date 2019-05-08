@@ -5,6 +5,7 @@
 #include "time.h"
 #include "ComPort.h"
 #include "twi.h"
+#include "hardware.h"
 
 #pragma diag_suppress 546,550,177
 
@@ -14,7 +15,7 @@
 byte buf[5000] = {0x55,0,0,0,0,0,0,0,0,0x55};
 
 static ComPort com1;
-static TWI twi;
+//static TWI twi;
 
 u32 fps = 0;
 u32 f = 0;
@@ -326,36 +327,33 @@ static void Init_Timer()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void Init_TWI()
-{
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 int main()
 {
-	RTM16 rtm;
+	static RTM16 rtm;
+	static MTB mtb;
+	static u16 manbuf[10];
+	static DSCTWI dsctwi;
 
 //	com1.Connect(0, 115200, 0);
 	com1.Connect(0, 6250000, 0);
 
 	__breakpoint(0);
 
-	twi.Init(0);
+//	twi.Init(0);
 
-	InitTimer();
+	InitHardware();
 
-	RTT_Init();
+	Init_TWI();
 
-	InitEMAC();
+//	InitEMAC();
 
-	InitTraps();
+//	InitTraps();
 
-	FLASH_Init();
+//	FLASH_Init();
 
 //	Init_UART_DMA();
 
-	Init_Timer();
+//	Init_Timer();
 
 	buf[4999] = 0x55;
 
@@ -363,23 +361,34 @@ int main()
 
 	while(1)
 	{
+		HW::P2->BSET(6);
 		f++;
 
 //		Update();
 
-		if(!com1.Update())
+//		if(!com1.Update())
 		{
 			//com1.Read(&rb, -1, US2RT(500));
 //			com1.Write(&wb);
 		};
 
+		HW::P2->BCLR(6);
+
 		if (rtm.Check(MS2RT(100)))
 		{	
-			HW::P5->BTGL(8); fps = f; f = 0; 
-			com1.Write(&wb);
-		};
+			fps = f; f = 0; 
 
-		buf[0] = HW::CCU40_CC40->TIMER;
+			dsctwi.adr = 0x50;
+			dsctwi.wdata = buf;
+			dsctwi.wlen = 0;
+			dsctwi.wdata2 = 0;
+			dsctwi.wlen2 = 0;
+			dsctwi.rdata = buf+2;
+			dsctwi.rlen = 10;
+			dsctwi.next = 0;
+
+			AddRequest_TWI(&dsctwi);
+		};
 	};
 
 }

@@ -29,15 +29,19 @@ inline void ManZero()		{ HW::P0->CLR(L1); HW::P0->SET(L2|H2); HW::P0->CLR(H1);} 
 //static byte manInv = 0;
 
 #define BOUD2CLK(x) ((u32)((MCK/8.0)/x+0.5))
-#define ManTmr		HW::CCU40_CC40
-#define ManRT		HW::CCU40_CC41
-#define ManCCU		HW::CCU40
+#define ManTT		HW::CCU41_CC40
+#define ManRT		HW::CCU41_CC42
+#define ManTmr		HW::CCU41_CC41
+#define ManCCU		HW::CCU41
 #define ManRxd()	(HW::PIOA->IN & 1)
+#define MT(v)		((u16)((v)/1.28+0.5))
+
+// RXD CCU41.IN2C
 
 static const u16 manboud[4] = { BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
 
 
-u16 trmHalfPeriod = BOUD2CLK(83333)/2;
+u16 trmHalfPeriod = BOUD2CLK(20833)/2;
 byte stateManTrans = 0;
 static MTB *manTB = 0;
 static bool trmBusy = false;
@@ -61,7 +65,7 @@ static u16* rcvManPtr = 0;
 static u16 rcvManCount = 0;
 
 static u16 rcvManLen = 0;
-static u32 rcvManPrevTime = 0;
+static u16 rcvManPrevTime = 0;
 
 static MRB *manRB = 0;
 
@@ -97,16 +101,18 @@ inline u32 Encode_4B5B(u16 v) { return tbl_4B5B[v&15]|(tbl_4B5B[(v>>4)&15]<<5)|(
 // L2 H2 H1 L1
 // Z - 1111, P - 1100, Z - 1111, N - 0011
 
-byte mltArr[4] = { 0x03, 0x0C, 0x03, 0x0C };
+u16 mltArr[4] = { 0, L2|H2, 0, L1|H1 };
 byte mltSeq = 0;
 
-#define MltTmr HW::TC0->C1
+#define MltTmr HW::CCU40_CC40
+#define MLT3_JK 0x311	//11000 10001
+#define MLT3_TR	0x1A7	//01101 00111
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void MltOff()	{ HW::P0->CLR(L1|L2); HW::P0->SET(H1|L2);} // 0110  
-inline void MltZ()		{ HW::P0->CLR(L1|L2); mltSeq = 0; HW::P0->SET(H1|L2); } // 1111
-inline void MltNext()	{ HW::P0->CLR(L1|L2); HW::P0->SET(H1|L2); mltSeq = (mltSeq+1)&3;HW::P0->SET(mltArr[mltSeq]); }
+inline void MltOff()	{ HW::P0->CLR(L1|L2); HW::P0->SET(H1|H2);} // 0110  
+inline void MltZ()		{ HW::P0->SET(H1|H2); mltSeq = 0; HW::P0->SET(L1|L2);} // 1111
+inline void MltNext()	{ HW::P0->SET(H1|H2); mltSeq = (mltSeq+1)&3; HW::P0->SET(L1|L2); HW::P0->CLR(mltArr[mltSeq]); }
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -139,14 +145,14 @@ static __irq void MLT3_TrmIRQ()
 			len = mltTB->len;
 
 //			pw = 0;
-			tw = Encode_4B5B(*data);
+			tw = MLT3_JK<<10; //11000 10001 //Encode_4B5B(*data);
 
-			data++;
-			len--;
+			//data++;
+			//len--;
 
 			nrz = 0;
 
-			count = 20;
+			count = 10;
 
 			stateMLT3 = 1;
 
@@ -156,14 +162,20 @@ static __irq void MLT3_TrmIRQ()
 
 			if (tw & 0x80000)
 			{
-				nrz ^= 1;
-//				MltNext();
+				HW::P5->BSET(1);
+
+//				nrz ^= 1;
+				MltNext();
+			}
+			else
+			{
+				HW::P5->BCLR(1);
 			};
 
-			if (nrz != 0)
-			{
-				MltNext();
-			};
+			//if (nrz != 0)
+			//{
+			//	MltNext();
+			//};
 
 			count--;
 //			pw = tw;
@@ -179,6 +191,12 @@ static __irq void MLT3_TrmIRQ()
 					len--;
 					count = 20;
 				}
+				else if (data != 0)
+				{
+					tw = MLT3_TR<<10;
+					count = 10;
+					data = 0;
+				}
 				else
 				{
 					stateMLT3++;
@@ -187,14 +205,19 @@ static __irq void MLT3_TrmIRQ()
 
 			break;
 
-		case 2:	
+		case 2:
+
+			MltZ();
+			stateMLT3++;
+
+			break;
+
+		case 3:
 
 			MltOff();
 			stateMLT3 = 0;
 
-//			MltTmr.IDR = CPCS;
-//			MltTmr.CCR = CLKDIS; 
-
+			ManTT->TCCLR = CC4_TRBC;
 
 			mltTB->ready = true;
 			mltBusy = false;
@@ -206,7 +229,6 @@ static __irq void MLT3_TrmIRQ()
 
 //	u32 tmp = MltTmr.SR;
 
-//	HW::PIOE->CODR = 1;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -224,20 +246,21 @@ bool SendMLT3(MTB *mtb)
 
 	stateMLT3 = 0;
 
-//	HW::PIOE->IDR = 1<<3;
+	ManTT->PRS = trmHalfPeriod-1;
+	ManTT->PSC = 3; //0.08us
 
-	//VectorTableExt[HW::PID::TC1_I] = MLT3_TrmIRQ;
-	//CM4::NVIC->ICPR[0] = HW::PID::TC1_M;
-	//CM4::NVIC->ISER[0] = HW::PID::TC1_M;	
-	//MltTmr.IER = CPCS;
+	ManCCU->GCSS = CCU4_S0SE;  
 
-//	u32 tmp = MltTmr.SR;
+	VectorTableExt[CCU40_0_IRQn] = MLT3_TrmIRQ;
+	CM4::NVIC->CLR_PR(CCU40_0_IRQn);
+	CM4::NVIC->SET_ER(CCU40_0_IRQn);	
 
-//	MltTmr.RC = trmHalfPeriod;
+	ManTT->SRS = 0;
 
-//	MltTmr.CMR = CPCTRG;
-	
-//	MltTmr.CCR = CLKEN|SWTRG;
+	ManTT->SWR = ~0;
+	ManTT->INTE = CC4_PME;
+
+	ManTT->TCSET = CC4_TRBS;
 
 	return mltBusy = true;
 }
@@ -254,7 +277,7 @@ static __irq void ManTrmIRQ()
 	static const u16 *data = 0;
 	static u16 len = 0;
 
-	HW::P5->BSET(7);
+//	HW::P5->BSET(7);
 
 	switch (stateManTrans)
 	{
@@ -348,7 +371,7 @@ static __irq void ManTrmIRQ()
 			ManDisable();
 			stateManTrans = 0;
 
-			ManTmr->TCCLR = CC4_TRBC;
+			ManTT->TCCLR = CC4_TRBC;
 
 			manTB->ready = true;
 			trmBusy = false;
@@ -358,7 +381,7 @@ static __irq void ManTrmIRQ()
 
 	}; // 	switch (stateManTrans)
 
-	HW::P5->BCLR(7);
+//	HW::P5->BCLR(7);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -376,8 +399,8 @@ bool SendManData(MTB *mtb)
 
 	stateManTrans = 0;
 
-	ManTmr->PRS = trmHalfPeriod-1;
-	ManTmr->PSC = 3; //0.08us
+	ManTT->PRS = trmHalfPeriod-1;
+	ManTT->PSC = 3; //0.08us
 
 	ManCCU->GCSS = CCU4_S0SE;  
 
@@ -385,26 +408,26 @@ bool SendManData(MTB *mtb)
 	CM4::NVIC->CLR_PR(CCU40_0_IRQn);
 	CM4::NVIC->SET_ER(CCU40_0_IRQn);	
 
-	ManTmr->SRS = 0;
+	ManTT->SRS = 0;
 
-	ManTmr->SWR = ~0;
-	ManTmr->INTE = CC4_PME;
+	ManTT->SWR = ~0;
+	ManTT->INTE = CC4_PME;
 
-	ManTmr->TCSET = CC4_TRBS;
+	ManTT->TCSET = CC4_TRBS;
 
 	return trmBusy = true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static __irq void ManTrmIRQ2()
-{
-	HW::P5->BSET(7);
-
-//	ManTmr->SWR = CC4_RPM;
-
-	HW::P5->BCLR(7);
-}
+//static __irq void ManTrmIRQ2()
+//{
+//	HW::P5->BSET(7);
+//
+////	ManTT->SWR = CC4_RPM;
+//
+//	HW::P5->BCLR(7);
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -414,33 +437,33 @@ static void InitManTransmit()
 
 	SCU_CLK->CLKSET = CLK_CCU;
 
-	SCU_CLK->CGATCLR0 = CGAT0_CCU40;
+	SCU_CLK->CGATCLR0 = CGAT0_CCU41;
 
-	SCU_RESET->PRCLR0 = PR0_CCU40;
+	SCU_RESET->PRCLR0 = PR0_CCU41;
 
 	ManCCU->GCTRL = 0;
 
 	ManCCU->GIDLC = CCU4_S0I|CCU4_PRB;
 
-	ManTmr->PRS = trmHalfPeriod-1;
-	ManTmr->PSC = 3; //0.08us
+	ManTT->PRS = trmHalfPeriod-1;
+	ManTT->PSC = 3; //0.08us
 
 	ManCCU->GCSS = CCU4_S0SE;  
 
-	//ManTmr->INS = 0;
-	//ManTmr->CMC = 0;
-	//ManTmr->TC = 0;
+	//ManTT->INS = 0;
+	//ManTT->CMC = 0;
+	//ManTT->TC = 0;
 
-	VectorTableExt[CCU40_0_IRQn] = ManTrmIRQ;
-	CM4::NVIC->CLR_PR(CCU40_0_IRQn);
-	CM4::NVIC->SET_ER(CCU40_0_IRQn);	
+	VectorTableExt[CCU41_0_IRQn] = ManTrmIRQ;
+	CM4::NVIC->CLR_PR(CCU41_0_IRQn);
+	CM4::NVIC->SET_ER(CCU41_0_IRQn);	
 
-	ManTmr->SRS = 0;
+	ManTT->SRS = 0;
 
-	ManTmr->SWR = ~0;
-	ManTmr->INTE = CC4_PME;
+	ManTT->SWR = ~0;
+	ManTT->INTE = CC4_PME;
 
-//	ManTmr->TCSET = 1;
+//	ManTT->TCSET = 1;
 
 	ManDisable();
 }
@@ -466,10 +489,10 @@ static void ManRcvEnd(bool ok)
 u32 lastCaptureValue = 0;
 byte manRcvState = 0;
 
-u32 manRcvTime1 = 0;
-u32 manRcvTime2 = 0;
-u32 manRcvTime3 = 0;
-u32 manRcvTime4 = 0;
+u16 manRcvTime1 = 0;
+//u32 manRcvTime2 = 0;
+//u32 manRcvTime3 = 0;
+//u32 manRcvTime4 = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -486,17 +509,22 @@ static __irq void ManRcvIRQ2()
 	static bool _sync = false;
 	static bool _state = false;
 
-//	HW::PIOA->BSET(1);
+	u16 len = ManTmr->TIMER-1;
+
+	HW::P5->BSET(1);
  
-	u32 t = GetRTT();
-	u32 len = t - manRcvTime1;
-	manRcvTime1 = t;
+//	u16 t = GetRTT();
+	
+	ManTmr->TCCLR = CC4_TCC;
+	ManTmr->TCSET = CC4_TRB;
+	
+//	manRcvTime1 = t;
 
 	_state = !_state;
 
-	if (len <= 60)
+	if (len <= MT(60))
 	{
-		_length += (len <= 36) ? 1 : 2;
+		_length += (len <= MT(36)) ? 1 : 2;
 
 		if(_length >= 3)
 		{
@@ -505,26 +533,26 @@ static __irq void ManRcvIRQ2()
 	}
 	else
 	{
-		if(len > 108)
+		if(len > MT(108))
 		{
 			_sync = false;
 		}
 		else
 		{
-//			HW::PIOA->BSET(2);
+			manRcvTime1 = GetRTT();
 
 			_sync = true;
 			_data = 0;
 			_parity_temp = _parity;
 			_number = 0;
-			_length = (len <= 84) ? 1 : 2;
+			_length = (len <= MT(84)) ? 1 : 2;
 			_command = !_state; 
 		};
 	};
 
 	if(_sync && _length == 2)
 	{
-//		HW::PIOA->BSET(3);
+		manRcvTime1 = GetRTT();
 
 		if(_number < 16)
 		{
@@ -536,8 +564,6 @@ static __irq void ManRcvIRQ2()
 		}
 	 	else
 		{
-//			HW::PIOA->BSET(2);
-
 			_sync = false;
 
 			if(_state != _parity_temp)
@@ -547,7 +573,7 @@ static __irq void ManRcvIRQ2()
 				_command = !_command;
 			};
 
-			rcvManPrevTime = t;
+			//rcvManPrevTime = t;
 
 			if (rcvManLen == 0)
 			{
@@ -569,9 +595,7 @@ static __irq void ManRcvIRQ2()
 		};
 	};
 
-//	ManRT->INTFLAG = ~0;
-
-//	HW::PIOA->CLR((1<<1)|(1<<2)|(1<<3));
+	HW::P5->BCLR(1);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -580,7 +604,7 @@ void ManRcvUpdate()
 {
 	if (rcvBusy)
 	{
-		//bool c = false;//ManTmr.SR & CPCS;
+		//bool c = false;//ManTT.SR & CPCS;
 
 		if (rcvManLen > 0 && (GetRTT() - manRcvTime1) > US2RT(200))
 		{
@@ -614,58 +638,41 @@ static void InitManRecieve()
 
 	SCU_CLK->CLKSET = CLK_CCU;
 
-	SCU_CLK->CGATCLR0 = CGAT0_CCU40;
+	SCU_CLK->CGATCLR0 = CGAT0_CCU41;
 
-	SCU_RESET->PRCLR0 = PR0_CCU40;
+	SCU_RESET->PRCLR0 = PR0_CCU41;
 
 	ManCCU->GCTRL = 0;
 
-	ManCCU->GIDLC = CCU4_GIDLC_CS1I_Msk|CCU4_GIDLC_SPRB_Msk;
+	ManCCU->GIDLC = CCU4_CS1I|CCU4_CS2I|CCU4_SPRB;
 
-	ManRT->PRS = 0xFFFF;
-	ManRT->PSC = 11; //20.48us
+	ManRT->PRS = MT(12)-1;
+	ManRT->PSC = 7; //1.28us
 
-	ManCCU->GCSS = CCU4_GCSS_S1SE_Msk;  
+	ManTmr->PRS = 0xFFFF;
+	ManTmr->PSC = 7; //1.28us
 
-	ManRT->INS = CC4_EV0IS(0);
+	ManCCU->GCSS = CCU4_S1SE|CCU4_S2SE;  
+
+	ManRT->INS = CC4_EV0IS(2)|CC4_EV0EM_BOTH_EDGES|CC4_LPF0M_7CLK;
 	ManRT->CMC = CC4_STRTS_EVENT0;
 	ManRT->TC = CC4_STRM|CC4_TSSM;
-	
 
-	ManRT->TCSET = 1;
+	ManRT->INTE = 0;//CC4_PME;
+	ManRT->SRS = CC4_POSR(2);
 
-	//PM->APBCMASK |= PM_APBC_TCC1;
+	ManTmr->INS = 0;
+	ManTmr->CMC = 0;
+	ManTmr->TC = CC4_TSSM;
 
-	//HW::PIOA->DIRCLR = TLS;
-	//HW::PIOA->CTRL |= TLS;
+	ManTmr->INTE = 0;//CC4_PME;
 
-	//HW::PIOA->PMUX[0] = 0;
-	//HW::PIOA->PINCFG[0] = 3;
 
-	//ManRT->CTRLA = TCC_SWRST;
+	//ManRT->TCSET = 1;
 
-	//while(ManRT->SYNCBUSY);
-
-	VectorTableExt[CCU43_0_IRQn] = ManRcvIRQ2;
-	CM4::NVIC->CLR_PR(CCU43_0_IRQn);
-	CM4::NVIC->SET_ER(CCU43_0_IRQn);	
-
-	//ManRT->CTRLA = 0;
-	//ManRT->EVCTRL = TCC_TCEI0|TCC_EVACT0_RETRIGGER;
-
-	//ManRT->PER = 11;
-	//ManRT->CC[0] = ~0;
-	//ManRT->CC[1] = ~0;
-
-	//ManRT->INTENCLR = ~0;
-
-	//ManRT->INTFLAG = ~0;
-
-	//ManRT->CTRLA = TCC_ENABLE;
-
-	//while(ManRT->SYNCBUSY);
-
-	//ManRT->CTRLBSET = TCC_ONESHOT;
+	//VectorTableExt[CCU41_2_IRQn] = ManRcvIRQ2;
+	//CM4::NVIC->CLR_PR(CCU41_2_IRQn);
+	//CM4::NVIC->SET_ER(CCU41_2_IRQn);	
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -689,12 +696,24 @@ bool RcvManData(MRB *mrb)
 	rcvManPtr = manRB->data;
 	rcvManCount = manRB->maxLen;
 
-	//HW::EVSYS->CHANNEL = 0|EVSYS_GEN_EIC_EXTINT_0|EVSYS_PATH_SYNCHRONOUS|EVSYS_EDGSEL_BOTH_EDGES;
+	ManRT->PRS = MT(12)-1;
+	ManRT->PSC = 7; //1.28us
 
-	//ManRT->CTRLBSET = TCC_ONESHOT;
-	//ManRT->PER = 11;
+	ManCCU->GCSS = CCU4_S2SE;  
 
-	ManRT->SWR = ~0;
+	ManRT->INS = CC4_EV0IS(2)|CC4_EV0EM_BOTH_EDGES|CC4_LPF0M_7CLK;
+	ManRT->CMC = CC4_STRTS_EVENT0;
+	ManRT->TC = CC4_STRM|CC4_TSSM;
+
+	ManRT->SRS = CC4_POSR(2);
+
+	ManTmr->TC = CC4_TSSM;
+	ManTmr->TCSET = CC4_TRB;
+
+	VectorTableExt[CCU41_2_IRQn] = ManRcvIRQ2;
+	CM4::NVIC->CLR_PR(CCU41_2_IRQn);
+	CM4::NVIC->SET_ER(CCU41_2_IRQn);	
+
 	ManRT->INTE = CC4_PME;
 
 	return rcvBusy = true;

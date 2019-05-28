@@ -5217,7 +5217,13 @@ namespace T_HW
 #define DST_TR_WIDTH(v)		(((v)&7)<<1)         	/*!< GPDMA1_CH CTLL: DST_TR_WIDTH (Bit 1)                        */
 #define SRC_TR_WIDTH(v)		(((v)&7)<<4)         	/*!< GPDMA1_CH CTLL: SRC_TR_WIDTH (Bit 4)                        */
 #define DINC(v)				(((v)&3)<<7)         	/*!< GPDMA1_CH CTLL: DINC (Bit 7)                                */
+#define DST_INC				(0<<7)         			
+#define DST_DEC				(1<<7)         			
+#define DST_NOCHANGE		(2<<7)         			
 #define SINC(v)				(((v)&3)<<9)         	/*!< GPDMA1_CH CTLL: SINC (Bit 9)                                */
+#define SRC_INC				(0<<9)         			
+#define SRC_DEC				(1<<9)         			
+#define SRC_NOCHANGE		(2<<9)         			
 #define DEST_MSIZE(v)		(((v)&7)<<11)        	/*!< GPDMA1_CH CTLL: DEST_MSIZE (Bit 11)                         */
 #define SRC_MSIZE(v)		(((v)&7)<<14)        	/*!< GPDMA1_CH CTLL: SRC_MSIZE (Bit 14)                          */
 #define TT_FC(v)			(((v)&7)<<20)        	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
@@ -7814,6 +7820,20 @@ namespace T_HW
 #define EBU_MODCON_ALE_Pos                    (31UL)                    /*!< EBU MODCON: ALE (Bit 31)                                    */
 #define EBU_MODCON_ALE_Msk                    (0x80000000UL)            /*!< EBU MODCON: ALE (Bitfield-Mask: 0x01)                       */
 
+#define EBU_STS                     (0x1UL)                   /*!< EBU MODCON: STS (Bitfield-Mask: 0x01)                       */
+#define EBU_LCKABRT                 (0x2UL)                   /*!< EBU MODCON: LCKABRT (Bitfield-Mask: 0x01)                   */
+#define EBU_SDTRI                   (0x4UL)                   /*!< EBU MODCON: SDTRI (Bitfield-Mask: 0x01)                     */
+#define EBU_EXTLOCK                 (0x10UL)                  /*!< EBU MODCON: EXTLOCK (Bitfield-Mask: 0x01)                   */
+#define EBU_ARBSYNC                 (0x20UL)                  /*!< EBU MODCON: ARBSYNC (Bitfield-Mask: 0x01)                   */
+#define EBU_ARBMODE(value)			(((value)&0x3)<<6UL)                     /*!< EBU MODCON: ARBMODE (Bit 6)                                 */
+#define EBU_TIMEOUTC(value)			(((value)&0xFF)<<8UL)                     /*!< EBU MODCON: TIMEOUTC (Bit 8)                                */
+#define EBU_LOCKTIMEOUT(value)		(((value)&0xFF)<<16UL)                    /*!< EBU MODCON: LOCKTIMEOUT (Bit 16)                            */
+#define EBU_GLOBALCS(value)			(((value)&0xF)<<24UL)                    /*!< EBU MODCON: GLOBALCS (Bit 24)                               */
+#define EBU_ACCSINH                 (0x10000000UL)            /*!< EBU MODCON: ACCSINH (Bitfield-Mask: 0x01)                   */
+#define EBU_ACCSINHACK              (0x20000000UL)            /*!< EBU MODCON: ACCSINHACK (Bitfield-Mask: 0x01)                */
+#define EBU_ALE                     (0x80000000UL)            /*!< EBU MODCON: ALE (Bitfield-Mask: 0x01)                       */
+
+
 /* -----------------------------------  EBU_ID  ----------------------------------- */
 #define EBU_ID_MOD_REV_Pos                    (0UL)                     /*!< EBU ID: MOD_REV (Bit 0)                                     */
 #define EBU_ID_MOD_REV_Msk                    (0xffUL)                  /*!< EBU ID: MOD_REV (Bitfield-Mask: 0xff)                       */
@@ -7837,6 +7857,10 @@ namespace T_HW
 #define EBU_ADDRSEL0_ALTENAB_Msk              (0x2UL)                   /*!< EBU ADDRSEL0: ALTENAB (Bitfield-Mask: 0x01)                 */
 #define EBU_ADDRSEL0_WPROT_Pos                (2UL)                     /*!< EBU ADDRSEL0: WPROT (Bit 2)                                 */
 #define EBU_ADDRSEL0_WPROT_Msk                (0x4UL)                   /*!< EBU ADDRSEL0: WPROT (Bitfield-Mask: 0x01)                   */
+
+#define EBU_REGENAB               (0x1UL)                   /*!< EBU ADDRSEL0: REGENAB (Bitfield-Mask: 0x01)                 */
+#define EBU_ALTENAB               (0x2UL)                   /*!< EBU ADDRSEL0: ALTENAB (Bitfield-Mask: 0x01)                 */
+#define EBU_WPROT                 (0x4UL)                   /*!< EBU ADDRSEL0: WPROT (Bitfield-Mask: 0x01)                   */
 
 /* --------------------------------  EBU_ADDRSEL1  -------------------------------- */
 #define EBU_ADDRSEL1_REGENAB_Pos              (0UL)                     /*!< EBU ADDRSEL1: REGENAB (Bit 0)                               */
@@ -7894,6 +7918,25 @@ namespace T_HW
 #define EBU_BUSRCON0_AGEN_Pos                 (28UL)                    /*!< EBU BUSRCON0: AGEN (Bit 28)                                 */
 #define EBU_BUSRCON0_AGEN_Msk                 (0xf0000000UL)            /*!< EBU BUSRCON0: AGEN (Bitfield-Mask: 0x0f)                    */
 
+
+#define EBU_FETBLEN(value)			(((value)&0x7)<<0UL)    /*!< EBU BUSRCON0: FETBLEN (Bit 0)                               */
+#define EBU_FBBMSEL           		(0x8UL)               	/*!< EBU BUSRCON0: FBBMSEL (Bitfield-Mask: 0x01)                 */
+#define EBU_BFSSS             		(0x10UL)              	/*!< EBU BUSRCON0: BFSSS (Bitfield-Mask: 0x01)                   */
+#define EBU_FDBKEN            		(0x20UL)              	/*!< EBU BUSRCON0: FDBKEN (Bitfield-Mask: 0x01)                  */
+#define EBU_BFCMSEL           		(0x40UL)              	/*!< EBU BUSRCON0: BFCMSEL (Bitfield-Mask: 0x01)                 */
+#define EBU_NAA               		(0x80UL)              	/*!< EBU BUSRCON0: NAA (Bitfield-Mask: 0x01)                     */
+#define EBU_ECSE              		(0x10000UL)           	/*!< EBU BUSRCON0: ECSE (Bitfield-Mask: 0x01)                    */
+#define EBU_EBSE              		(0x20000UL)           	/*!< EBU BUSRCON0: EBSE (Bitfield-Mask: 0x01)                    */
+#define EBU_DBA               		(0x40000UL)           	/*!< EBU BUSRCON0: DBA (Bitfield-Mask: 0x01)                     */
+#define EBU_WAITINV           		(0x80000UL)           	/*!< EBU BUSRCON0: WAITINV (Bitfield-Mask: 0x01)                 */
+#define EBU_BCGEN(value)			(((value)&0x3)<<20UL)	/*!< EBU BUSRCON0: BCGEN (Bit 20)                                */
+#define EBU_PORTW(value)			(((value)&0x3)<<22UL)	/*!< EBU BUSRCON0: PORTW (Bit 22)                                */
+#define EBU_WAIT(value)				(((value)&0x3)<<24UL)	/*!< EBU BUSRCON0: WAIT (Bit 24)                                 */
+#define EBU_AAP						(0x4000000UL)			/*!< EBU BUSRCON0: AAP (Bitfield-Mask: 0x01)                     */
+#define EBU_LOCKCS					(0x8000000UL)           /*!< EBU BUSWCON0: LOCKCS (Bitfield-Mask: 0x01)                  */
+#define EBU_AGEN(value)				(((value)&0xF)<<28UL)	/*!< EBU BUSRCON0: AGEN (Bit 28)                                 */
+
+
 /* ---------------------------------  EBU_BUSRAP0  -------------------------------- */
 #define EBU_BUSRAP0_RDDTACS_Pos               (0UL)                     /*!< EBU BUSRAP0: RDDTACS (Bit 0)                                */
 #define EBU_BUSRAP0_RDDTACS_Msk               (0xfUL)                   /*!< EBU BUSRAP0: RDDTACS (Bitfield-Mask: 0x0f)                  */
@@ -7913,6 +7956,19 @@ namespace T_HW
 #define EBU_BUSRAP0_AHOLDC_Msk                (0xf000000UL)             /*!< EBU BUSRAP0: AHOLDC (Bitfield-Mask: 0x0f)                   */
 #define EBU_BUSRAP0_ADDRC_Pos                 (28UL)                    /*!< EBU BUSRAP0: ADDRC (Bit 28)                                 */
 #define EBU_BUSRAP0_ADDRC_Msk                 (0xf0000000UL)            /*!< EBU BUSRAP0: ADDRC (Bitfield-Mask: 0x0f)                    */
+
+#define EBU_RDDTACS(value)		(((value)&0xf)<<0UL)                 	/*!< EBU BUSRAP0: RDDTACS (Bit 0)                                */
+#define EBU_RDRECOVC(value)		(((value)&0x7)<<4UL)                 	/*!< EBU BUSRAP0: RDRECOVC (Bit 4)                               */
+#define EBU_WRDTACS(value)		(((value)&0xf)<<0UL)                     /*!< EBU BUSWAP0: WRDTACS (Bit 0)                                */
+#define EBU_WRRECOVC(value)		(((value)&0x7)<<4UL)                     /*!< EBU BUSWAP0: WRRECOVC (Bit 4)                               */
+#define EBU_WAITRDC(value)		(((value)&0x1f)<<7UL)                 	/*!< EBU BUSRAP0: WAITRDC (Bit 7)                                */
+#define EBU_WAITWRC(value)		(((value)&0x1f)<<7UL)                 	/*!< EBU BUSWAP0: WAITWRC (Bit 7)                                */
+#define EBU_DATAC(value)		(((value)&0xf)<<12UL)                	/*!< EBU BUSRAP0: DATAC (Bit 12)                                 */
+#define EBU_EXTCLOCK(value)		(((value)&0x3)<<16UL)                	/*!< EBU BUSRAP0: EXTCLOCK (Bit 16)                              */
+#define EBU_EXTDATA(value)		(((value)&0x3)<<18UL)                	/*!< EBU BUSRAP0: EXTDATA (Bit 18)                               */
+#define EBU_CMDDELAY(value)		(((value)&0xf)<<20UL)                	/*!< EBU BUSRAP0: CMDDELAY (Bit 20)                              */
+#define EBU_AHOLDC(value)		(((value)&0xf)<<24UL)                	/*!< EBU BUSRAP0: AHOLDC (Bit 24)                                */
+#define EBU_ADDRC(value)		(((value)&0xf)<<28UL)                	/*!< EBU BUSRAP0: ADDRC (Bit 28)                                 */
 
 /* --------------------------------  EBU_BUSWCON0  -------------------------------- */
 #define EBU_BUSWCON0_FETBLEN_Pos              (0UL)                     /*!< EBU BUSWCON0: FETBLEN (Bit 0)                               */
@@ -14470,6 +14526,13 @@ namespace T_HW
 #define CCU4_CC4_SRS_E1SR_Msk                 (0xc00UL)                 /*!< CCU4_CC4 SRS: E1SR (Bitfield-Mask: 0x03)                    */
 #define CCU4_CC4_SRS_E2SR_Pos                 (12UL)                    /*!< CCU4_CC4 SRS: E2SR (Bit 12)                                 */
 #define CCU4_CC4_SRS_E2SR_Msk                 (0x3000UL)                /*!< CCU4_CC4 SRS: E2SR (Bitfield-Mask: 0x03)                    */
+
+#define CC4_POSR(value)	         (((value)&3)<<0)
+#define CC4_CMSR(value)	         (((value)&3)<<2)
+#define CC4_E0SR(value)	         (((value)&3)<<8)
+#define CC4_E1SR(value)	         (((value)&3)<<10)
+#define CC4_E2SR(value)	         (((value)&3)<<12)
+
 
 /* --------------------------------  CCU4_CC4_SWS  -------------------------------- */
 #define CCU4_CC4_SWS_SPM_Pos                  (0UL)                     /*!< CCU4_CC4 SWS: SPM (Bit 0)                                   */

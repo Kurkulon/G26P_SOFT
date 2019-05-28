@@ -465,13 +465,13 @@ void SystemInit(void)
 
 	P0->ModePin0(	G_PP	);
 	P0->ModePin1(	G_PP	);
-	P0->ModePin2(	HWIO1	);
-	P0->ModePin3(	HWIO1	);
-	P0->ModePin4(	HWIO1	);
-	P0->ModePin5(	HWIO1	);
+	P0->ModePin2(	HWIO1, 0);
+	P0->ModePin3(	HWIO1, 0);
+	P0->ModePin4(	HWIO1, 0);
+	P0->ModePin5(	HWIO1, 0);
 	P0->ModePin6(	I2DPU	);
-	P0->ModePin7(	HWIO1	);
-	P0->ModePin8(	HWIO1	);
+	P0->ModePin7(	HWIO1, 0);
+	P0->ModePin8(	HWIO1, 0);
 	P0->ModePin9(	G_PP	);
 	P0->ModePin10(	G_PP	);
 	P0->ModePin11(	G_PP	);
@@ -489,12 +489,12 @@ void SystemInit(void)
 	P1->ModePin7(	G_PP	);
 	P1->ModePin8(	G_PP	);
 	P1->ModePin9(	G_PP	);
-	P1->ModePin10(	G_PP	);
+	P1->ModePin10(	I2DPU	);
 	P1->ModePin11(	G_PP	);
 	P1->ModePin12(	G_PP	);
 	P1->ModePin13(	G_PP	);
-	P1->ModePin14(	HWIO1	);
-	P1->ModePin15(	HWIO1	);
+	P1->ModePin14(	HWIO1, 0);
+	P1->ModePin15(	HWIO1, 0);
 
 	P1->PPS = 0;
 
@@ -516,13 +516,13 @@ void SystemInit(void)
 
 	P2->PPS = 0;
 
-	P3->ModePin0(	HWIO0	);
-	P3->ModePin1(	HWIO0	);
+	P3->ModePin0(	HWIO1, 0);
+	P3->ModePin1(	HWIO1, 0);
 	P3->ModePin2(	I2DPU	);
 	P3->ModePin3(	G_PP	);
 	P3->ModePin4(	I2DPU	);
-	P3->ModePin5(	HWIO1	);
-	P3->ModePin6(	HWIO1	);
+	P3->ModePin5(	HWIO1, 0);
+	P3->ModePin6(	HWIO1, 0);
 
 	P3->PPS = 0;
 
@@ -554,6 +554,7 @@ void SystemInit(void)
 	P14->ModePin15(	I2DPU	);
 
 	P14->PPS = 0;
+	P14->PDISC = (1<<0);
 
 	P15->ModePin2(	I2DPU	);
 	P15->ModePin3(	I2DPU	);
@@ -561,6 +562,7 @@ void SystemInit(void)
 	P15->ModePin9(	I2DPU	);
 
 	P15->PPS = 0;
+	P15->PDISC = 0;
 
 	HW::SCU_CLK->CGATCLR2 = SCU_CLK_CGATCLR2_DMA0_Msk;
 	HW::SCU_CLK->CGATCLR2 = SCU_CLK_CGATCLR2_DMA1_Msk;

@@ -1,8 +1,8 @@
 #include "twi.h"
 #include "COM_DEF.h"
 
-//#pragma O3
-//#pragma Otime
+#pragma O3
+#pragma Otime
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 /* -----------------------------  USIC_CH_PCR_IICMode  ---------------------------- */
@@ -81,6 +81,7 @@ static u16 wrCount2 = 0;
 static byte adr = 0;
 static DSCTWI* dsc = 0;
 static DSCTWI* lastDsc = 0;
+static byte state = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -137,14 +138,6 @@ static __irq void Handler_TWI()
 			{
 				TWI->TBUF[0] = TDF_MASTER_RECEIVE_ACK; 
 			}
-			else if (a & (RIF|AIF))
-			{
-				*rdPtr++ = TWI->RBUF; // receive data
-
-				rdCount--;
-
-				TWI->TBUF[0] = (rdCount > 0) ? TDF_MASTER_RECEIVE_ACK : TDF_MASTER_STOP; 
-			}
 			else
 			{
 				TWI->TBUF[0] = TDF_MASTER_RESTART | (adr << 1) | 1;
@@ -155,13 +148,39 @@ static __irq void Handler_TWI()
 			TWI->TBUF[0] = TDF_MASTER_STOP;
 		};
 	}
-	else //if(a & (PCR|NACK)) // STOP
+	else if (a & (RIF|AIF))
+	{
+		byte t = TWI->RBUF;
+
+		if (rdCount > 0)
+		{
+			*rdPtr++ = t; // receive data
+			rdCount--;
+		};
+			
+		TWI->TBUF[0] = (rdCount > 0) ? TDF_MASTER_RECEIVE_ACK : TDF_MASTER_RECEIVE_NACK; 
+	}
+	//else if (wrCount != 0 || rdCount != 0)
+	//{
+	//	TWI->PSCR = a;
+
+	//	TWI->TBUF[0] = TDF_MASTER_STOP; 
+
+	//	wrCount = 0;
+	//	rdCount = 0;
+	//}
+	else
 	{
 		dsc->ready = true;
 
-		if (dsc->next != 0)
+		state = 0;
+		
+		DSCTWI *ndsc = dsc->next;
+
+		if (ndsc != 0)
 		{
-			dsc = dsc->next;
+			dsc->next = 0;
+			dsc = ndsc;
 
 			dsc->ready = false;
 
@@ -173,12 +192,18 @@ static __irq void Handler_TWI()
 			rdCount = dsc->rlen;
 			adr = dsc->adr;
 
-			TWI->PCR_IICMode |= ACKIEN|RIEN|AIEN|PCRIEN;
+			TWI->CCR |= RIEN|AIEN;
+			TWI->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
 
 			TWI->TBUF[0] = TDF_MASTER_START | (dsc->adr << 1) | ((wrCount == 0) ? 1 : 0);
-		};
+		}
+		else
+		{
+			TWI->CCR = __CCR;
+			TWI->PCR_IICMode = __PCR;
 
-		lastDsc = dsc = 0;
+			lastDsc = dsc = 0;
+		};
 
 //		TWI->PSCR = PCR|NACK;
 	};
@@ -217,13 +242,16 @@ bool Write_TWI(DSCTWI *d)
 
 	__disable_irq();
 
-	while(TWI->TCSR & USIC_CH_TCSR_TDV_Msk);
+	//while(TWI->TCSR & USIC_CH_TCSR_TDV_Msk);
 
 	TWI->PSCR = ~0;//RIF|AIF|TBIF|ACK|NACK|PCR;
 
-	TWI->TBUF[0] = TDF_MASTER_START | (dsc->adr << 1) | ((wrCount == 0) ? 1 : 0);
+	state = (wrCount == 0) ? 1 : 0;
 
-	TWI->PCR_IICMode |= ACKIEN|RIEN|AIEN|PCRIEN;
+	TWI->TBUF[0] = TDF_MASTER_START | (dsc->adr << 1) | state;
+
+	TWI->CCR |= RIEN|AIEN;
+	TWI->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
 
 	__enable_irq();
 
@@ -235,6 +263,7 @@ bool Write_TWI(DSCTWI *d)
 bool AddRequest_TWI(DSCTWI *d)
 {
 	d->next = 0;
+	d->ready = false;
 
 	__disable_irq();
 
@@ -270,6 +299,9 @@ void Init_TWI()
 	SCU_CLK->CGATCLR1 = CGAT1_USIC2;
 	SCU_RESET->PRCLR1 = PR1_USIC2;
 
+ 	P5->ModePin0(A1OD);
+	P5->ModePin2(A1OD);
+
 	TWI->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
 
 	TWI->SCTR = __SCTR;
@@ -288,8 +320,6 @@ void Init_TWI()
 
 	TWI->CCR = __CCR;
 
- 	P5->ModePin0(A1OD);
-	P5->ModePin2(A1OD);
 
 	TWI->PCR_IICMode = __PCR;
 

@@ -88,7 +88,7 @@ static bool writeFlashEnabled = false;
 static bool flashFull = false;
 static bool flashEmpty = false;
 
-static bool testWriteFlash = false;
+static bool testWriteFlash = true;
 
 
 //__packed struct SI
@@ -341,7 +341,7 @@ bool RequestFlashWrite(FLWB* b)
 {
 	if ((b != 0) && (b->dataLen > 0))
 	{
-		b->ready[0] = false;
+//		b->ready[0] = false;
 
 		writeFlBuf.Add(b);
 
@@ -429,12 +429,14 @@ __packed struct NandID
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-volatile byte * const FLC = (byte*)0x60400000;	
-volatile byte * const FLA = (byte*)0x60200000;	
+volatile byte * const FLC = (byte*)0x60000008;	
+volatile byte * const FLA = (byte*)0x60000010;	
 volatile byte * const FLD = (byte*)0x60000000;	
+volatile u16 * const FLD16 = (u16*)0x60000000;	
+volatile u32 * const FLD32 = (u32*)0x60000000;	
 
-static u32 chipSelect[8] = { 1<<13, 1<<16, 1<<23, 1<<15, 1<<14, 1<<24, 1<<25, 1<<26 };
-static const u32 maskChipSelect = (0xF<<13)|(0xF<<23);
+static u32 chipSelect[8] = { 1<<2, 1<<0, 1<<8, 1<<9, 1<<6, 1<<1, 1<<3, 1<<7 };
+static const u32 maskChipSelect = (0xF<<0)|(0xF<<6);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -484,7 +486,7 @@ static const u32 maskChipSelect = (0xF<<13)|(0xF<<23);
 //
 ////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define NAND_BUSY() (HW::P3->TBCLR(2))
+#define NAND_BUSY() (HW::P14->TBCLR(7))
 //#define NAND_BUSY() ((CmdReadStatus() & (1<<6)) == 0)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -513,7 +515,7 @@ inline byte CmdReadStatus()
 
 inline bool CmdNandBusy()
 {
-	return ((CmdReadStatus() & (1<<6)) == 0) || NAND_BUSY();
+	return NAND_BUSY() || ((CmdReadStatus() & (1<<6)) == 0);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -522,8 +524,8 @@ void NAND_Chip_Select(byte chip)
 {    
 	if(chip < 8)                   
 	{ 				
-		HW::P14->SET(maskChipSelect ^ chipSelect[chip]);
-		HW::P14->CLR(chipSelect[chip]);
+		HW::P1->SET(maskChipSelect ^ chipSelect[chip]);
+		HW::P1->CLR(chipSelect[chip]);
 	};
 }                                                                              
 
@@ -580,6 +582,9 @@ bool ResetNand()
 	while(NAND_BUSY());
 	CMD_LATCH(NAND_CMD_RESET);
 	while(NAND_BUSY());
+
+	for (u32 i = 0; i < 1000; i++) { __nop(); };
+
 	return true;
 }
 
@@ -695,7 +700,7 @@ static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 	HW::GPDMA1->DMACFGREG = 1;
 
-	HW::GPDMA1_CH3->CTLL = DINC(2)|SINC(0)|TT_FC(0);
+	HW::GPDMA1_CH3->CTLL = DST_INC|SRC_INC|TT_FC(0)|DEST_MSIZE(2)|SRC_MSIZE(2);
 	HW::GPDMA1_CH3->CTLH = BLOCK_TS(len);
 
 //	t = DMAC->EBCISR;
@@ -705,38 +710,66 @@ static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 	HW::GPDMA1_CH3->CFGL = 0;
 	HW::GPDMA1_CH3->CFGH = PROTCTL(1);
 
-	HW::GPDMA1->CLEARBLOCK = 1<<3;
-	HW::GPDMA1->CLEARDSTTRAN = 1<<3;
-	HW::GPDMA1->CLEARERR = 1<<3;
-	HW::GPDMA1->CLEARSRCTRAN = 1<<3;
-	HW::GPDMA1->CLEARTFR = 1<<3;
+	//HW::GPDMA1->CLEARBLOCK = 1<<3;
+	//HW::GPDMA1->CLEARDSTTRAN = 1<<3;
+	//HW::GPDMA1->CLEARERR = 1<<3;
+	//HW::GPDMA1->CLEARSRCTRAN = 1<<3;
+	//HW::GPDMA1->CLEARTFR = 1<<3;
 
 	HW::GPDMA1->CHENREG = 0x101<<3;
 }
-
-#pragma pop
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline void NandReadData(void *data, u16 len)
 {
-	CopyDataDMA(FLD, data, len);
+	//CopyDataDMA(FLD, data, len);
+
+	using namespace HW;
+
+	HW::GPDMA1->DMACFGREG = 1;
+
+	HW::GPDMA1_CH3->CTLL = DST_INC|SRC_NOCHANGE|TT_FC(0);
+	HW::GPDMA1_CH3->CTLH = BLOCK_TS(len);
+
+	HW::GPDMA1_CH3->SAR = (u32)FLD;
+	HW::GPDMA1_CH3->DAR = (u32)data;
+	HW::GPDMA1_CH3->CFGL = 0;
+	HW::GPDMA1_CH3->CFGH = PROTCTL(1);
+
+	HW::GPDMA1->CHENREG = 0x101<<3;
+
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline void NandWriteData(void *data, u16 len)
 {
-	CopyDataDMA(data, FLD, len);
+//	CopyDataDMA(data, FLD, len);
+
+	using namespace HW;
+
+	HW::GPDMA1->DMACFGREG = 1;
+
+	HW::GPDMA1_CH3->CTLL = DST_NOCHANGE|SRC_INC|TT_FC(0);
+	HW::GPDMA1_CH3->CTLH = BLOCK_TS(len);
+
+	HW::GPDMA1_CH3->SAR = (u32)data;
+	HW::GPDMA1_CH3->DAR = (u32)FLD;
+	HW::GPDMA1_CH3->CFGL = 0;
+	HW::GPDMA1_CH3->CFGH = PROTCTL(1);
+
+	HW::GPDMA1->CHENREG = 0x101<<3;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 
 inline bool CheckDataComplete()
 {
 	return (HW::GPDMA1->CHENREG & (1<<3)) == 0;
 }
+
+#pragma pop
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -793,6 +826,8 @@ void EraseBlock::Start(const FLADR &rd, bool frc, bool chk)
 
 bool EraseBlock::Update()
 {
+	byte t;
+
 	switch(state)
 	{
 		case WAIT:
@@ -866,9 +901,9 @@ bool EraseBlock::Update()
 																																
 		case ERASE_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++				
 																																
-			if(!NAND_BUSY())																									
+			if(!NAND_BUSY()/* && ((t = CmdReadStatus()) & (1<<6))*/)																									
 			{																													
-				if ((CmdReadStatus() & 1) != 0 && check) // erase error																	
+				if (check && (CmdReadStatus() & 1) != 0) // erase error																	
 				{																												
 					errBlocks += 1;	
 
@@ -877,6 +912,7 @@ bool EraseBlock::Update()
 					CmdWritePage(er.pg, er.block, 0);																			
 																																
 					*(u32*)FLD = 0;		// spareErase.validPage = 0; spareErase.validBlock = 0;																
+					*(u32*)FLD = 0;
 																																
 					CmdWritePage2();																							
 																																
@@ -1073,7 +1109,7 @@ bool Write::Start()
 		{
 //			rejVec += 1;
 
-			curWrBuf->ready[0] = true;
+//			curWrBuf->ready[0] = true;
 			freeFlWrBuf.Add(curWrBuf);
 			return false;
 		};
@@ -1128,7 +1164,7 @@ void Write::Finish()
 
 		SaveParams();
 
-		curWrBuf->ready[0] = true;
+//		curWrBuf->ready[0] = true;
 
 		freeFlWrBuf.Add(curWrBuf);
 
@@ -1169,6 +1205,8 @@ bool Write::Update()
 				{
 					if (wr_count < c ) c = wr_count;
 
+		HW::P5->BSET(1);
+
 					CopyDataDMA(wr_data, (byte*)wrBuf+wr.col, c);	// BufWriteData(wr_data, c);
 
 					wr.col += c;
@@ -1185,6 +1223,9 @@ bool Write::Update()
 
 			if (CheckDataComplete())
 			{
+
+		HW::P5->BCLR(1);
+
 				if (wr.col == 0)
 				{
 					wr_ptr = wrBuf;
@@ -3284,16 +3325,31 @@ static void NAND_Init()
 	nandSize.pagesInBlock	= 0;
 
 
-	HW::SCU_CLK->CLKSET = SCU_CLK_CLKSET_EBUCEN_Msk;
+	HW::SCU_CLK->EBUCLKCR = 0;
 
-	HW::SCU_CLK->CGATCLR3 = SCU_CLK_CGATCLR3_EBU_Msk;
-	HW::SCU_RESET->PRCLR3 = SCU_RESET_PRCLR3_EBURS_Msk;
+	HW::SCU_CLK->CLKSET = CLK_EBU;
 
-	HW::SCU_CLK->CGATCLR2 = SCU_CLK_CGATCLR2_DMA1_Msk;
-	HW::SCU_RESET->PRCLR2 = SCU_RESET_PRCLR2_DMA1RS_Msk;
+//	HW::SCU_CLK->CGATCLR3 = CGAT3_EBU;
+	HW::SCU_RESET->PRCLR3 = PR3_EBU;
+
+	HW::SCU_CLK->CGATCLR2 = CGAT2_DMA1;
+	HW::SCU_RESET->PRCLR2 = PR2_DMA1;
 
 	HW::GPDMA1->DMACFGREG = 1;
 
+	EBU->CLC = 0x110000;
+	EBU->MODCON = EBU_ARBSYNC|EBU_ARBMODE(3);
+	EBU->USERCON = 0x3FF<<16;
+
+	HW::EBU->ADDRSEL0 = EBU_REGENAB/*|EBU_ALTENAB*/;
+
+	EBU->BUSRCON0 = EBU_AGEN(4)|EBU_WAIT(0)|EBU_PORTW(1);
+	EBU->BUSRAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITRDC(6)|EBU_DATAC(0)|EBU_RDRECOVC(4)|EBU_RDDTACS(0);
+
+	EBU->BUSWCON0 = EBU_AGEN(4)|EBU_WAIT(0)|EBU_PORTW(1);
+
+//				 = |			|				 |		tWP		 |			   |			   |				;
+	EBU->BUSWAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITWRC(4)|EBU_DATAC(0)|EBU_WRRECOVC(4)|EBU_WRDTACS(0);
 
 //	PMC->PCER0 = PID::SMC_M;
 
@@ -3331,7 +3387,7 @@ static void NAND_Init()
 		};
 	};
 
-	NAND_Chip_Select(0); // пока один
+	NAND_Chip_Select(1); // пока один
 
 	DisableWriteProtect();
 
@@ -3995,15 +4051,15 @@ static void UpdateCom()
 			{
 				if (testWriteFlash)
 				{
-					if (!writeFlashEnabled && tm.Check(2000))
-					{
-						FLASH_WriteEnable();
-					}
-					else if (writeFlashEnabled && (nvv.f.size > 456789012))
-					{	
-						FLASH_WriteDisable();
-						tm.Reset();
-					};
+					//if (!writeFlashEnabled && tm.Check(2000))
+					//{
+					//	FLASH_WriteEnable();
+					//}
+					//else if (writeFlashEnabled && (nvv.f.size > 456789012))
+					//{	
+					//	FLASH_WriteDisable();
+					//	tm.Reset();
+					//};
 
 					RequestTestWrite(fwb);
 				}
@@ -4137,7 +4193,7 @@ bool FLASH_Reset()
 
 static void LoadVars()
 {
-	Init_TWI();
+	//Init_TWI();
 
 	PointerCRC p(buf);
 
@@ -4149,9 +4205,20 @@ static void LoadVars()
 	//dsc.data = buf;
 	//dsc.len = sizeof(buf);
 
-	if (Read_TWI(&dsc))
+	u16 adr = 0;
+
+	dsc.adr = 0x50;
+	dsc.wdata = &adr;
+	dsc.wlen = sizeof(adr);
+	dsc.wdata2 = 0;
+	dsc.wlen2 = 0;
+	dsc.next = 0;
+	dsc.rdata = buf;
+	dsc.rlen = sizeof(buf);
+
+	if (AddRequest_TWI(&dsc))
 	{
-		while (!Update_TWI());
+		while (!dsc.ready);
 	};
 
 //	bool c = false;
@@ -4195,6 +4262,7 @@ static void SaveVars()
 	static DSCTWI dsc;
 
 	static byte i = 0;
+	static u16 adr;
 //	static RTM32 tm;
 
 	switch (i)
@@ -4236,11 +4304,16 @@ static void SaveVars()
 
 		case 1:
 
-			//dsc.MMR = 0x500200;
-			//dsc.IADR = 0;
-			//dsc.CWGR = 0x07575; 
-			//dsc.data = buf;
-			//dsc.len = sizeof(buf);
+			adr = 0;
+
+			dsc.adr = 0x50;
+			dsc.wdata = &adr;
+			dsc.wlen = sizeof(adr);
+			dsc.wdata2 = buf;
+			dsc.wlen2 = sizeof(buf);
+			dsc.next = 0;
+			dsc.rdata = 0;
+			dsc.rlen = 0;
 
 			for (byte j = 0; j < 2; j++)
 			{
@@ -4249,13 +4322,13 @@ static void SaveVars()
 				p.WriteW(p.CRC.w);
 			};
 
-			i = (Write_TWI(&dsc)) ? (i+1) : 0;
+			i = (AddRequest_TWI(&dsc)) ? (i+1) : 0;
 
 			break;
 
 		case 2:
 
-			if (!Update_TWI())
+			if (dsc.ready)
 			{
 				i = 0;
 			};
@@ -4267,32 +4340,40 @@ static void SaveVars()
 			{
 				NVSI &si = nvsi[nvv.index];
 
-				u32 adr = sa+sizeof(si)*nvv.index;
+				adr = ReverseWord(sa+sizeof(si)*nvv.index);
 
-				//dsc.MMR = 0x500200;
-				//dsc.IADR = adr;
-				//dsc.CWGR = 0x7575;
-				//dsc.data = buf;
-				//dsc.len = sizeof(si);
+				dsc.adr = 0x50;
+				dsc.wdata = &adr;
+				dsc.wlen = sizeof(adr);
+				dsc.wdata2 = buf;
+				dsc.wlen2 = sizeof(si);
+				dsc.next = 0;
+				dsc.rdata = 0;
+				dsc.rlen = 0;
 
 				p.CRC.w = 0xFFFF;
 				p.WriteArrayB(&si, sizeof(si.f));
 				p.WriteW(p.CRC.w);
 
-				i = (Write_TWI(&dsc)) ? 2 : 0;
+				i = (AddRequest_TWI(&dsc)) ? 2 : 0;
 			};
 
 			break;
 
 		case 4:
+			
+			adr = ReverseWord(sa);
 
-			//dsc.MMR = 0x500200;
-			//dsc.IADR = sa;
-			//dsc.CWGR = 0x7575;
-			//dsc.data = nvsi;
-			//dsc.len = sizeof(nvsi);
+			dsc.adr = 0x50;
+			dsc.wdata = &adr;
+			dsc.wlen = sizeof(adr);
+			dsc.wdata2 = &nvsi;
+			dsc.wlen2 = sizeof(nvsi);
+			dsc.next = 0;
+			dsc.rdata = 0;
+			dsc.rlen = 0;
 
-			i = (Write_TWI(&dsc)) ? 2 : 0;
+			i = (AddRequest_TWI(&dsc)) ? 2 : 0;
 
 			break;
 	};
@@ -4314,17 +4395,20 @@ static void LoadSessions()
 	{
 		NVSI &si = nvsi[i];
 
-		u32 adr = sa+sizeof(si)*i;
+		u16 adr = ReverseWord(sa+sizeof(si)*i);
 
-		//dsc.MMR = 0x500200;
-		//dsc.IADR = adr;
-		//dsc.CWGR = 0x7575;
-		//dsc.data = &si;
-		//dsc.len = sizeof(si);
+		dsc.adr = 0x50;
+		dsc.wdata = &adr;
+		dsc.wlen = sizeof(adr);
+		dsc.rdata = &si;
+		dsc.rlen = sizeof(si);
+		dsc.next = 0;
+		dsc.wdata2 = 0;
+		dsc.wlen2 = 0;
 
-		if (Read_TWI(&dsc))
+		if (AddRequest_TWI(&dsc))
 		{
-			while (Update_TWI());
+			while (!dsc.ready);
 		};
 
 		if (GetCRC16(&si, sizeof(si)) != 0)
@@ -4342,15 +4426,18 @@ static void LoadSessions()
 			si.f.stop_rtc.time = 0;
 			si.crc = GetCRC16(&si, sizeof(si.f));
 
-			//dsc.MMR = 0x500200;
-			//dsc.IADR = adr;
-			//dsc.CWGR = 0x07575; 
-			//dsc.data = &si;
-			//dsc.len = sizeof(si);
+			dsc.adr = 0x50;
+			dsc.wdata = &adr;
+			dsc.wlen = sizeof(adr);
+			dsc.wdata2 = &si;
+			dsc.wlen2 = sizeof(si);
+			dsc.next = 0;
+			dsc.rdata = 0;
+			dsc.rlen = 0;
 
-			Write_TWI(&dsc);
+			AddRequest_TWI(&dsc);
 
-			while (Update_TWI());
+			while (!dsc.ready);
 		};
 	};
 }
@@ -4365,20 +4452,26 @@ void FLASH_Init()
 
 	InitFlashBuffer();
 
-/*	NAND_Init();
+	NAND_Init();
 
-	FLASH_Reset();
+	//FLASH_Reset();
 
-	InitCom();*/
+	InitCom();
 
 	InitSessions();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#pragma push
+#pragma O3
+#pragma Otime
+
 void FLASH_Update()
 {
 	static byte i = 0;
+	static u32 t = 0;
+	static volatile byte *p = FLD;
 
 	#define CALL(p) case (__LINE__-S): p; break;
 
@@ -4392,6 +4485,23 @@ void FLASH_Update()
 	i = (i > (__LINE__-S-3)) ? 0 : i;
 
 	#undef CALL
+
+//	HW::P5->BSET(1);
+	
+	//t = FLD[0]+FLD[2]+FLD[4]+FLD[6];
+	//*FLA = 0x55;
+	//*FLC = 0xAA;
+
+//	CmdReadStatus();
+
+	//if (CheckDataComplete())
+	//{
+	//	NandReadData(buf, 8);
+	//};
+
+//	HW::P5->BCLR(1);
 }
+
+#pragma pop
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -121,7 +121,7 @@ struct FLWB
 {
 	FLWB *next;
 
-	bool	*ready;
+//	bool	*ready;
 //	u16 	hdrLen;
 	u16 	dataLen;
 

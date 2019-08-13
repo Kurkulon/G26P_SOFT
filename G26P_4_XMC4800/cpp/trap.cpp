@@ -50,6 +50,8 @@ static bool startSendSession = false;
 static bool stop = false;
 static bool pause = false;
 
+u32 vecReadOK = 0;
+u32 vecReadEr = 0;
 
 /******************************************************/
 static void TRAP_MakePacketHeaders(char *data, bool need_ask, bool is_ask, char device);
@@ -954,7 +956,16 @@ static bool UpdateSendVector()
 					}
 					else
 					{
-						t->len -=  (crc != 0) ? flrb.len : 2;
+						if (crc != 0)
+						{
+							t->len -= flrb.len;
+							vecReadEr += 1;
+						}
+						else
+						{
+							t->len -= 2;
+							vecReadOK += 1;
+						};
 
 						i = 1;
 					};
@@ -1014,6 +1025,12 @@ static bool UpdateSendVector()
 				else if (crc != 0)
 				{
 					t->iph.off = 0;
+					
+					vecReadEr += 1;
+				}
+				else
+				{
+					vecReadOK += 1;
 				};
 
 				t->len = sizeof(ef.ei) + flrb.len;

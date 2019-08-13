@@ -118,7 +118,6 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name>€т:</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -128,7 +127,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>JL2CM3</Key>
-          <Name>-U29999997 -O111 -S2 -ZTIFSpeedSel5000 -A0 -C0 -JU1 -JI127.0.0.1 -JP0 -RST0 -N00("ARM CoreSight SW-DP") -D00(2BA01477) -L00(0) -TO18 -TC10000000 -TP21 -TDS8009 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -TB1 -TFE0 -FO4 -FD1FFE8000 -FC8000 -FN2 -FF0XMC4800_2048.FLM -FS0C000000 -FL0200000 -FP0($$Device:XMC4800-F144x2048$Flash\XMC4800_2048.FLM) -FF1XMC4800c_2048.FLM -FS18000000 -FL1200000 -FP1($$Device:XMC4800-F144x2048$Flash\XMC4800c_2048.FLM)</Name>
+          <Name>-U29999997 -O111 -S2 -ZTIFSpeedSel5000 -A0 -C0 -JU1 -JI127.0.0.1 -JP0 -RST0 -N00("ARM CoreSight SW-DP") -D00(2BA01477) -L00(0) -TO18 -TC10000000 -TP21 -TDS8009 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -TB1 -TFE0 -FO0 -FD1FFE8000 -FC8000 -FN2 -FF0XMC4800_2048.FLM -FS0C000000 -FL0200000 -FP0($$Device:XMC4800-F144x2048$Flash\XMC4800_2048.FLM) -FF1XMC4800c_2048.FLM -FS18000000 -FL1200000 -FP1($$Device:XMC4800-F144x2048$Flash\XMC4800c_2048.FLM)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -138,7 +137,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=1392,230,1832,773,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=-1,-1,-1,-1,0)(1012=2055,165,2522,466,0)</Name>
+          <Name>(1010=1392,230,1832,773,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=2682,267,2930,841,0)(1012=2055,165,2522,466,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -151,7 +150,7 @@
         <Ww>
           <count>0</count>
           <WinNumber>1</WinNumber>
-          <ItemText>temp,0x0A</ItemText>
+          <ItemText>msec,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
@@ -177,6 +176,41 @@
           <count>5</count>
           <WinNumber>1</WinNumber>
           <ItemText>invalidBlocks</ItemText>
+        </Ww>
+        <Ww>
+          <count>6</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>vecReadOK,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>7</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>vecReadEr,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>curRdBuf</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>nandState</ItemText>
+        </Ww>
+        <Ww>
+          <count>10</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>er</ItemText>
+        </Ww>
+        <Ww>
+          <count>11</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>nvsi</ItemText>
+        </Ww>
+        <Ww>
+          <count>12</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>nandSize</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -299,8 +333,8 @@
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
-          <SubType>0</SubType>
-          <ItemText>0x0</ItemText>
+          <SubType>10</SubType>
+          <ItemText>sp</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>

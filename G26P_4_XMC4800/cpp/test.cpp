@@ -717,7 +717,8 @@ static void UpdateMisc()
 		CALL( UpdateMan();		);
 		CALL( UpdateTemp();		);
 		CALL( FLASH_Update();	);
-		//CALL( UpdateEMAC();	);
+		CALL( UpdateEMAC();	);
+		CALL( UpdateTraps();	);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -758,7 +759,7 @@ int main()
 //	com1.Connect(0, 115200, 0);
 //	com1.Connect(0, 6250000, 0);
 
-	//__breakpoint(0);
+//	__breakpoint(0);
 
 //	twi.Init(0);
 
@@ -766,9 +767,9 @@ int main()
 
 	Init_TWI();
 
-//	InitEMAC();
+	InitEMAC();
 
-//	InitTraps();
+	InitTraps();
 
 	FLASH_Init();
 

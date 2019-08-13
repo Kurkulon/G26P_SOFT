@@ -56,8 +56,8 @@ static bool __memcmp(ConstDataPointer s, ConstDataPointer d, u32 len)
 #define FLASH_SAVE_BUFFER_SIZE		8400
 #define FLASH_READ_BUFFER_SIZE		8400
 
-static FLWB flwb[4];
-static FLRB flrb[4];
+static FLWB flashWriteBuffer[4];
+static FLRB flashReadBuffer[4];
 
 static List<FLWB> freeFlWrBuf;
 static List<FLWB> writeFlBuf;
@@ -88,7 +88,7 @@ static bool writeFlashEnabled = false;
 static bool flashFull = false;
 static bool flashEmpty = false;
 
-static bool testWriteFlash = true;
+static bool testWriteFlash = false;
 
 
 //__packed struct SI
@@ -274,14 +274,14 @@ static ComPort com1;
 
 static void InitFlashBuffer()
 {
-	for (byte i = 0; i < ArraySize(flwb); i++)
+	for (byte i = 0; i < ArraySize(flashWriteBuffer); i++)
 	{
-		freeFlWrBuf.Add(&flwb[i]);
-	};
+		freeFlWrBuf.Add(&flashWriteBuffer[i]);
+	};							  
 
-	for (byte i = 0; i < ArraySize(flrb); i++)
+	for (byte i = 0; i < ArraySize(flashReadBuffer); i++)
 	{
-		freeFlRdBuf.Add(&flrb[i]);
+		freeFlRdBuf.Add(&flashReadBuffer[i]);
 	};
 }
 
@@ -432,8 +432,8 @@ __packed struct NandID
 volatile byte * const FLC = (byte*)0x60000008;	
 volatile byte * const FLA = (byte*)0x60000010;	
 volatile byte * const FLD = (byte*)0x60000000;	
-volatile u16 * const FLD16 = (u16*)0x60000000;	
-volatile u32 * const FLD32 = (u32*)0x60000000;	
+//volatile u16 * const FLD16 = (u16*)0x60000000;	
+//volatile u32 * const FLD32 = (u32*)0x60000000;	
 
 static u32 chipSelect[8] = { 1<<2, 1<<0, 1<<8, 1<<9, 1<<6, 1<<1, 1<<3, 1<<7 };
 static const u32 maskChipSelect = (0xF<<0)|(0xF<<6);
@@ -700,7 +700,7 @@ static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 	HW::GPDMA1->DMACFGREG = 1;
 
-	HW::GPDMA1_CH3->CTLL = DST_INC|SRC_INC|TT_FC(0)|DEST_MSIZE(2)|SRC_MSIZE(2);
+	HW::GPDMA1_CH3->CTLL = DST_INC|SRC_INC|TT_FC(0)|DEST_MSIZE(0)|SRC_MSIZE(0);
 	HW::GPDMA1_CH3->CTLH = BLOCK_TS(len);
 
 //	t = DMAC->EBCISR;
@@ -718,6 +718,19 @@ static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 	HW::GPDMA1->CHENREG = 0x101<<3;
 }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
+//{
+//	byte* s = (byte*)src;
+//	byte* d = (byte*)dst;
+//
+//	while (len > 0)
+//	{
+//		*(d++) = *(s++); len--;
+//	};
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -882,7 +895,7 @@ bool EraseBlock::Update()
 																																
 					CmdWritePage(er.pg, er.block, 0);																			
 																																
-					*(u32*)FLD = 0;		// spareErase.validPage = 0; spareErase.validBlock = 0;																
+					*FLD = 0; *FLD = 0; *FLD = 0; *FLD = 0;	// spareErase.validPage = 0; spareErase.validBlock = 0;																
 																																
 					CmdWritePage2();																							
 																																
@@ -911,8 +924,7 @@ bool EraseBlock::Update()
 																																
 					CmdWritePage(er.pg, er.block, 0);																			
 																																
-					*(u32*)FLD = 0;		// spareErase.validPage = 0; spareErase.validBlock = 0;																
-					*(u32*)FLD = 0;
+					*FLD = 0; *FLD = 0; *FLD = 0; *FLD = 0;	// spareErase.validPage = 0; spareErase.validBlock = 0;																
 																																
 					CmdWritePage2();																							
 																																
@@ -1323,7 +1335,7 @@ bool Write::Update()
 
 					CmdWritePage(wr.pg, wr.block, wr.page);
 
-					*(u16*)FLD = 0; // spareErase.validPage = 0;
+					*FLD = 0; *FLD = 0;  // spareErase.validPage = 0;
 
 					CmdWritePage2();
 
@@ -1347,7 +1359,7 @@ bool Write::Update()
 				{
 					CmdWritePage(wr.pg + sizeof(spare.validPage) + sizeof(spare.validBlock), wr.block, 0);
 
-					*(u16*)FLD = 0; // spare.badPages = 0;
+					*FLD = 0; *FLD = 0;  // spare.badPages = 0;
 
 					CmdWritePage2();
 
@@ -1434,7 +1446,7 @@ bool Write::Update()
 
 					CmdWritePage(wr.pg, wr.block, wr.page);
 
-					*(u16*)FLD = 0; // spareErase.validPage = 0;
+					*FLD = 0; *FLD = 0;  // spareErase.validPage = 0;
 
 					CmdWritePage2();
 
@@ -3924,7 +3936,7 @@ static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
 	}
 	else
 	{
-		if (GetCRC16(flwb->vd.data, flwb->dataLen) == 0) // (req.rw & 0xFF00) == 0xAA00) // 
+		if (GetCRC16(fwb->vd.data, fwb->dataLen) == 0) // (req.rw & 0xFF00) == 0xAA00) // 
 		{
 			result = RequestFunc02 (fwb, wb);
 		}
@@ -3993,7 +4005,7 @@ static void RequestTestWrite(FLWB *fwb)
 
 	fwb->dataLen = sizeof(req);
 
-//	req.crc = GetCRC16(flwb->vd.data, flwb->dataLen - 2);
+	req.crc = GetCRC16(fwb->vd.data, fwb->dataLen - 2);
 	
 	RequestFlashWrite(fwb);
 }
@@ -4026,20 +4038,10 @@ static void UpdateCom()
 
 	static TM32 tm;
 
-	//static byte buf[100];
-
-	//wb.data = buf;
-	//wb.len = sizeof(buf);
-
-	//HW::PIOA->SODR = 1<<27;
-
-	//if (!com1.Update())
-	//{
-	//	com1.Write(&wb);
-	//};
-
-
-//	HW::PIOB->SODR = 1<<13;
+	if (testWriteFlash)
+	{
+		state = 0;
+	};
 
 	switch (state)
 	{
@@ -4051,15 +4053,15 @@ static void UpdateCom()
 			{
 				if (testWriteFlash)
 				{
-					//if (!writeFlashEnabled && tm.Check(2000))
-					//{
-					//	FLASH_WriteEnable();
-					//}
-					//else if (writeFlashEnabled && (nvv.f.size > 456789012))
-					//{	
-					//	FLASH_WriteDisable();
-					//	tm.Reset();
-					//};
+					if (!writeFlashEnabled && tm.Check(2000))
+					{
+						FLASH_WriteEnable();
+					}
+					else if (writeFlashEnabled && (nvv.f.size > 456789012))
+					{	
+						FLASH_WriteDisable();
+						tm.Reset();
+					};
 
 					RequestTestWrite(fwb);
 				}

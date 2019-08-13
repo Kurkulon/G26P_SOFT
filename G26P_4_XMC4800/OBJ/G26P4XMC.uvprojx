@@ -14,8 +14,8 @@
         <TargetCommonOption>
           <Device>XMC4800-F144x2048</Device>
           <Vendor>Infineon</Vendor>
-          <PackID>Infineon.XMC4000_DFP.2.10.0</PackID>
-          <PackURL>http://dave.infineon.com/Libraries/CMSIS_PACK/</PackURL>
+          <PackID>Infineon.XMC4000_DFP.2.12.1</PackID>
+          <PackURL>https://www.infineon.com/cmsis_packs/XMC4000/</PackURL>
           <Cpu>IRAM(0x20000000,0x3FFC0) IRAM2(0x1FFE8000,0x18000) IROM(0x08000000,0x200000) IROM2(0x0C000000,0x200000) CPUTYPE("Cortex-M4") FPU2 CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>

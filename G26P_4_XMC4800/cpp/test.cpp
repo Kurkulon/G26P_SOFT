@@ -751,17 +751,12 @@ static void Update()
 int main()
 {
 	static TM32 rtm;
-	static MTB mtb;
-	static u16 manbuf[10];
-	static DSCTWI dsctwi;
-	static DSCTWI dsc;
+	//static MTB mtb;
+	//static u16 manbuf[10];
+	//static DSCTWI dsctwi;
+	//static DSCTWI dsc;
 
-//	com1.Connect(0, 115200, 0);
-//	com1.Connect(0, 6250000, 0);
-
-//	__breakpoint(0);
-
-//	twi.Init(0);
+	//__breakpoint(0);
 
 	InitHardware();
 
@@ -773,13 +768,10 @@ int main()
 
 	FLASH_Init();
 
-//	Init_UART_DMA();
 
-//	Init_Timer();
+	//buf[4999] = 0x55;
 
-	buf[4999] = 0x55;
-
-	wb.len = 5000;
+	//wb.len = 5000;
 
 	while(1)
 	{
@@ -790,7 +782,7 @@ int main()
 
 		HW::P2->BCLR(6);
 
-		if (rtm.Check(100))
+		if (rtm.Check(1000))
 		{	
 			fps = f; f = 0; 
 

@@ -145,9 +145,9 @@
 	#define PLL_K2DIV (0U)
 
 	#elif OSCHP_FREQUENCY == 25000000U
-	#define PLL_PDIV (1U)
-	#define PLL_NDIV (7U)
-	#define PLL_K2DIV (0U)
+	#define PLL_PDIV	(1U)
+	#define PLL_NDIV	((MCK+OSCHP_FREQUENCY/(PLL_PDIV+1)/2)/(OSCHP_FREQUENCY/(PLL_PDIV+1))-1) // (7U) 
+	#define PLL_K2DIV	(0U)
 
 	#else
 

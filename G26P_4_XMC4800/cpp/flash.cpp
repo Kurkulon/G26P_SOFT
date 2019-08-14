@@ -16,6 +16,8 @@
 
 #pragma diag_suppress 550,177
 
+
+
 /**************************************************/
 /*
 
@@ -491,21 +493,21 @@ static const u32 maskChipSelect = (0xF<<0)|(0xF<<6);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void EnableWriteProtect()
+static void EnableWriteProtect()
 {
 	HW::P3->BCLR(3);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void DisableWriteProtect()
+static void DisableWriteProtect()
 {
 	HW::P3->BSET(3);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline byte CmdReadStatus()
+static byte CmdReadStatus()
 {
 	CMD_LATCH(NAND_CMD_READ_STATUS);
 	return *FLD;
@@ -513,14 +515,14 @@ inline byte CmdReadStatus()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline bool CmdNandBusy()
+static bool CmdNandBusy()
 {
 	return NAND_BUSY() || ((CmdReadStatus() & (1<<6)) == 0);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void NAND_Chip_Select(byte chip) 
+static void NAND_Chip_Select(byte chip) 
 {    
 	if(chip < 8)                   
 	{ 				
@@ -531,53 +533,28 @@ void NAND_Chip_Select(byte chip)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//void SetNandAdr(u64 a)
-//{
-////	while(a < 0) a += ((i64)1 << (nandSize.full)) * (((-a) >> (nandSize.full)) + 1);
-//	a &= nandSize.fl - 1;
-//	cur_chip = a >> nandSize.shCh;
-//	cur_row = a >> nandSize.shPg;
-//	cur_col = a & (nandSize.pg-1);
-//}
+static void NAND_Chip_Disable() 
+{    
+	HW::P1->SET(maskChipSelect);
+}                                                                              
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//void NAND_Adress_Set_Next(u64 a)
-//{
-////	while(a < 0) a += ((i64)1 << (nandSize.full)) * (((-a) >> (nandSize.full)) + 1);
-//
-//	a += nandSize.bl;
-//	a &= (nandSize.fl - 1);
-//
-//	cur_chip = a >> nandSize.shCh;
-//	cur_row = a >> nandSize.shPg;
-//	cur_col = 0;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//u64 GetNandAdr()
-//{
-//	return (nandSize.ch * cur_chip) + ((u64)nandSize.pg * cur_row) + cur_col;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void ResetNandState()
+static void ResetNandState()
 {
 	nandState = NAND_STATE_WAIT;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-NandState GetNandState()
+static NandState GetNandState()
 {
 	return nandState;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool ResetNand()
+static bool ResetNand()
 {
 	while(NAND_BUSY());
 	CMD_LATCH(NAND_CMD_RESET);
@@ -607,59 +584,14 @@ static bool Read_ID(NandID *id)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//bool NAND_Read_Data(u64 *adr, byte *data, u16 size)
-//{
-//	if(nandState != NAND_STATE_WAIT) return false;
-//	SetNandAdr(*adr);	
-//	cur_size = size;
-//	cur_count = 0;
-//	cur_data = data;
-//	nandState = NAND_STATE_READ_START;
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool NAND_Verify_Data(u64 *adr, byte *data, u16 size)
-//{
-//	if(nandState != NAND_STATE_WAIT) return false;
-//	SetNandAdr(*adr);	
-//	cur_size = size;
-//	cur_count = 0;
-//	cur_data = data;
-//	cur_verify_errors = 0;
-////	nandState = NAND_STATE_VERIFY_START;
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool NAND_Write_Data(bool next, u64 *adr, byte *data, u16 size)
-//{
-//	if(nandState != NAND_STATE_WAIT) return false;
-//	if(next)
-//	{
-//		NAND_Adress_Set_Next(*adr);
-//		*adr = GetNandAdr();
-//	}
-//	else SetNandAdr(*adr);
-//	cur_size = size;
-//	cur_count = 0;
-//	cur_data = data;         
-//	nandState = NAND_STATE_WRITE_START;
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-inline u32 ROW(u32 block, u16 page)
+static u32 ROW(u32 block, u16 page)
 {
 	return (block << NAND_PAGE_BITS) + page;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void CmdEraseBlock(u32 bl)
+static void CmdEraseBlock(u32 bl)
 {
 	bl = ROW(bl, 0);
 	CMD_LATCH(NAND_CMD_BLOCK_ERASE_1);
@@ -669,7 +601,7 @@ inline void CmdEraseBlock(u32 bl)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void CmdRandomRead(u16 col)
+static void CmdRandomRead(u16 col)
 {
 	CMD_LATCH(NAND_CMD_RANDREAD_1);
 	ADR_LATCH_COL(col);
@@ -678,7 +610,7 @@ inline void CmdRandomRead(u16 col)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void CmdReadPage(u16 col, u32 bl, u16 pg)
+static void CmdReadPage(u16 col, u32 bl, u16 pg)
 {
 	bl = ROW(bl, pg);
 	CMD_LATCH(NAND_CMD_READ_1);
@@ -703,18 +635,10 @@ static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 	HW::GPDMA1_CH3->CTLL = DST_INC|SRC_INC|TT_FC(0)|DEST_MSIZE(0)|SRC_MSIZE(0);
 	HW::GPDMA1_CH3->CTLH = BLOCK_TS(len);
 
-//	t = DMAC->EBCISR;
-
 	HW::GPDMA1_CH3->SAR = (u32)src;
 	HW::GPDMA1_CH3->DAR = (u32)dst;
 	HW::GPDMA1_CH3->CFGL = 0;
 	HW::GPDMA1_CH3->CFGH = PROTCTL(1);
-
-	//HW::GPDMA1->CLEARBLOCK = 1<<3;
-	//HW::GPDMA1->CLEARDSTTRAN = 1<<3;
-	//HW::GPDMA1->CLEARERR = 1<<3;
-	//HW::GPDMA1->CLEARSRCTRAN = 1<<3;
-	//HW::GPDMA1->CLEARTFR = 1<<3;
 
 	HW::GPDMA1->CHENREG = 0x101<<3;
 }
@@ -734,7 +658,7 @@ static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void NandReadData(void *data, u16 len)
+static void NandReadData(void *data, u16 len)
 {
 	//CopyDataDMA(FLD, data, len);
 
@@ -756,10 +680,8 @@ inline void NandReadData(void *data, u16 len)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void NandWriteData(void *data, u16 len)
+static void NandWriteData(void *data, u16 len)
 {
-//	CopyDataDMA(data, FLD, len);
-
 	using namespace HW;
 
 	HW::GPDMA1->DMACFGREG = 1;
@@ -777,7 +699,7 @@ inline void NandWriteData(void *data, u16 len)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline bool CheckDataComplete()
+static bool CheckDataComplete()
 {
 	return (HW::GPDMA1->CHENREG & (1<<3)) == 0;
 }
@@ -786,7 +708,7 @@ inline bool CheckDataComplete()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void CmdWritePage(u16 col, u32 bl, u16 pg)
+static void CmdWritePage(u16 col, u32 bl, u16 pg)
 {
 	bl = ROW(bl, pg);
 	CMD_LATCH(NAND_CMD_PAGE_PROGRAM_1);
@@ -795,7 +717,7 @@ inline void CmdWritePage(u16 col, u32 bl, u16 pg)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void CmdWritePage2()
+static void CmdWritePage2()
 {
 	CMD_LATCH(NAND_CMD_PAGE_PROGRAM_2);
 }
@@ -1168,6 +1090,8 @@ bool Write::Start()
 
 void Write::Finish()
 {
+	NAND_Chip_Disable();
+
 	if (curWrBuf != 0)
 	{
 		nvv.f.size += curWrBuf->vd.h.dataLen;
@@ -1241,7 +1165,6 @@ bool Write::Update()
 				if (wr.col == 0)
 				{
 					wr_ptr = wrBuf;
-//					wr.col = 0;
 
 					state = WRITE_PAGE;
 				}
@@ -1401,43 +1324,6 @@ bool Write::Update()
 
 			if (CheckDataComplete())
 			{
-//				rspare.crc = GetCRC16((void*)&rspare.file, sizeof(rspare) - rspare.CRC_SKIP);
-
-				//bool c = true;
-
-				//__packed u32 *s = (__packed u32*)wr_ptr;
-				//u32 *d = rdBuf;
-
-				//for (u16 i = 2048/4; i > 0; i--)
-				//{
-				//	if (*(s++) != *(d++))
-				//	{
-				//		c = false;
-				//		break;
-				//	};
-				//};
-
-				//if (c)
-				//{
-				//	s = (u32*)&spare;
-
-				//	for (u16 i = sizeof(spare)/4; i > 0; i--)
-				//	{
-				//		if (*(s++) != *(d++))
-				//		{
-				//			c = false;
-				//			break;
-				//		};
-				//	};
-
-				//	u32 t = 0xFFFFFFFF >> ((4 - (sizeof(spare)&3))*8);
-
-				//	if ((*(s++) & t) != (*(d++) & t))
-				//	{
-				//		c = false;
-				//	};
-				//};
-
 				if (!__memcmp(wr_ptr, rdBuf, wr.pg) || !__memcmp(&spare, rdBuf+wr.pg/4, sizeof(spare)))
 				{
 //					__breakpoint(0);
@@ -1536,11 +1422,6 @@ bool Write::Update()
 			if (wr.page > 0)
 			{
 				wr.NextBlock();
-
-				//if (wr.overflow != 0)
-				//{
-				//	flashFull = true;
-				//};
 			};
 
 			spare.start = wr.GetRawPage();		
@@ -1675,7 +1556,7 @@ bool ReadSpare::Update()
 
 namespace Read
 {
-	enum {	WAIT = 0,READ_START,READ_1, READ_2, READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,FIND_2,FIND_3,FIND_4};
+	enum {	WAIT = 0,READ_START,READ_1, /*READ_2,*/ READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,/*FIND_2,*/FIND_3,FIND_4};
 
 	static FLADR rd(0, 0, 0, 0);
 	static byte*	rd_data = 0;
@@ -1694,7 +1575,7 @@ namespace Read
 	static bool Start();
 //	static bool Start(FLRB *flrb, FLADR *adr);
 	static bool Update();
-	static void End() { curRdBuf->ready = true; curRdBuf = 0; state = WAIT; }
+	static void End() { NAND_Chip_Disable(); curRdBuf->ready = true; curRdBuf = 0; state = WAIT; }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1730,38 +1611,9 @@ static bool Read::Start()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static bool Read::Start(FLRB *flrb, FLADR *adr)
-//{
-//	if (flrb != 0)
-//	{
-//		curRdBuf = flrb;
-//
-//		if (adr != 0) { rd = *adr; };
-//
-//		vecStart = curRdBuf->vecStart;
-//
-//		if (vecStart)
-//		{
-//			rd_data = (byte*)&curRdBuf->hdr;
-//			rd_count = sizeof(curRdBuf->hdr);
-//			curRdBuf->len = 0;	
-//		}
-//		else
-//		{
-//			rd_data = curRdBuf->data;
-//			rd_count = curRdBuf->maxLen;
-//			curRdBuf->len = 0;	
-//		};
-//
-//		state = READ_START;
-//
-//		return true;
-//	};
-//
-//	return false;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#pragma push
+#pragma O0
+//#pragma Otime
 
 static bool Read::Update()
 {
@@ -1776,7 +1628,6 @@ static bool Read::Update()
 			if (rd.GetRawPage() != sparePage)
 			{
 				readSpare.Start(&spare, &rd);
-//				CmdReadPage(rd.pg, rd.block, rd.page);
 
 				state = READ_1;
 			}
@@ -1793,74 +1644,12 @@ static bool Read::Update()
 
 			if (!readSpare.Update()) //(!NAND_BUSY())
 			{
-				//NandReadData(&spare, sizeof(spare));
-
-				//state = READ_2;
-
 				sparePage = rd.GetRawPage();
-
-				//if (sparePage != spare.rawPage)
-				//{
-				//	__breakpoint(0);
-				//};
 
 				CmdRandomRead(rd.col);
 
 				state = READ_PAGE;
 			};
-
-			break;
-
-		case READ_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
-
-/*			if (CheckDataComplete())
-			{
-				if (rd.page == 0 && spare.validBlock != 0xFFFF)
-				{
-					rd.NextBlock();
-
-					//if (rd.overflow != 0)
-					//{
-					//	End();
-					//}
-					//else
-					{
-						CmdReadPage(rd.pg, rd.block, rd.page);
-
-						state = READ_1;
-					};
-				}
-				else if (spare.validPage != 0xFFFF)
-				{
-					rd.NextPage();
-
-					//if (rd.overflow != 0)
-					//{
-					//	End();
-					//}
-					//else
-					{
-						CmdReadPage(rd.pg, rd.block, rd.page);
-
-						state = READ_1;
-					};
-				}
-				else
-				{
-					spare.crc = GetCRC16((void*)&spare.file, sizeof(spare) - spare.CRC_SKIP);
-
-					sparePage = rd.GetRawPage();
-
-					if (sparePage != spare.rawPage)
-					{
-//						__breakpoint(0);
-					};
-
-					CmdRandomRead(rd.col);
-
-					state = READ_PAGE;
-				};
-			};*/
 
 			break;
 
@@ -1947,23 +1736,7 @@ static bool Read::Update()
 				}
 				else
 				{
-					//rd.NextBlock();
-
-					//if (rd.GetRawBlock() == 0)
-					//{
-					//	state = FIND_3;
-					//	break;
-					//};
-
 					rd.NextPage();
-
-					//if (rd.overflow != 0)
-					//{
-					//	state = FIND_3;
-					//	break;
-					//};
-
-//					CmdReadPage(rd.pg, rd.block, rd.page);
 
 					readSpare.Start(&spare, &rd);
 
@@ -1973,14 +1746,6 @@ static bool Read::Update()
 			else if (spare.crc != 0 || spare.vecFstOff == 0xFFFF || spare.vecLstOff == 0xFFFF || rd.col > spare.vecLstOff)
 			{
 				rd.NextPage();
-
-				//if (rd.overflow != 0)
-				//{
-				//	state = FIND_3;
-				//	break;
-				//};
-
-//				CmdReadPage(rd.pg, rd.block, rd.page);
 
 				readSpare.Start(&spare, &rd);
 
@@ -2014,60 +1779,12 @@ static bool Read::Update()
 
 			if (!readSpare.Update())	//(!NAND_BUSY())
 			{
-				//NandReadData(&spare, sizeof(spare));
-
-				//state = FIND_2;
 				sparePage = rd.GetRawPage();
 
 				state = FIND_START;
 			};
 
 			break;
-
-		case FIND_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
-
-/*			if (CheckDataComplete())
-			{
-				if (rd.page == 0 && spare.validBlock != 0xFFFF)
-				{
-					rd.NextBlock();
-
-					//if (rd.overflow != 0)
-					//{
-					//	state = FIND_3;
-					//	break;
-					//};
-
-					CmdReadPage(rd.pg, rd.block, rd.page);
-
-					state = FIND_1;
-				}
-				else if (spare.validPage != 0xFFFF)
-				{
-					rd.NextPage();
-
-					//if (rd.overflow != 0)
-					//{
-					//	state = FIND_3;
-					//	break;
-					//};
-
-					CmdReadPage(rd.pg, rd.block, rd.page);
-
-					state = FIND_1;
-				}
-				else
-				{
-					spare.crc = GetCRC16((void*)&spare.file, sizeof(spare) - spare.CRC_SKIP);
-
-					sparePage = rd.GetRawPage();
-
-					state = FIND_START;
-				};
-			};*/
-
-			break;
-
 
 		case FIND_3:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
@@ -2084,6 +1801,7 @@ static bool Read::Update()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#pragma pop
 
 
 
@@ -3356,12 +3074,12 @@ static void NAND_Init()
 	HW::EBU->ADDRSEL0 = EBU_REGENAB/*|EBU_ALTENAB*/;
 
 	EBU->BUSRCON0 = EBU_AGEN(4)|EBU_WAIT(0)|EBU_PORTW(1);
-	EBU->BUSRAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITRDC(6)|EBU_DATAC(0)|EBU_RDRECOVC(4)|EBU_RDDTACS(0);
+	EBU->BUSRAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITRDC(12)|EBU_DATAC(0)|EBU_RDRECOVC(4)|EBU_RDDTACS(0);
 
 	EBU->BUSWCON0 = EBU_AGEN(4)|EBU_WAIT(0)|EBU_PORTW(1);
 
 //				 = |			|				 |		tWP		 |			   |			   |				;
-	EBU->BUSWAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITWRC(4)|EBU_DATAC(0)|EBU_WRRECOVC(4)|EBU_WRDTACS(0);
+	EBU->BUSWAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITWRC(8)|EBU_DATAC(0)|EBU_WRRECOVC(4)|EBU_WRDTACS(0);
 
 //	PMC->PCER0 = PID::SMC_M;
 
@@ -3399,7 +3117,7 @@ static void NAND_Init()
 		};
 	};
 
-	NAND_Chip_Select(1); // пока один
+	NAND_Chip_Disable();
 
 	DisableWriteProtect();
 

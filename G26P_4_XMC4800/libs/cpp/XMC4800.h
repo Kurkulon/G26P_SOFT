@@ -17,7 +17,7 @@
 
 #include "cm4.h"
 
-#define MCK 100000000
+#define MCK 200000000
 
 
 #ifndef WIN32

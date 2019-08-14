@@ -7,15 +7,15 @@
 
 struct DSCTWI
 {
-	DSCTWI*	next;
-	void*	wdata;
-	void*	rdata;
-	void*	wdata2;
-	u16		wlen;
-	u16		wlen2;
-	u16		rlen;
-	byte	adr;
-	bool	ready;
+	DSCTWI*			next;
+	void*			wdata;
+	void*			rdata;
+	void*			wdata2;
+	u16				wlen;
+	u16				wlen2;
+	u16				rlen;
+	byte			adr;
+	volatile bool	ready;
 };
 
 extern void Init_TWI();

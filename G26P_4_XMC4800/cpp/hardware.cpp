@@ -70,7 +70,7 @@ static u16 rcvManPrevTime = 0;
 static MRB *manRB = 0;
 
 
-static __irq void WaitManCmdSync();
+//static __irq void WaitManCmdSync();
 //static __irq void WaitManDataSync();
 //static __irq void ManRcvSync();
 

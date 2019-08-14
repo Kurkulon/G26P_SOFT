@@ -27,19 +27,19 @@ inline u16 CheckParity(u16 x)
 
 struct MRB
 {
-	bool	ready;
-	bool	OK;
-	u16		len;
-	u16		maxLen;
-	u16		*data;
+	volatile bool	ready;
+	volatile bool	OK;
+	volatile u16	len;
+	u16				maxLen;
+	u16				*data;
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 struct MTB
 {
-	bool	ready;
-	u16		len;
+	volatile bool	ready;
+	u16				len;
 	const u16		*data;
 };
 

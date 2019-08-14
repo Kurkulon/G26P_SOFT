@@ -56,8 +56,8 @@ static bool __memcmp(ConstDataPointer s, ConstDataPointer d, u32 len)
 #define FLASH_SAVE_BUFFER_SIZE		8400
 #define FLASH_READ_BUFFER_SIZE		8400
 
-static FLWB flwb[4];
-static FLRB flrb[4];
+static FLWB flashWriteBuffer[4];
+static FLRB flashReadBuffer[4];
 
 static List<FLWB> freeFlWrBuf;
 static List<FLWB> writeFlBuf;
@@ -286,14 +286,14 @@ extern u16 GetNumDevice()
 
 static void InitFlashBuffer()
 {
-	for (byte i = 0; i < ArraySize(flwb); i++)
+	for (byte i = 0; i < ArraySize(flashWriteBuffer); i++)
 	{
-		freeFlWrBuf.Add(&flwb[i]);
+		freeFlWrBuf.Add(&flashWriteBuffer[i]);
 	};
 
-	for (byte i = 0; i < ArraySize(flrb); i++)
+	for (byte i = 0; i < ArraySize(flashReadBuffer); i++)
 	{
-		freeFlRdBuf.Add(&flrb[i]);
+		freeFlRdBuf.Add(&flashReadBuffer[i]);
 	};
 }
 
@@ -3861,7 +3861,7 @@ static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
 	}
 	else
 	{
-		if (GetCRC16(flwb->vd.data, flwb->dataLen) == 0) // (req.rw & 0xFF00) == 0xAA00) // 
+		if (GetCRC16(fwb->vd.data, fwb->dataLen) == 0) // (req.rw & 0xFF00) == 0xAA00) // 
 		{
 			result = RequestFunc02 (fwb, wb);
 		}
@@ -3930,7 +3930,7 @@ static void RequestTestWrite(FLWB *fwb)
 
 	fwb->dataLen = sizeof(req);
 
-//	req.crc = GetCRC16(flwb->vd.data, flwb->dataLen - 2);
+	req.crc = GetCRC16(fwb->vd.data, fwb->dataLen - 2);
 	
 	RequestFlashWrite(fwb);
 }

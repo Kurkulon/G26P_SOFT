@@ -1,11 +1,12 @@
-//#pragma O0
-//#pragma Otime
+#pragma O3
+#pragma Otime
 
 //#include <stdio.h>
 //#include <conio.h>
 
 #include "ComPort.h"
 #include "time.h"
+//#include "hardware.h"
 
 #ifdef _DEBUG_
 //	static const bool _debug = true;
@@ -13,41 +14,52 @@
 //	static const bool _debug = false;
 #endif
 
-#define __SCTR (PDL(1) | TRM(1) | FLE(7) | WLE(7))
-
-#define __CCR (MODE(2))
-
-#define __BRG (DCTQ(15))
-
-#define __DX0CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
-#define __DX1CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
-#define __DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
-#define __DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
-
-#define __PCR (SMD(1) | SP(9) | RSTEN(1) | TSTEN(1))
-
-#define __FDR (STEP(0x3FF) | DM(1))
-
-#define __TCSR (TDEN(1)|TDSSM(1))
-
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+extern dword millisecondsCount;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ComPort::ComBase	ComPort::_bases[2] = { 
-	{false, 1, HW::USIC0_CH0,	 HW::P0, 11, 0, SCU_CLK_CGATSTAT0_USIC0_Msk, HW::DMA0, 0 }, 
-	{false, 2, HW::USIC1_CH0,	 HW::P0, 12, 1, SCU_CLK_CGATSTAT1_USIC1_Msk, HW::DMA0, 1 }
-};
+#ifdef CPU_SAME53	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	ComPort::ComBase	ComPort::_bases[2] = { 
+		{false, HW::USART0,	 HW::PIOA, 1<<4 }, 
+		{false, HW::USART1,	 HW::PIOA, 1<<27 }
+	};
+
+#elif defined(CPU_XMC48)	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	#define __SCTR (PDL(1) | TRM(1) | FLE(7) | WLE(7))
+
+	#define __CCR (MODE(2))
+
+	#define __BRG_ASYN	(DCTQ(15))
+	#define __BRG_SYNC	(DCTQ(0)|CLKSEL(3))
+
+	//#define __DX0CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+	//#define __DX1CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+	//#define __DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+	//#define __DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+
+	#define __PCR_ASYN	(SMD(1) | SP(9) | RSTEN(1) | TSTEN(1))
+	#define __PCR_SYNC	(SMD(0) | SP(0) | RSTEN(1) | TSTEN(1))
+
+//	#define __FDR (STEP(0x3FF) | DM(1))
+
+	#define __TCSR (TDEN(1)|TDSSM(1))
+
+	ComPort::ComBase	ComPort::_bases[2] = { 
+		{false, 1, HW::USIC0_CH0,	 HW::P0, (1<<11), PID_USIC0, HW::DMA0, 0 }, 
+		{false, 2, HW::USIC1_CH0,	 HW::P0, (1<<12), PID_USIC1, HW::DMA0, 1 }
+	};
+
+	static u32 parityMask[3] = { PM(0), PM(3), PM(2) };
+
+#endif	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool ComPort::Connect(byte port, dword speed, byte parity)
+bool ComPort::ConnectAsyn(byte port, dword speed, byte parity, byte stopBits)
 {
-#ifndef WIN32
-
-	if (_connected || port > 1 || _bases[port].used)
+	if (_connected || port > 3 || _bases[port].used)
 	{
 		return false;
 	};
@@ -59,60 +71,115 @@ bool ComPort::Connect(byte port, dword speed, byte parity)
 	_SU = cb.HU;
 	_pm = cb.pm;
 	_pinRTS = cb.pinRTS;
-	_dma = cb.dma;
-	_dmaChMask = 1<<cb.dmaCh;
-	_chdma = &(_dma->CH[cb.dmaCh]);
-	_dlr = cb.dmaCh;
 
+	#ifdef CPU_SAME53	
 
-	_FDR = BoudToPresc(speed) | DM(1);
+		_BaudRateRegister = BoudToPresc(speed);
 
-	_ModeRegister = __CCR;
+		_ModeRegister = 0xC0;
 
-	switch (parity)
-	{
-		case 0:		// нет четности
-			_ModeRegister = __CCR | PM(0);
-			break;
+		switch (parity)
+		{
+			case 0:		// нет четности
+				_ModeRegister |= 0x800;
+				break;
 
-		case 1:
-			_ModeRegister = __CCR | PM(3);
-			break;
+			case 1:
+				_ModeRegister |= 0x200;
+				break;
 
-		case 2:
-			_ModeRegister = __CCR | PM(2);
-			break;
-	};
+			case 2:
+				_ModeRegister |= 0x000;
+				break;
+		};
 
-	((u32*)&HW::SCU_CLK->CGATCLR0)[cb.gateIndex*3] = cb.gateMask;
-	((u32*)&HW::SCU_RESET->PRCLR0)[cb.gateIndex*3] = cb.gateMask;
+		//_SU->CR = 3;
+		//_SU->MR = _ModeRegister;
+		//_SU->BRGR = _BaudRateRegister;
 
-	_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+	#elif defined(CPU_XMC48)
 
-	_SU->FDR = _FDR;
-	_SU->BRG = __BRG;
-	_SU->PCR_ASCMode = __PCR;
-	_SU->SCTR = __SCTR;
-	_SU->DX0CR = DSEL(cb.dsel);//__DX0CR;
+		_dma = cb.dma;
+		_dmaChMask = 1<<cb.dmaCh;
+		_chdma = &(_dma->CH[cb.dmaCh]);
+		_dlr = cb.dmaCh;
 
-	_SU->TCSR = __TCSR;
-	_SU->PSCR = ~0;
+		_BaudRateRegister = BoudToPresc(speed) | DM(1);
 
-	_SU->CCR = _ModeRegister;
+		_ModeRegister = __CCR | ((parity < 3) ? parityMask[parity] : parityMask[0]);
+
+		HW::Peripheral_Enable(cb.usic_pid);
+
+		_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+
+		_SU->FDR = _BaudRateRegister;
+		_SU->BRG = __BRG_ASYN;
+		_SU->PCR_ASCMode = __PCR_ASYN | ((stopBits == 2) ? STPB(1) : 0);;
+		_SU->SCTR = __SCTR;
+		_SU->DX0CR = DSEL(cb.dsel);//__DX0CR;
+
+		_SU->TCSR = __TCSR;
+		_SU->PSCR = ~0;
+
+		_SU->CCR = _ModeRegister;
+
+	#endif
 
 	_status485 = READ_END;
 
 	return _connected = cb.used = true;
+}
 
-#else
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    char buf[256];
+bool ComPort::ConnectSync(byte port, dword speed, byte parity, byte stopBits)
+{
+	if (_connected || port > 3 || _bases[port].used)
+	{
+		return false;
+	};
 
-    wsprintf(buf, "COM%u", port);
+	_portNum = port;
 
-    return Connect(buf, speed, parity);
+	ComBase &cb = _bases[port];
 
-#endif
+	_SU = cb.HU;
+	_pm = cb.pm;
+	_pinRTS = cb.pinRTS;
+
+	#ifdef CPU_SAME53	
+
+
+	#elif defined(CPU_XMC48)
+
+		_dma = cb.dma;
+		_dmaChMask = 1<<cb.dmaCh;
+		_chdma = &(_dma->CH[cb.dmaCh]);
+		_dlr = cb.dmaCh;
+
+		//_BaudRateRegister = BoudToPresc(speed) | DM(1);
+
+		_ModeRegister = __CCR | ((parity < 3) ? parityMask[parity] : parityMask[0]);
+
+		HW::Peripheral_Enable(cb.usic_pid);
+
+		_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+
+	//	_SU->FDR			= _BaudRateRegister;
+		_SU->BRG			= __BRG_SYNC;
+		_SU->PCR_ASCMode	= __PCR_SYNC | ((stopBits == 2) ? STPB(1) : 0);
+		_SU->SCTR			= __SCTR;
+		_SU->DX0CR			= DSEL(cb.dsel);//__DX0CR;
+		_SU->DX1CR			= DPOL(1);
+		_SU->TCSR			= __TCSR;
+		_SU->PSCR			= ~0;
+		_SU->CCR			= _ModeRegister;
+
+	#endif
+
+	_status485 = READ_END;
+
+	return _connected = cb.used = true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -126,18 +193,12 @@ bool ComPort::Disconnect()
 
 	_status485 = READ_END;
 
-#ifndef WIN32
 	_connected = _bases[_portNum].used = false;
-#else
-	_connected = false;
-#endif
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#ifndef WIN32
 
 word ComPort::BoudToPresc(dword speed)
 {
@@ -145,141 +206,158 @@ word ComPort::BoudToPresc(dword speed)
 
 	word presc;
 
-//	presc = (word)((MCK*0.0625) / speed + 0.5);
-	presc = ((MCK + speed/2) / speed + 8) / 16;
+	#ifdef CPU_SAME53	
 
-	if (presc > 1024) presc = 1024;
+		presc = (((MCK+8)/16) + speed/2) / speed;
 
-	return 1024 - presc;
+		return presc;
+
+	#elif defined(CPU_XMC48)
+
+		presc = ((MCK + speed/2) / speed + 8) / 16;
+
+		if (presc > 1024) presc = 1024;
+
+		return 1024 - presc;
+
+	#endif
 }
-
-#endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void ComPort::TransmitByte(byte v)
 {
-#ifndef WIN32
+	#ifdef CPU_SAME53	
 
-	_SU->CCR = _ModeRegister;	// Disable transmit and receive
+		//_SU->CR = 0xA0;	// Disable transmit and receive
 
-	_pm->BSET(_pinRTS);
+		//_pm->SODR = _maskRTS;
 
-	_SU->KSCFG = BPNOM|NOMCFG(0);
+		//_SU->CR = 0x40;
 
-	_SU->CCR = _ModeRegister;
+		//_SU->THR = v;
 
-	_SU->PSCR = TBIF|TSIF;
+		//while ((_SU->CSR & 0x200) == 0);
 
-	_SU->TBUF[0] = v;
+		//_pm->CODR = _maskRTS;
 
-	while ((_SU->PSR & TSIF) == 0);
+		//_SU->CR = 0xA0;	// Disable transmit and receive
 
-	_SU->KSCFG = BPNOM|NOMCFG(3);
+	#elif defined(CPU_XMC48)
 
-	while (_SU->PSR & TXIDLE);
+		_pm->SET(_pinRTS);
 
-	_pm->BCLR(_pinRTS);
+		_SU->CCR = _ModeRegister|TBIEN;
+		_SU->INPR = 0;
 
-	_SU->CCR = _ModeRegister;	// Disable transmit and receive
+		_SU->TBUF[0] = v;
 
-#endif
+		while ((_SU->PSR & TSIF) == 0);
+
+		_pm->CLR(_pinRTS);
+
+		_SU->CCR = _ModeRegister;	// Disable transmit and receive
+
+	#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void ComPort::EnableTransmit(void* src, word count)
 {
-#ifndef WIN32
+	#ifdef CPU_SAME53	
+		//_SU->CR = 0xA0;	// Disable transmit and receive
 
-	if (count == 0) return;
+		//_pm->SODR = _maskRTS;
 
-//	count -= 1;
+		//_SU->PDC.TPR = src;
+		//_SU->PDC.TCR = count;
 
-	__disable_irq();
+		//_SU->PDC.PTCR = 0x100;
 
-	_pm->BSET(_pinRTS);
+		//_startTransmitTime = GetRTT();
+		//_SU->CR = 0x40;
+	#elif defined(CPU_XMC48)
 
-	_dma->DMACFGREG = 1;
+		if (count == 0) return;
 
-	if (count > 0xFFF)
-	{
-		byte *p = (byte*)src;
+	//	count -= 1;
 
-		u32 i = 0;
+		__disable_irq();
 
-		LLI *lli = &_lli[0];
+		HW::DLR->LNEN |= (1<<_dlr);
 
-		for ( ; i < ArraySize(_lli); i++)
-		{
-			lli = _lli+i;
-
-			lli->SAR = src;
-			lli->CTLL = DINC(2)|SINC(0)|TT_FC(1)|DEST_MSIZE(0)|SRC_MSIZE(0);
-			lli->DAR = &_SU->TBUF[0];
-
-			if (count > 0xFFF)
-			{
-				lli->LLP = _lli+i+1;
-				lli->CTLH = 0xFFF;
-				lli->CTLL |= LLP_DST_EN;
-				count -= 0xFFF;
-				p += 0xFFF;
-			}
-			else
-			{
-				lli->LLP = 0;
-				lli->CTLH = count;
-				count = 0;
-
-				break;
-			};
-		};
-
-		lli->LLP = 0;
+		_pm->SET(_pinRTS);
 
 		_dma->DMACFGREG = 1;
 
-		_chdma->CTLH = _lli[0].CTLH;
-		_chdma->CTLL = _lli[0].CTLL;
-		_chdma->LLP = (u32)&_lli[0];
-	}
-	else
-	{
-		_chdma->CTLL = DINC(2)|SINC(0)|TT_FC(1)|DEST_MSIZE(0)|SRC_MSIZE(0);
-		_chdma->CTLH = BLOCK_TS(count);
-	};
+		if (count > 0xFFF)
+		{
+			byte *p = (byte*)src;
 
-	_chdma->SAR = (u32)src;
-	_chdma->DAR = (u32)&_SU->TBUF[0];
-	_chdma->CFGL = HS_SEL_SRC;
-	_chdma->CFGH = PROTCTL(1)|DEST_PER(_dlr);
+			u32 i = 0;
 
-	_dma->CHENREG = _dmaChMask|(_dmaChMask<<8);
+			LLI *lli = &_lli[0];
 
-	_SU->CCR = _ModeRegister|TBIEN;
-	_SU->INPR = 0;
+			for ( ; i < ArraySize(_lli); i++)
+			{
+				lli = _lli+i;
 
-	if ((_SU->PSR & TBIF) == 0)
-	{
-		_SU->FMR = USIC_CH_FMR_SIO0_Msk;
-	};
+				lli->SAR = src;
+				lli->CTLL = DINC(2)|SINC(0)|TT_FC(1)|DEST_MSIZE(0)|SRC_MSIZE(0);
+				lli->DAR = &_SU->TBUF[0];
 
-	__enable_irq();
+				if (count > 0xFFF)
+				{
+					lli->LLP = _lli+i+1;
+					lli->CTLH = 0xFFF;
+					lli->CTLL |= LLP_DST_EN;
+					count -= 0xFFF;
+					p += 0xFFF;
+				}
+				else
+				{
+					lli->LLP = 0;
+					lli->CTLH = count;
+					count = 0;
 
-#else
+					break;
+				};
+			};
 
-	_ovlWrite.hEvent = 0;
-	_ovlWrite.Internal = 0;
-	_ovlWrite.InternalHigh = 0;
-	_ovlWrite.Offset = 0;
-	_ovlWrite.OffsetHigh = 0;
-	_ovlWrite.Pointer = 0;
+			lli->LLP = 0;
 
-	WriteFile(_comHandle, src, count, &_writeBytes, &_ovlWrite);
-    SetCommMask(_comHandle, EV_TXEMPTY);
+			_dma->DMACFGREG = 1;
 
-#endif
+			_chdma->CTLH = _lli[0].CTLH;
+			_chdma->CTLL = _lli[0].CTLL;
+			_chdma->LLP = (u32)&_lli[0];
+		}
+		else
+		{
+			_chdma->CTLL = DINC(2)|SINC(0)|TT_FC(1)|DEST_MSIZE(0)|SRC_MSIZE(0);
+			_chdma->CTLH = BLOCK_TS(count);
+		};
+
+		_chdma->SAR = (u32)src;
+		_chdma->DAR = (u32)&_SU->TBUF[0];
+		_chdma->CFGL = HS_SEL_SRC;
+		_chdma->CFGH = PROTCTL(1)|DEST_PER(_dlr);
+
+		_dma->CHENREG = _dmaChMask|(_dmaChMask<<8);
+
+		_SU->PSCR = ~0;
+		_SU->CCR = _ModeRegister|TBIEN;
+		_SU->INPR = 0;
+
+		if ((_SU->PSR & TBIF) == 0)
+		{
+			_SU->FMR = USIC_CH_FMR_SIO0_Msk;
+		};
+
+		__enable_irq();
+
+	#endif
 
 	_status485 = WRITEING;
 }
@@ -288,101 +366,120 @@ void ComPort::EnableTransmit(void* src, word count)
 
 void ComPort::DisableTransmit()
 {
-#ifndef WIN32
-	
-//	_dma->CLEARBLOCK = _dmaChMask;
-	_dma->CHENREG = _dmaChMask<<8;
-	_SU->CCR = _ModeRegister;
-	_pm->BCLR(_pinRTS);
-//	_SU->KSCFG = BPNOM|NOMCFG(3);
+	#ifdef CPU_SAME53	
 
-#endif
+		//_SU->CR = 0x80;
+		//_SU->PDC.PTCR = 0x200;
+		//_pm->CODR = _maskRTS;
+
+	#elif defined(CPU_XMC48)
+
+	//	_dma->CLEARBLOCK = _dmaChMask;
+		_dma->CHENREG = _dmaChMask<<8;
+		_SU->CCR = _ModeRegister;
+		_pm->CLR(_pinRTS);
+		HW::DLR->LNEN &= ~(1<<_dlr);
+	//	_SU->KSCFG = BPNOM|NOMCFG(3);
+
+	#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void ComPort::EnableReceive(void* dst, word count)
 {
-#ifndef WIN32
+	volatile u32 t;
 
-	__disable_irq();
+	#ifdef CPU_SAME53	
 
-	_pm->BCLR(_pinRTS);
+		//_SU->CR = 0x1A0;	// Disable transmit and receive, reset status
 
-	_dma->DMACFGREG = 1;
+		//_pm->CODR = _maskRTS;
 
-	if (count > 0xFFF)
-	{
-		byte *p = (byte*)dst;
+		//_SU->PDC.RPR = dst;
+		//_SU->PDC.RCR = count;
 
-		u32 i = 0;
+		//_SU->PDC.PTCR = 1;
 
-		LLI *lli = &_lli[0];
+		//_startReceiveTime = GetRTT();
+		//_SU->CR = 0x110;
 
-		for ( ; i < ArraySize(_lli); i++)
-		{
-			lli = _lli+i;
+	#elif defined(CPU_XMC48)
 
-			lli->SAR = &_SU->RBUF;
-			lli->CTLL = DINC(0)|SINC(2)|TT_FC(2)|DEST_MSIZE(0)|SRC_MSIZE(0);
-			lli->DAR = p;
+		__disable_irq();
 
-			if (count > 0xFFF)
-			{
-				lli->LLP = _lli+i+1;
-				lli->CTLH = 0xFFF;
-				lli->CTLL |= LLP_SRC_EN;
-				count -= 0xFFF;
-				p += 0xFFF;
-			}
-			else
-			{
-				lli->LLP = 0;
-				lli->CTLH = count;
-				count = 0;
-
-				break;
-			};
-		};
-
-		lli->LLP = 0;
+		_pm->CLR(_pinRTS);
 
 		_dma->DMACFGREG = 1;
 
-		_chdma->CTLH = _lli[0].CTLH;
-		_chdma->CTLL = _lli[0].CTLL;
-		_chdma->LLP = (u32)&_lli[0];
-	}
-	else
-	{
-		_chdma->CTLH = BLOCK_TS(count);
-		_chdma->CTLL = DINC(0)|SINC(2)|TT_FC(2)|DEST_MSIZE(0)|SRC_MSIZE(0);
-	};
+		if (count > 0xFFF)
+		{
+			byte *p = (byte*)dst;
 
-	_chdma->SAR = (u32)&_SU->RBUF;
-	_chdma->DAR = (u32)dst;
-	_chdma->CFGL = HS_SEL_DST;
-	_chdma->CFGH = PROTCTL(1)|SRC_PER(_dlr);
-	_dma->CHENREG = _dmaChMask|(_dmaChMask<<8);
+			u32 i = 0;
 
-	_startReceiveTime = GetRTT();
-	_SU->CCR = _ModeRegister|RIEN;
-	_SU->INPR = 0;
+			LLI *lli = &_lli[0];
 
-	__enable_irq();
+			for ( ; i < ArraySize(_lli); i++)
+			{
+				lli = _lli+i;
 
-#else
+				lli->SAR = &_SU->RBUF;
+				lli->CTLL = DINC(0)|SINC(2)|TT_FC(2)|DEST_MSIZE(0)|SRC_MSIZE(0);
+				lli->DAR = p;
 
-	_ovlRead.hEvent = 0;
-	_ovlRead.Internal = 0;
-	_ovlRead.InternalHigh = 0;
-	_ovlRead.Offset = 0;
-	_ovlRead.OffsetHigh = 0;
-	_ovlRead.Pointer = 0;
+				if (count > 0xFFF)
+				{
+					lli->LLP = _lli+i+1;
+					lli->CTLH = 0xFFF;
+					lli->CTLL |= LLP_SRC_EN;
+					count -= 0xFFF;
+					p += 0xFFF;
+				}
+				else
+				{
+					lli->LLP = 0;
+					lli->CTLH = count;
+					count = 0;
 
-	ReadFile(_comHandle, dst, count, &_readBytes, &_ovlRead);
+					break;
+				};
+			};
 
-#endif
+			lli->LLP = 0;
+
+			_dma->DMACFGREG = 1;
+
+			_chdma->CTLH = _lli[0].CTLH;
+			_chdma->CTLL = _lli[0].CTLL;
+			_chdma->LLP = (u32)&_lli[0];
+		}
+		else
+		{
+			_chdma->CTLH = BLOCK_TS(count);
+			_chdma->CTLL = DINC(0)|SINC(2)|TT_FC(2)|DEST_MSIZE(0)|SRC_MSIZE(0);
+		};
+
+		_chdma->SAR = (u32)&_SU->RBUF;
+		_chdma->DAR = _startDmaCounter = _prevDmaCounter = (u32)dst;
+		_chdma->CFGL = HS_SEL_DST;
+		_chdma->CFGH = PROTCTL(1)|SRC_PER(_dlr);
+		_dma->CHENREG = _dmaChMask|(_dmaChMask<<8);
+
+		_startReceiveTime = GetRTT();
+
+		t = _SU->RBUF;
+		t = _SU->RBUF;
+		_SU->PSCR = ~0;
+
+		HW::DLR->LNEN |= (1<<_dlr);
+
+		_SU->CCR = _ModeRegister|RIEN;
+		_SU->INPR = 0;
+
+		__enable_irq();
+
+	#endif
 
 	_status485 = WAIT_READ;
 }
@@ -391,17 +488,27 @@ void ComPort::EnableReceive(void* dst, word count)
 
 void ComPort::DisableReceive()
 {
-#ifndef WIN32
+	#ifdef CPU_SAME53	
 
-	_dma->CHENREG = _dmaChMask<<8;
-	_SU->CCR = _ModeRegister;
-	_pm->BCLR(_pinRTS);
-//	_SU->KSCFG = BPNOM|NOMCFG(3);
+		//_SU->CR = 0x120;
+		//_SU->PDC.PTCR = 2;
+		//_pm->CODR = _maskRTS;
 
-#endif
+	#elif defined(CPU_XMC48)
+
+		_dma->CHENREG = _dmaChMask<<8;
+		_SU->CCR = _ModeRegister;
+		_pm->CLR(_pinRTS);
+		HW::DLR->LNEN &= ~(1<<_dlr);
+	//	_SU->KSCFG = BPNOM|NOMCFG(3);
+
+	#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	#ifdef CPU_SAME53	
+	#elif defined(CPU_XMC48)
+	#endif
 
 bool ComPort::Update()
 {
@@ -433,49 +540,31 @@ bool ComPort::Update()
 			break;
 
 		case WAIT_READ: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#ifndef WIN32
-
 		{
-			u16 t = BLOCK_TS(_chdma->CTLH);
+			u32 t = _chdma->DAR;
 
 			u32 stamp = GetRTT();
 
-			if ((_prevDmaCounter-t) == 0)
+			if (_prevDmaCounter == t)
 			{
-				if (_readTimeout < 0xFFFF && (u16)(stamp - _startReceiveTime) >= _readTimeout)
+				if ((u16)(stamp - _startReceiveTime) >= _readTimeout)
 				{
 					DisableReceive();
-					_pReadBuffer->len = _prevDmaCounter;
+					_pReadBuffer->len = t - _startDmaCounter;
 					_pReadBuffer->recieved = _pReadBuffer->len > 0;
 					_status485 = READ_END;
 					r = false;
-
-					HW::P5->BCLR(9);
 				};
 			}
 			else
 			{
-				HW::P5->BSET(9);
-
 				_prevDmaCounter = t;
 				_startReceiveTime = stamp;
 				_readTimeout = _postReadTimeout;
 			};
 		};
 
-#else
-			if (HasOverlappedIoCompleted(&_ovlRead))
-			{
-				bool c = GetOverlappedResult(_comHandle, &_ovlRead, &_readBytes, false);
-				_pReadBuffer->len = _readBytes;
-				_pReadBuffer->recieved = _pReadBuffer->len > 0 && c;
-				_status485 = READ_END;
-				r = false;
-			};
-#endif
-
-			break;
+		break;
 
 		case READ_END: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -493,42 +582,17 @@ bool ComPort::Read(ComPort::ReadBuffer *readBuffer, dword preTimeout, dword post
 {
 	if (_status485 != READ_END || readBuffer == 0)
 	{
-//		cputs("ComPort::Read falure\n\r");	
 		return false;
 	};
-
-#ifndef WIN32
 
 	_readTimeout = preTimeout;
 	_postReadTimeout = postTimeout;
-
-#else
-    _cto.ReadIntervalTimeout = postTimeout/32+1;
-	_cto.ReadTotalTimeoutConstant = preTimeout/32+1;
-
-    if (!SetCommTimeouts(_comHandle, &_cto))
-    {
-		return false;
-	};
-
-#endif
 
 	_pReadBuffer = readBuffer;
 	_pReadBuffer->recieved = false;
 	_pReadBuffer->len = 0;
 
-	_prevDmaCounter = 0;
-
-	u32 t = (u32)_pReadBuffer->data;
-
-	if (t < 0x20000000 || t >= 0x20028000)
-	{
-		__breakpoint(0);
-	};
-
 	EnableReceive(_pReadBuffer->data, _pReadBuffer->maxLen);
-
-//	cputs("ComPort::Read start\n\r");	
 
 	return true;
 }
@@ -552,105 +616,3 @@ bool ComPort::Write(ComPort::WriteBuffer *writeBuffer)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#ifdef WIN32
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-int  ComPort::_portTableSize = 0;
-dword ComPort::_portTable[16];
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool ComPort::Connect(const char* comPort, dword bps, byte parity)
-{
-    if (_comHandle != INVALID_HANDLE_VALUE)
-    {
-        return false;
-    };
-
-	_comHandle = CreateFile(comPort, GENERIC_READ|GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
-
-    if (_comHandle == INVALID_HANDLE_VALUE)
-    {
-		return false;
-    };
-
-    DCB dcb;
-
-    if (!GetCommState(_comHandle, &dcb))
-    {
-        Disconnect();
-		return false;
-    };
-
-    dcb.DCBlength = sizeof(dcb);
-    dcb.BaudRate = bps;
-    dcb.ByteSize = 8;
-    dcb.Parity = parity;
-    dcb.fParity = (parity > 0);
-    dcb.StopBits = ONESTOPBIT;
-    dcb.fBinary = true;
-    dcb.fDtrControl = DTR_CONTROL_DISABLE;
-    dcb.fRtsControl = RTS_CONTROL_DISABLE;
-	dcb.fOutxCtsFlow = false;
-	dcb.fOutxDsrFlow = false;
-    dcb.fDsrSensitivity = false;
-
-	if (!SetCommState(_comHandle, &dcb))
-    {
-        Disconnect();
-		return false;
-    };
-
-    _cto.ReadIntervalTimeout = 2;
-	_cto.ReadTotalTimeoutMultiplier = 0;
-	_cto.ReadTotalTimeoutConstant = -1;
-	_cto.WriteTotalTimeoutConstant = 0;
-	_cto.WriteTotalTimeoutMultiplier = 0;
-
-    if (!SetCommTimeouts(_comHandle, &_cto))
-    {
-        Disconnect();
-    	return false;
-    };
-
-	printf("Connect to %s speed = %u\r\n", comPort, bps);
-
-	return _connected = true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void ComPort::BuildPortTable()
-{
-    if (_portTableSize != 0)
-    {
-        return;
-    };
-
-    char buf[256];
-
-    COMMCONFIG cc;
-    DWORD lcc = sizeof(cc);
-
-    int k = 0;
-
-    for (int i = 1; i < 17; i++)
-    {
-        wsprintf(buf, "COM%i", i);
-
-        lcc = sizeof(cc);
-
-        if (GetDefaultCommConfig(buf, &cc, &lcc))
-        {
-            _portTable[k++] = i;
-        };
-
-    };
-
-    _portTableSize = k;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#endif

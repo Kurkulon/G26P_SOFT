@@ -109,4 +109,13 @@
 #define SUMCFG(v)		(((v)&3)<<8)                 /*!< USIC_CH KSCFG: SUMCFG (Bitfield-Mask: 0x03)                 */
 #define BPSUM           (0x800UL)                 /*!< USIC_CH KSCFG: BPSUM (Bitfield-Mask: 0x01)                  */
 
+/* -------------------------------  USIC_CH_RBUFSR  ------------------------------- */
+#define WLEN               (0xfUL)                   /*!< USIC_CH RBUFSR: WLEN (Bitfield-Mask: 0x0f)                  */
+//#define SOF                (0x40UL)                  /*!< USIC_CH RBUFSR: SOF (Bitfield-Mask: 0x01)                   */
+#define PAR                (0x100UL)                 /*!< USIC_CH RBUFSR: PAR (Bitfield-Mask: 0x01)                   */
+#define PERR               (0x200UL)                 /*!< USIC_CH RBUFSR: PERR (Bitfield-Mask: 0x01)                  */
+#define RDV0               (0x2000UL)                /*!< USIC_CH RBUFSR: RDV0 (Bitfield-Mask: 0x01)                  */
+#define RDV1               (0x4000UL)                /*!< USIC_CH RBUFSR: RDV1 (Bitfield-Mask: 0x01)                  */
+#define DS                 (0x8000UL)                /*!< USIC_CH RBUFSR: DS (Bitfield-Mask: 0x01)                    */
+
 #endif /*COM_DEF__12_10_2018__08_51*/

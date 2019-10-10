@@ -9,18 +9,28 @@ u32 fps = 0;
 
 static ComPort com;
 
+__packed struct Req
+{
+	byte len;
+	byte func;
+	
+	__packed union
+	{
+		__packed struct  { byte n; word crc; } f1;  // старт оцифровки
+		__packed struct  { word crc; } f2;  // чтение вектора
+		__packed struct  { byte fireCount; u16 hv; word crc; } f3;  // установка шага и длины оцифровки вектора
+	};
+};
 
-typedef bool (*REQF)(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb);
-
-
+typedef bool (*REQF)(Req *req, ComPort::WriteBuffer *wb);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool Request01(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
+static bool Request01(Req *req, ComPort::WriteBuffer *wb)
 {
 	// Запуск импульса излучателя
 	
-	byte t = ((byte*)rb->data)[1] - 1;
+	byte t = req->f1.n - 1;
 	
 	if (t < 3) 
 	{
@@ -32,7 +42,7 @@ static bool Request01(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool Request02(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
+static bool Request02(Req *req, ComPort::WriteBuffer *wb)
 {
 	// Чтение текущего значения высокого напряжения
 
@@ -40,8 +50,6 @@ static bool Request02(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 
 	static Rsp rsp;
 	
-	if (GetCRC(rb->data, rb->len) != 0) return false;
-
 	rsp.f = 2;
 	rsp.hv = GetCurHV();
 	rsp.crc = GetCRC(&rsp, 3);
@@ -53,27 +61,21 @@ static bool Request02(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool Request03(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
+static bool Request03(Req *req, ComPort::WriteBuffer *wb)
 {
 	// Установка значения требуемого высокого напряжения
 
-	__packed struct Req { byte f; byte fireCount; u16 hv; u16 crc; };
 	__packed struct Rsp { byte f; u16 crc; };
 
 	static Rsp rsp;
 	
-	Req *req = (Req*)rb->data;
-	
-	if (GetCRC(rb->data, rb->len) != 0) return false;
-
-	SetReqFireCount(req->fireCount);
-	SetReqHV(req->hv);
+	SetReqFireCount(req->f3.fireCount);
+	SetReqHV(req->f3.hv);
 
 	rsp.f = 3;
 	rsp.crc = GetCRC(&rsp, 1);
 	wb->data = &rsp;
 	wb->len = sizeof(rsp);
-
 
 	return true;
 }
@@ -86,13 +88,39 @@ static REQF listReq[3] = { Request01, Request02, Request03 };
 
 static bool UpdateRequest(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 {
-	byte f = *(byte*)rb->data;
+	static Req nulReq;
 
-	f -= 1;
+	static const byte fl[3] = { sizeof(nulReq.f1)+1, sizeof(nulReq.f2)+1, sizeof(nulReq.f3)+1 };
 
-	if (f > 2) return false;
+	if (rb == 0 || rb->len < 4) return false;
 
-	return listReq[f](wb, rb);
+	bool result = false;
+
+	u16 rlen = rb->len;
+
+	byte *p = (byte*)rb->data;
+
+	while(rlen > 3)
+	{
+		byte len = p[0];
+		byte func = p[1]-1;
+
+		if (func < 4 && len == fl[func] && len < rlen && GetCRC16(p+1, len) == 0)
+		{
+			Req *req = (Req*)p;
+
+			result = listReq[func](req, wb);
+
+			break;
+		}
+		else
+		{
+			p += 1;
+			rlen -= 1;
+		};
+	};
+
+	return result;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -146,7 +174,6 @@ static void UpdateCom()
 
 			break;
 	};
-
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -164,25 +191,6 @@ int main()
 	
 	while (1)
 	{
-		//if (j >= 1000)
-		//{
-		//	HW::GPIO->SET0 = 1<<7;
-		//	j = 0;
-		//}
-		//else if (j == 499)
-		//{
-		//	HW::GPIO->CLR0 = 1<<7;
-		//};
-
-		//if (tm.Check(200))
-		//{
-		//	WaitFireSync(i++);
-
-		//	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
-
-		//	if (i > 2) { i = 0; };
-		//};
-
 		UpdateHardware();
 		UpdateCom();
 

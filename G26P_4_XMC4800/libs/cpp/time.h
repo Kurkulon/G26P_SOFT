@@ -1,14 +1,8 @@
 #ifndef TIME_H__04_08_2009__17_35
 #define TIME_H__04_08_2009__17_35
 
-#ifdef WIN32
-#include <windows.h>
-#endif
-
 #include "types.h"
 #include "core.h"
-
-//typedef dword time_utc;
 
 #define RTC_type RTC
 
@@ -45,85 +39,44 @@ __packed struct RTC
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//struct time_bdc 
-//{ 
-//	byte hsecond; byte second; byte minute; byte hour; byte day; byte month; byte dayofweek; word year; time_utc t; 
-//
-//	//time_bdc(const time_bdc& t) 
-//	//{
-//	//	*(dword*)this = *(dword*)&t;
-//	//	*((dword*)this+1) = *((dword*)&t+1);
-//	//	*((word*)this+4) = *((word*)&t+4);
-//	//}
-//
-//	//void operator=(const time_bdc& t) 
-//	//{
-//	//	*(dword*)this = *(dword*)&t;
-//	//	*((dword*)this+1) = *((dword*)&t+1);
-//	//	*((dword*)this+2) = *((dword*)&t+2);
-//	//	*((word*)this+6) = *((word*)&t+6);
-//	//}
-//};
-//
-//extern time_bdc timeBDC;
-
-//extern time_utc mktime_utc(const time_bdc &t);
-//extern time_utc mktime_utc(time_bdc *t);
-//extern bool mktime_bdc(time_utc t, time_bdc *tbdc);
-//extern void Init_time();
-
+extern void Init_time();
 extern void RTT_Init();
-extern void InitTimer();
 
-
-//extern bool SetTime(time_utc t);
 extern bool SetTime(const RTC &t);
-//extern time_utc GetTime();
 extern void GetTime(RTC *t);
-//extern bool CheckTime(const time_bdc &t);
-//extern int CompareTime(const time_bdc &t1, const time_bdc &t2);
-//extern void NextDay(time_bdc *t);
-//extern void NextHour(time_bdc *t);
-//extern void PrevDay(time_bdc *t);
-//extern void PrevHour(time_bdc *t);
-//extern dword msec;
 
-inline dword GetMilliseconds()
+//extern const u32 msec;
+
+inline u32 GetMilliseconds()
 {
-#ifndef WIN32
-	extern dword msec;
+	extern u32 msec;
 	return msec;
-#else
-	return GetTickCount();
-#endif
 }
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline word GetMillisecondsLow()
 {
-#ifndef WIN32
-	extern dword msec;
-	return (word)msec;
-#else
-	return (word)(GetTickCount());
-#endif
+	extern u32 msec;
+	return (u16)msec;
 }
 
-#define US2RT(x) (((x)*25+256)/512)
-#define MS2RT(x) (((x)*3125+32)/64)
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define US2RT(x) (((x)*MCK_MHz+1024)/2048)
+#define MS2RT(x) (((x)*MCK_MHz*1000+1024)/2048)
 
 inline u16 GetRTT() { return HW::CCU43_CC43->TIMER; }
 
-//inline u32 GetRTT()
-//{
-//	u32 t1 = HW::RTT->VR;
-//	u32 t2;
-//
-//	while ((t2 = HW::RTT->VR) != t1) { t1 = t2; };
-//
-//	return t2;
-//} 
+struct RTM
+{
+	u16 pt;
 
-//inline u32 GetRTT() { return HW::RTT->VR|HW::RTT->VR; }
+	//RTM16() : pt(0) {}
+	bool Check(u16 v) { if ((u16)(GetRTT() - pt) >= v) { pt = GetRTT(); return true; } else { return false; }; }
+	bool Timeout(u16 v) { return (GetRTT() - pt) >= v; }
+	void Reset() { pt = GetRTT(); }
+};
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -131,22 +84,60 @@ struct TM32
 {
 	u32 pt;
 
-	//static u32 ipt;
-
-	//TM32() : pt(ipt++) {}
-	bool Check(u32 v) { if ((GetMilliseconds() - pt) >= v) { pt = GetMilliseconds(); return true; } else { return false; }; }
+	//TM32() : pt(0) {}
+	bool Check(u32 v) { u32 t = GetMilliseconds(); if ((t - pt) >= v) { pt = t; return true; } else { return false; }; }
+	bool Timeout(u32 v) { return (GetMilliseconds() - pt) >= v; }
 	void Reset() { pt = GetMilliseconds(); }
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct RTM16
+struct Dbt
 {
-	u16 pt;
+//	bool	stat;
+	u32		pt;
+	u32		dt;
 
-	//RTM16() : pt(0) {}
-	bool Check(u16 v) { if ((u16)(GetRTT() - pt) >= v) { pt = GetRTT(); return true; } else { return false; }; }
-	void Reset() { pt = GetRTT(); }
+	Dbt(u32 t = 500) : pt(0), dt(t) {}
+
+	bool Check(bool c)
+	{
+		if (!c)
+		{ 
+			pt = GetMilliseconds(); 
+		} 
+		else if ((GetMilliseconds() - pt) < dt)
+		{ 
+			c = false; 
+		}; 
+
+		return c;
+	}
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct Deb
+{
+	bool	stat;
+	u32		pt;
+	u32		dt;
+
+	Deb(bool s = false, u32 t = 500) : stat(s), pt(0), dt(t) {}
+
+	bool Check(bool c)
+	{
+		if (stat == c)
+		{ 
+			pt = GetMilliseconds(); 
+		} 
+		else if ((GetMilliseconds() - pt) >= dt)
+		{ 
+			stat = c; 
+		}; 
+
+		return stat;
+	}
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -192,8 +192,10 @@ static __irq void Handler_TWI()
 			rdCount = dsc->rlen;
 			adr = dsc->adr;
 
-			TWI->CCR |= RIEN|AIEN;
-			TWI->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
+			if (wrPtr2 == 0) wrCount2 = 0;
+
+			//TWI->CCR |= RIEN|AIEN;
+			//TWI->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
 
 			TWI->TBUF[0] = TDF_MASTER_START | (dsc->adr << 1) | ((wrCount == 0) ? 1 : 0);
 		}
@@ -295,9 +297,7 @@ void Init_TWI()
 
 	//num &= 1;
 
-
-	SCU_CLK->CGATCLR1 = CGAT1_USIC2;
-	SCU_RESET->PRCLR1 = PR1_USIC2;
+	HW::Peripheral_Enable(PID_USIC2);
 
  	P5->ModePin0(A1OD);
 	P5->ModePin2(A1OD);

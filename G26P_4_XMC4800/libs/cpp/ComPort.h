@@ -3,14 +3,13 @@
 
 #include "types.h"
 #include "core.h"
-#include "COM_DEF.h"
 
-//#define COM_RS232 0
-//#define COM_RS485 1
-
-#ifdef WIN32
-#include <windows.h>
+#ifdef CPU_XMC48
+	#include "COM_DEF.h"
 #endif
+
+#define COM_RS232 0
+#define COM_RS485 1
 
 class ComPort
 {
@@ -31,6 +30,8 @@ class ComPort
 		void*	data;
 	};
 
+	#ifdef CPU_XMC48
+
 	struct LLI
 	{
 		volatile void*	SAR;
@@ -41,24 +42,55 @@ class ComPort
 		u32		DSTAT;
 	};
 
+	#endif
+
+
   protected:
 
 	enum STATUS485 { WRITEING = 0, WAIT_READ = 1, READING = 2, READ_END = 3 };
 
-//	union CUSART { void *vp; T_HW::USIC_CH_Type *U; };
+//	union CUSART { void *vp; T_HW::S_UART *DU; T_HW::S_USART *SU; };
 
-	struct ComBase
-	{
-		bool used;
-		const byte dsel;
-		T_HW::USIC_CH_Type* const HU;
-		T_HW::PORT_Type* const pm;
-		const dword pinRTS;
-		const u32	gateIndex;
-		const u32 gateMask;
-		T_HW::GPDMA_Type* const dma;
-		const u32 dmaCh;
-	};
+	#ifdef CPU_SAME53
+
+		struct ComBase
+		{
+			bool used;
+			T_HW::S_USART* const HU;
+			T_HW::S_PORT* const pm;
+			const dword pinRTS;
+		};
+
+		T_HW::S_PORT	*_pm;
+		T_HW::S_USART 	*_SU;
+
+	#elif defined(CPU_XMC48)
+
+		struct ComBase
+		{
+			bool used;
+			const byte dsel;
+			T_HW::USIC_CH_Type* const HU;
+			T_HW::PORT_Type* const pm;
+			const dword pinRTS;
+			const u32 usic_pid;
+			T_HW::GPDMA_Type* const dma;
+			const u32 dmaCh;
+		};
+
+		LLI					_lli[4];
+
+		T_HW::PORT_Type		*_pm;
+		T_HW::USIC_CH_Type 	*_SU;
+		T_HW::GPDMA_Type	*_dma;
+		T_HW::GPDMA_CH_Type	*_chdma;
+		u32					_dmaChMask;
+		u32					_dlr;
+
+		bool IsTransmited() { return (_SU->PSR & BUSY) == 0 && !(_dma->CHENREG & _dmaChMask); }
+
+	#endif
+
 
 	static ComBase _bases[2];
 
@@ -66,52 +98,24 @@ class ComPort
 	byte			_status485;
 	byte			_portNum;
 
-	word			_prevDmaCounter;
+	u32				_startDmaCounter;
+	u32				_prevDmaCounter;
 
 	ReadBuffer		*_pReadBuffer;
 	WriteBuffer		*_pWriteBuffer;
 
-	LLI				_lli[4];
 
 
+	word			_BaudRateRegister;
 
-#ifndef WIN32
+	dword			_ModeRegister;
+	dword			_pinRTS;
+	dword			_startTransmitTime;
+	dword			_startReceiveTime;
+//	dword			_preReadTimeout;
+	dword			_postReadTimeout;
+	dword			_readTimeout;
 
-	word				_FDR;
-
-	dword				_ModeRegister;
-	dword				_pinRTS;
-	T_HW::PORT_Type		*_pm;
-	dword				_startTransmitTime;
-	dword				_startReceiveTime;
-//	dword				_preReadTimeout;
-	dword				_postReadTimeout;
-	dword				_readTimeout;
-
-	T_HW::USIC_CH_Type 	*_SU;
-	T_HW::GPDMA_Type*	_dma;
-	T_HW::GPDMA_CH_Type* _chdma;
-	u32					_dmaChMask;
-	u32					_dlr;
-
-	bool IsTransmited() { return (_SU->PSR & BUSY) == 0 && !(_dma->CHENREG & _dmaChMask); }
-
-#else
-
-	dword		_readBytes;
-	dword		_writeBytes;
-
-	HANDLE		_comHandle;
-	OVERLAPPED	_ovlRead;
-	OVERLAPPED	_ovlWrite;
-	COMMTIMEOUTS _cto;
-
-	static int		_portTableSize;
-	static dword	_portTable[16];
-
-	bool IsTransmited() { return HasOverlappedIoCompleted(&_ovlWrite); }
-
-#endif
 
 	void 		EnableTransmit(void* src, word count);
 	void 		DisableTransmit();
@@ -125,31 +129,16 @@ class ComPort
 	static ComPort *_objCom2;
 	static ComPort *_objCom3;
 
-#ifndef WIN32
-
 	word 		BoudToPresc(dword speed);
-
-#else
-
-	void		BuildPortTable();
-
-#endif
 
 
   public:
 	  
-#ifndef WIN32
-
 	ComPort() : _connected(false), _status485(READ_END) {}
 
-#else
 
-	ComPort() : _connected(false), _status485(READ_END), _comHandle(INVALID_HANDLE_VALUE) {}
-	bool		Connect(const char* comPort, dword bps, byte parity);
-
-#endif
-
-	bool		Connect(byte port, dword speed, byte parity);
+	bool		ConnectAsyn(byte port, dword speed, byte parity, byte stopBits);
+	bool		ConnectSync(byte port, dword speed, byte parity, byte stopBits);
 	bool		Disconnect();
 	bool		Update();
 

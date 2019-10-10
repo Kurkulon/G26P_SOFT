@@ -215,6 +215,9 @@ extern FileDsc* GetSessionInfo(u16 session, u64 adr);
 
 //extern const SessionInfo* GetLastSessionInfo();
 
+extern void SetNumDevice(u16 num);
+extern u16 GetNumDevice();
+
 inline void SaveParams() { extern byte savesCount; savesCount = 1; }
 
 /*************************/

@@ -3,10 +3,7 @@
 
 #include "types.h"
 #include "core.h"
-
-#ifdef WIN32
-#include <windows.h>
-#endif
+#include "time.h"
 
 extern void InitHardware();
 extern void UpdateHardware();
@@ -52,5 +49,6 @@ extern void ManRcvUpdate();
 extern void ManRcvStop();
 
 extern bool SendMLT3(MTB *mtb);
+extern void SetClock(const RTC &t);
 
 #endif // HARDWARE_H__15_05_2009__14_35

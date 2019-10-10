@@ -311,7 +311,7 @@ static __irq void Timer_Handler (void)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void InitTimer()
+void Init_time()
 {
 	enum { freq = 1000 };
 
@@ -339,11 +339,7 @@ void RTT_Init()
 	T_HW::CCU4_GLOBAL_Type * const module = HW::CCU43;
 	T_HW::CCU4_CC4_Type * const slice = HW::CCU43_CC43;
 
-	HW::SCU_CLK->CLKSET = SCU_CLK_CLKSET_CCUCEN_Msk;
-
-	HW::SCU_CLK->CGATCLR1 = SCU_CLK_CGATCLR1_CCU43_Msk;
-
-	HW::SCU_RESET->PRCLR1 = SCU_RESET_PRCLR1_CCU43RS_Msk;
+	CCU_Enable(PID_CCU43);
 
 	module->GCTRL = 0;
 

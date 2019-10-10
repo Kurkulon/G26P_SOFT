@@ -185,7 +185,7 @@ void ComPort::DisableTransmit()
 	
 	_SU->CR = 0x80;
 	_SU->PDC.PTCR = 0x200;
-//	_pm->CODR = _maskRTS;
+	_pm->CODR = _maskRTS;
 
 #endif
 }
@@ -232,7 +232,7 @@ void ComPort::DisableReceive()
 
 	_SU->CR = 0x120;
 	_SU->PDC.PTCR = 2;
-//	_pm->CODR = _maskRTS;
+	_pm->CODR = _maskRTS;
 
 #endif
 }

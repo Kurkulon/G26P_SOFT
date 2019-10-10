@@ -17,6 +17,7 @@
 #include "trap_def.h"
 #include "xtrap.h"
 #include "CRC16.h"
+#include "hardware.h"
 
 #pragma diag_suppress 2548,546,550,177
 
@@ -589,7 +590,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 						TrapClock &tc = (TrapClock&)*t;
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_CLOCK_DEVICE, TrapRxCounter);	
-						SetTime(tc.rtc);
+						SetClock(tc.rtc);
 
 						if (__trace) { TRAP_TRACE_PrintString(" TRAP_CLOCK_COMMAND_SET \r\n"); };
 

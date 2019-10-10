@@ -1,6 +1,7 @@
 #include "core.h"
 #include "time.h"
 #include "hardware.h"
+#include "twi.h"
 
 //#pragma O3
 //#pragma Otime
@@ -34,7 +35,7 @@ inline void ManZero()		{ HW::P0->CLR(L1); HW::P0->SET(L2|H2); HW::P0->CLR(H1);} 
 #define ManTmr		HW::CCU41_CC41
 #define ManCCU		HW::CCU41
 #define ManRxd()	(HW::PIOA->IN & 1)
-#define MT(v)		((u16)((v)/1.28+0.5))
+#define MT(v)		((u16)((MCK_MHz*(v)+64)/128))
 
 // RXD CCU41.IN2C
 
@@ -435,11 +436,7 @@ static void InitManTransmit()
 {
 	using namespace HW;
 
-	SCU_CLK->CLKSET = CLK_CCU;
-
-	SCU_CLK->CGATCLR0 = CGAT0_CCU41;
-
-	SCU_RESET->PRCLR0 = PR0_CCU41;
+	HW::CCU_Enable(PID_CCU41);
 
 	ManCCU->GCTRL = 0;
 
@@ -636,11 +633,7 @@ static void InitManRecieve()
 {
 	using namespace HW;
 
-	SCU_CLK->CLKSET = CLK_CCU;
-
-	SCU_CLK->CGATCLR0 = CGAT0_CCU41;
-
-	SCU_RESET->PRCLR0 = PR0_CCU41;
+	HW::CCU_Enable(PID_CCU41);
 
 	ManCCU->GCTRL = 0;
 
@@ -725,9 +718,7 @@ void Init_ERU()
 {
 	using namespace HW;
 
-	SCU_CLK->CGATCLR0 = CGAT0_ERU1;
-
-	SCU_RESET->PRCLR0 = PR0_ERU1;
+	HW::CCU_Enable(PID_ERU1);
 
 	// Event Request Select (ERS)
 	
@@ -756,11 +747,81 @@ void Init_ERU()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void SetClock(const RTC &t)
+{
+	static DSCTWI dsc;
+
+	static byte reg = 0;
+	static u16 rbuf = 0;
+	static byte buf[10];
+
+	buf[0] = 0;
+	buf[1] = ((t.sec/10) << 4)|(t.sec%10);
+	buf[2] = ((t.min/10) << 4)|(t.min%10);
+	buf[3] = ((t.hour/10) << 4)|(t.hour%10);
+	buf[4] = 1;
+	buf[5] = ((t.day/10) << 4)|(t.day%10);
+	buf[6] = ((t.mon/10) << 4)|(t.mon%10);
+
+	byte y = t.year % 100;
+
+	buf[7] = ((y/10) << 4)|(y%10);
+
+	dsc.adr = 0x68;
+	dsc.wdata = buf;
+	dsc.wlen = 8;
+	dsc.rdata = 0;
+	dsc.rlen = 0;
+	dsc.wdata2 = 0;
+	dsc.wlen2 = 0;
+
+	if (SetTime(t))
+	{
+		AddRequest_TWI(&dsc);
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitClock()
+{
+	DSCTWI dsc;
+
+	byte reg = 0;
+	byte buf[10];
+	
+	RTC t;
+
+	dsc.adr = 0x68;
+	dsc.wdata = &reg;
+	dsc.wlen = 1;
+	dsc.rdata = buf;
+	dsc.rlen = 7;
+	dsc.wdata2 = 0;
+	dsc.wlen2 = 0;
+
+	AddRequest_TWI(&dsc);
+
+	while (!dsc.ready);
+
+	t.sec	= (buf[0]&0xF) + ((buf[0]>>4)*10);
+	t.min	= (buf[1]&0xF) + ((buf[1]>>4)*10);
+	t.hour	= (buf[2]&0xF) + ((buf[2]>>4)*10);
+	t.day	= (buf[4]&0xF) + ((buf[4]>>4)*10);
+	t.mon	= (buf[5]&0xF) + ((buf[5]>>4)*10);
+	t.year	= (buf[6]&0xF) + ((buf[6]>>4)*10) + 2000;
+
+	SetTime(t);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void InitHardware()
 {
-
-	InitTimer();
+	Init_time();
 	RTT_Init();
+	Init_TWI();
+	InitClock();
 
 	InitManTransmit();
 	InitManRecieve();

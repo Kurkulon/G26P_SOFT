@@ -39,9 +39,12 @@
 
 #define CHIPID_LOC ((uint8_t *)0x20000000UL)
 
-#define PMU_FLASH_WS          (0x3U)
+#define PMU_FLASH_WS          (NS2CLK(30))	//(0x3U)
 
-#define FOSCREF               (2500000U)
+#define OSCHP_FREQUENCY			(25000000U)
+#define FOSCREF					(2500000U)
+#define VCO_NOM					(400000000UL)
+#define VCO_IN_MAX				(5000000UL)
 
 #define DELAY_CNT_50US_50MHZ  (2500UL)
 #define DELAY_CNT_150US_50MHZ (7500UL)
@@ -126,6 +129,8 @@
 #define PLL_CLOCK_SRC_EXT_XTAL 0
 #define PLL_CLOCK_SRC_OFI 1
 
+#define PLL_CON1(ndiv, k2div, pdiv) (((ndiv) << SCU_PLL_PLLCON1_NDIV_Pos) | ((k2div) << SCU_PLL_PLLCON1_K2DIV_Pos) | ((pdiv) << SCU_PLL_PLLCON1_PDIV_Pos))
+
 /* PLL settings, fPLL = 288MHz */
 #if PLL_CLOCK_SRC == PLL_CLOCK_SRC_EXT_XTAL
 
@@ -145,9 +150,10 @@
 	#define PLL_K2DIV (0U)
 
 	#elif OSCHP_FREQUENCY == 25000000U
-	#define PLL_PDIV	(1U)
-	#define PLL_NDIV	((MCK+OSCHP_FREQUENCY/(PLL_PDIV+1)/2)/(OSCHP_FREQUENCY/(PLL_PDIV+1))-1) // (7U) 
-	#define PLL_K2DIV	(0U)
+
+		#define PLL_K2DIV	((VCO_NOM/MCK)-1)
+		#define PLL_PDIV	(((OSCHP_FREQUENCY-VCO_IN_MAX)*2/VCO_IN_MAX+1)/2)
+		#define PLL_NDIV	((MCK*(PLL_K2DIV+1)*2/(OSCHP_FREQUENCY/(PLL_PDIV+1))+1)/2-1) // (7U) 
 
 	#else
 
@@ -564,14 +570,15 @@ void SystemInit(void)
 	P15->PPS = 0;
 	P15->PDISC = 0;
 
-	HW::SCU_CLK->CGATCLR2 = SCU_CLK_CGATCLR2_DMA0_Msk;
-	HW::SCU_CLK->CGATCLR2 = SCU_CLK_CGATCLR2_DMA1_Msk;
+	HW::Peripheral_Enable(PID_DMA0);
+	HW::Peripheral_Enable(PID_DMA1);
 
-	HW::SCU_RESET->PRCLR2 = SCU_RESET_PRCLR2_DMA0RS_Msk;
-	HW::SCU_RESET->PRCLR2 = SCU_RESET_PRCLR2_DMA1RS_Msk;
+	//HW::DLR->SRSEL0 = SRSEL0(10,11,0,0,0,0,0,0);
+	//HW::DLR->SRSEL1 = SRSEL1(0,0,0,0);
 
-	HW::DLR->SRSEL0 = SRSEL0(10,11,0,0,0,0,0,0);
-	HW::DLR->SRSEL1 = SRSEL1(0,0,0,0);
+	HW::DLR->DRL0 = DRL0_USIC0_SR0;
+	HW::DLR->DRL1 = DRL1_USIC1_SR0;
+
 	HW::DLR->LNEN |= 3;
 }
 

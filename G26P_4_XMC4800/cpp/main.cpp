@@ -114,7 +114,7 @@ static bool ReqMan30(u16 *buf, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x30;
 
-	SetTime(*(RTC*)(&buf[1]));
+	SetClock(*(RTC*)(&buf[1]));
 
 	mtb->data = manTrmData;
 	mtb->len = 1;
@@ -179,9 +179,10 @@ static bool ReqMan80(u16 *buf, u16 len, MTB* mtb)
 	mtb->data = manTrmData;
 	mtb->len = 1;
 
-	if (buf[1] == 2)
+	switch (buf[1])
 	{
-		SetTrmBoudRate(buf[2]-1);
+		case 1:		SetNumDevice(buf[2]);		break;
+		case 2:		SetTrmBoudRate(buf[2]-1);	break;
 	};
 
 	return true;

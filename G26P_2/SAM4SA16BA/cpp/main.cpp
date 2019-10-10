@@ -1296,7 +1296,7 @@ static void CallBackTrmReqFire(REQ *q)
 
 static REQ* CreateTrmReqFire(byte n)
 {
-	static __packed struct { byte func; byte n; word crc; } req;
+	static ReqTrm01 req[3];
 
 	static ComPort::WriteBuffer wb;
 	static REQ q;
@@ -1312,9 +1312,10 @@ static REQ* CreateTrmReqFire(byte n)
 	wb.data = &req;
 	wb.len = sizeof(req);
 	
-	req.func = 1;
-	req.n = fn[n];
-	req.crc = GetCRC16(&req, sizeof(req)-2);
+	req[2].len	= req[1].len	= req[0].len	= sizeof(req[0]) - 1;
+	req[2].func	= req[1].func	= req[0].func	= 1;
+	req[2].n	= req[1].n		= req[0].n		= fn[n];
+	req[2].crc	= req[1].crc	= req[0].crc	= GetCRC16(&req[0].func, sizeof(req[0])-3);
 
 	return &q;
 }
@@ -1327,9 +1328,9 @@ static bool readyTrmreq02 = true;
 
 static void CallBackTrmReq02(REQ *q)
 {
-	__packed struct Rsp { byte f; u16 hv; u16 crc; };
+	//__packed struct Rsp { byte f; u16 hv; u16 crc; };
 
-	Rsp *rsp = (Rsp*)q->rb->data;
+	RspTrm02 *rsp = (RspTrm02*)q->rb->data;
 
 	bool crcOK = GetCRC16(q->rb->data, q->rb->len) == 0;
 
@@ -1344,8 +1345,8 @@ static void CallBackTrmReq02(REQ *q)
 
 static REQ* CreateTrmReq02()
 {
-	static __packed struct { byte f; u16 crc; } req;
-	static __packed struct { byte f; u16 hv; u16 crc; } rsp;
+	static ReqTrm02 req[3];
+	static RspTrm02 rsp;
 
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
@@ -1366,8 +1367,9 @@ static REQ* CreateTrmReq02()
 	wb.data = &req;
 	wb.len = sizeof(req);
 	
-	req.f = 2;
-	req.crc = GetCRC16(&req, sizeof(req)-2);
+	req[2].len	= req[1].len	= req[0].len	= sizeof(req[0]) - 1;
+	req[2].f	= req[1].f		= req[0].f	= 2;
+	req[2].crc	= req[1].crc	= req[0].crc	= GetCRC16(&req[0].f, sizeof(req[0])-3);
 
 	return &q;
 }
@@ -1378,7 +1380,7 @@ static void UpdateTrmReq02()
 {
 	static RTM32 rt;
 
-	if (readyTrmreq02 || rt.Check(MS2RT(100)))
+	if (/*readyTrmreq02 || */rt.Check(MS2RT(50)))
 	{
 		qtrm.Add(CreateTrmReq02());
 
@@ -1391,7 +1393,7 @@ static void UpdateTrmReq02()
 
 static void CallBackTrmReq03(REQ *q)
 {
-	__packed struct Rsp { byte f; u16 crc; };
+	//__packed struct Rsp { byte f; u16 crc; };
 
 //	Rsp *rsp = (Rsp*)q->rb->data;
 
@@ -1402,8 +1404,8 @@ static void CallBackTrmReq03(REQ *q)
 
 static REQ* CreateTrmReq03()
 {
-	static __packed struct { byte f; byte fireCount; u16 hv; u16 crc; } req;
-	static __packed struct { byte f; u16 crc; } rsp;
+	static ReqTrm03 req[3];
+	static RspTrm03 rsp;
 
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
@@ -1424,10 +1426,11 @@ static REQ* CreateTrmReq03()
 	wb.data = &req;
 	wb.len = sizeof(req);
 	
-	req.f = 3;
-	req.fireCount = reqFireCount;
-	req.hv = reqVoltage;
-	req.crc = GetCRC16(&req, sizeof(req)-2);
+	req[2].len			= req[1].len		= req[0].len		= sizeof(req[0]) - 1;
+	req[2].f			= req[1].f			= req[0].f			= 3;
+	req[2].fireCount	= req[1].fireCount	= req[0].fireCount	= reqFireCount;
+	req[2].hv			= req[1].hv			= req[0].hv			= reqVoltage;
+	req[2].crc			= req[1].crc		= req[0].crc		= GetCRC16(&req[0].f, sizeof(req[0])-3);
 
 	return &q;
 }

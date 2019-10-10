@@ -17,7 +17,10 @@
 
 #include "cm4.h"
 
-#define MCK 200000000
+#define MCK_MHz 200
+#define MCK (MCK_MHz*1000000)
+
+#define NS2CLK(x) (((x)*MCK_MHz+500)/1000)
 
 
 #ifndef WIN32
@@ -497,11 +500,24 @@ namespace T_HW
 	  */
 
 	typedef struct {                                    /*!< (@ 0x50004900) DLR Structure                                          */
-	  __I  u32  OVRSTAT;                           /*!< (@ 0x50004900) Overrun Status                                         */
-	  __O  u32  OVRCLR;                            /*!< (@ 0x50004904) Overrun Clear                                          */
-	  __IO u32  SRSEL0;                            /*!< (@ 0x50004908) Service Request Selection 0                            */
-	  __IO u32  SRSEL1;                            /*!< (@ 0x5000490C) Service Request Selection 1                            */
-	  __IO u32  LNEN;                              /*!< (@ 0x50004910) Line Enable                                            */
+		__I  u32  OVRSTAT;                           /*!< (@ 0x50004900) Overrun Status                                         */
+		__O  u32  OVRCLR;                            /*!< (@ 0x50004904) Overrun Clear                                          */
+		
+		union
+		{
+			__IO u32  SRSEL0;                            /*!< (@ 0x50004908) Service Request Selection 0                            */
+
+			struct { __IO u32 DRL0:4, DRL1:4, DRL2:4, DRL3:4, DRL4:4, DRL5:4, DRL6:4, DRL7:4; };
+		};
+
+		union
+		{
+			__IO u32  SRSEL1;                            /*!< (@ 0x5000490C) Service Request Selection 1                            */
+
+			struct { __IO u32 DRL8:4, DRL9:4, DRL10:4, DRL11:4; };
+		};
+
+		__IO u32  LNEN;                              /*!< (@ 0x50004910) Line Enable                                            */
 	} DLR_GLOBAL_Type;
 
 
@@ -1024,18 +1040,33 @@ namespace T_HW
 	  __IO u32  DSLEEPCR;                          /*!< (@ 0x50004634) Deep Sleep Control Register                            */
 	  __IO u32  ECATCLKCR;                         /*!< (@ 0x50004638) EtherCAT Clock Control Register                        */
 	  __I  u32  RESERVED;
-	  __I  u32  CGATSTAT0;                         /*!< (@ 0x50004640) Peripheral 0 Clock Gating Status                       */
-	  __O  u32  CGATSET0;                          /*!< (@ 0x50004644) Peripheral 0 Clock Gating Set                          */
-	  __O  u32  CGATCLR0;                          /*!< (@ 0x50004648) Peripheral 0 Clock Gating Clear                        */
-	  __I  u32  CGATSTAT1;                         /*!< (@ 0x5000464C) Peripheral 1 Clock Gating Status                       */
-	  __O  u32  CGATSET1;                          /*!< (@ 0x50004650) Peripheral 1 Clock Gating Set                          */
-	  __O  u32  CGATCLR1;                          /*!< (@ 0x50004654) Peripheral 1 Clock Gating Clear                        */
-	  __I  u32  CGATSTAT2;                         /*!< (@ 0x50004658) Peripheral 2 Clock Gating Status                       */
-	  __O  u32  CGATSET2;                          /*!< (@ 0x5000465C) Peripheral 2 Clock Gating Set                          */
-	  __O  u32  CGATCLR2;                          /*!< (@ 0x50004660) Peripheral 2 Clock Gating Clear                        */
-	  __I  u32  CGATSTAT3;                         /*!< (@ 0x50004664) Peripheral 3 Clock Gating Status                       */
-	  __O  u32  CGATSET3;                          /*!< (@ 0x50004668) Peripheral 3 Clock Gating Set                          */
-	  __O  u32  CGATCLR3;                          /*!< (@ 0x5000466C) Peripheral 3 Clock Gating Clear                        */
+
+	  struct
+	  {
+		  __I  u32  STAT;                         /*!< (@ 0x50004640) Peripheral 0 Clock Gating Status                       */
+		  __O  u32  SET;                          /*!< (@ 0x50004644) Peripheral 0 Clock Gating Set                          */
+		  __O  u32  CLR;                          /*!< (@ 0x50004648) Peripheral 0 Clock Gating Clear                        */
+	  
+	  } CGAT[4];
+
+	  //__I  u32  CGATSTAT0;                         /*!< (@ 0x50004640) Peripheral 0 Clock Gating Status                       */
+	  //__O  u32  CGATSET0;                          /*!< (@ 0x50004644) Peripheral 0 Clock Gating Set                          */
+	  //__O  u32  CGATCLR0;                          /*!< (@ 0x50004648) Peripheral 0 Clock Gating Clear                        */
+	  //__I  u32  CGATSTAT1;                         /*!< (@ 0x5000464C) Peripheral 1 Clock Gating Status                       */
+	  //__O  u32  CGATSET1;                          /*!< (@ 0x50004650) Peripheral 1 Clock Gating Set                          */
+	  //__O  u32  CGATCLR1;                          /*!< (@ 0x50004654) Peripheral 1 Clock Gating Clear                        */
+	  //__I  u32  CGATSTAT2;                         /*!< (@ 0x50004658) Peripheral 2 Clock Gating Status                       */
+	  //__O  u32  CGATSET2;                          /*!< (@ 0x5000465C) Peripheral 2 Clock Gating Set                          */
+	  //__O  u32  CGATCLR2;                          /*!< (@ 0x50004660) Peripheral 2 Clock Gating Clear                        */
+	  //__I  u32  CGATSTAT3;                         /*!< (@ 0x50004664) Peripheral 3 Clock Gating Status                       */
+	  //__O  u32  CGATSET3;                          /*!< (@ 0x50004668) Peripheral 3 Clock Gating Set                          */
+	  //__O  u32  CGATCLR3;                          /*!< (@ 0x5000466C) Peripheral 3 Clock Gating Clear                        */
+	
+	  bool ClockStatus(u32 id) { return (CGAT[id/32].STAT & (1<<(id&31))) == 0; }
+	  void ClockEnable(u32 id) { CGAT[id/32].CLR = (1<<(id&31)); } 
+	  void ClockDisable(u32 id) { CGAT[id/32].SET = (1<<(id&31)); } 
+
+
 	} SCU_CLK_Type;
 
 
@@ -1271,18 +1302,32 @@ namespace T_HW
 	  __I  u32  RSTSTAT;                           /*!< (@ 0x50004400) RCU Reset Status                                       */
 	  __O  u32  RSTSET;                            /*!< (@ 0x50004404) RCU Reset Set Register                                 */
 	  __O  u32  RSTCLR;                            /*!< (@ 0x50004408) RCU Reset Clear Register                               */
-	  __I  u32  PRSTAT0;                           /*!< (@ 0x5000440C) RCU Peripheral 0 Reset Status                          */
-	  __O  u32  PRSET0;                            /*!< (@ 0x50004410) RCU Peripheral 0 Reset Set                             */
-	  __O  u32  PRCLR0;                            /*!< (@ 0x50004414) RCU Peripheral 0 Reset Clear                           */
-	  __I  u32  PRSTAT1;                           /*!< (@ 0x50004418) RCU Peripheral 1 Reset Status                          */
-	  __O  u32  PRSET1;                            /*!< (@ 0x5000441C) RCU Peripheral 1 Reset Set                             */
-	  __O  u32  PRCLR1;                            /*!< (@ 0x50004420) RCU Peripheral 1 Reset Clear                           */
-	  __I  u32  PRSTAT2;                           /*!< (@ 0x50004424) RCU Peripheral 2 Reset Status                          */
-	  __O  u32  PRSET2;                            /*!< (@ 0x50004428) RCU Peripheral 2 Reset Set                             */
-	  __O  u32  PRCLR2;                            /*!< (@ 0x5000442C) RCU Peripheral 2 Reset Clear                           */
-	  __I  u32  PRSTAT3;                           /*!< (@ 0x50004430) RCU Peripheral 3 Reset Status                          */
-	  __O  u32  PRSET3;                            /*!< (@ 0x50004434) RCU Peripheral 3 Reset Set                             */
-	  __O  u32  PRCLR3;                            /*!< (@ 0x50004438) RCU Peripheral 3 Reset Clear                           */
+
+	  struct
+	  {
+		  __I  u32  STAT;                            /*!< (@ 0x5000440C) RCU Peripheral 0 Reset Status                          */
+		  __O  u32  SET;                            /*!< (@ 0x50004410) RCU Peripheral 0 Reset Set                             */
+		  __O  u32  CLR;                            /*!< (@ 0x50004414) RCU Peripheral 0 Reset Clear                           */
+	  
+	  } PR[4];
+
+	  //__I  u32  PRSTAT0;                           /*!< (@ 0x5000440C) RCU Peripheral 0 Reset Status                          */
+	  //__O  u32  PRSET0;                            /*!< (@ 0x50004410) RCU Peripheral 0 Reset Set                             */
+	  //__O  u32  PRCLR0;                            /*!< (@ 0x50004414) RCU Peripheral 0 Reset Clear                           */
+	  //__I  u32  PRSTAT1;                           /*!< (@ 0x50004418) RCU Peripheral 1 Reset Status                          */
+	  //__O  u32  PRSET1;                            /*!< (@ 0x5000441C) RCU Peripheral 1 Reset Set                             */
+	  //__O  u32  PRCLR1;                            /*!< (@ 0x50004420) RCU Peripheral 1 Reset Clear                           */
+	  //__I  u32  PRSTAT2;                           /*!< (@ 0x50004424) RCU Peripheral 2 Reset Status                          */
+	  //__O  u32  PRSET2;                            /*!< (@ 0x50004428) RCU Peripheral 2 Reset Set                             */
+	  //__O  u32  PRCLR2;                            /*!< (@ 0x5000442C) RCU Peripheral 2 Reset Clear                           */
+	  //__I  u32  PRSTAT3;                           /*!< (@ 0x50004430) RCU Peripheral 3 Reset Status                          */
+	  //__O  u32  PRSET3;                            /*!< (@ 0x50004434) RCU Peripheral 3 Reset Set                             */
+	  //__O  u32  PRCLR3;                            /*!< (@ 0x50004438) RCU Peripheral 3 Reset Clear                           */
+
+	  bool ResetStatus(u32 id) { return (PR[id/32].STAT & (1<<(id&31))) != 0; }
+	  void ResetEnable(u32 id) { PR[id/32].SET = (1<<(id&31)); } 
+	  void ResetDisable(u32 id) { PR[id/32].CLR = (1<<(id&31)); } 
+
 	} SCU_RESET_Type;
 
 
@@ -2877,31 +2922,31 @@ namespace T_HW
 
 	typedef struct {                                    
 		__IO	u32  OUT;                               /*!< (@ 0x00) Port 15 Output Register                                */
-				u32  OMR;                               /*!< (@ 0x04) Port 15 Output Modification Register                   */
+		__IO	u32  OMR;                               /*!< (@ 0x04) Port 15 Output Modification Register                   */
 		__I  	u32  z_RESERVED[2];
 
 		union
 		{
-				u32  IOCR0;                             /*!< (@ 0x10) Port 15 Input/Output Control Register 0                */
-				byte PC0[4];
+			__IO	u32  IOCR0;                             /*!< (@ 0x10) Port 15 Input/Output Control Register 0                */
+			__IO	byte PC0[4];
 		};
 
 		union
 		{
-				u32  IOCR4;                             /*!< (@ 0x14) Port 15 Input/Output Control Register 4                */
-				byte PC4[4];
+			__IO	u32  IOCR4;                             /*!< (@ 0x14) Port 15 Input/Output Control Register 4                */
+			__IO	byte PC4[4];
 		};
 
 		union
 		{
-				u32  IOCR8;                             /*!< (@ 0x18) Port 15 Input/Output Control Register 8                */
-				byte PC8[4];
+			__IO	u32  IOCR8;                             /*!< (@ 0x18) Port 15 Input/Output Control Register 8                */
+			__IO	byte PC8[4];
 		};
 
 		union
 		{
-				u32  IOCR12;                            /*!< (@ 0x1C) Port 15 Input/Output Control Register 12               */
-				byte PC12[4];
+			__IO	u32  IOCR12;                            /*!< (@ 0x1C) Port 15 Input/Output Control Register 12               */
+			__IO	byte PC12[4];
 		};
 
 		__I  	u32  z_RESERVED1;
@@ -2910,8 +2955,8 @@ namespace T_HW
 
 		__I  	u32  RESERVED2[6];
 		
-				u32  PDR0;                              /*!< (@ 0x40) Port 0 Pad Driver Mode 0 Register                      */
-				u32  PDR1;                              /*!< (@ 0x44) Port 0 Pad Driver Mode 1 Register                      */
+		__IO	u32  PDR0;                              /*!< (@ 0x40) Port 0 Pad Driver Mode 0 Register                      */
+		__IO	u32  PDR1;                              /*!< (@ 0x44) Port 0 Pad Driver Mode 1 Register                      */
 		
 		__I  	u32  RESERVED3[6];
 		
@@ -2923,12 +2968,12 @@ namespace T_HW
 	  
 		union
 		{
-			u32  HWSEL;									/*!< (@ 0x74) Port 15 Pin Hardware Select Register                   */
+			__IO	u32  HWSEL;									/*!< (@ 0x74) Port 15 Pin Hardware Select Register                   */
 
 			struct
 			{
-				u32 HW0:2;u32 HW1:2;u32 HW2:2;u32 HW3:2;u32 HW4:2;u32 HW5:2;u32 HW6:2;u32 HW7:2;
-				u32 HW8:2;u32 HW9:2;u32 HW10:2;u32 HW11:2;u32 HW12:2;u32 HW13:2;u32 HW14:2;u32 HW15:2;
+				__IO	u32 HW0:2;u32 HW1:2;u32 HW2:2;u32 HW3:2;u32 HW4:2;u32 HW5:2;u32 HW6:2;u32 HW7:2;
+				__IO	u32 HW8:2;u32 HW9:2;u32 HW10:2;u32 HW11:2;u32 HW12:2;u32 HW13:2;u32 HW14:2;u32 HW15:2;
 			};
 		};
 
@@ -2958,22 +3003,26 @@ namespace T_HW
 			PDR1 = (m0&7)|((m1&7)<<4)|((m2&7)<<8)|((m3&7)<<12)|((m4&7)<<16)|((m5&7)<<20)|((m6&7)<<24)|((m7&7)<<28);
 		};
 
-		void ModePin0(byte f, byte driver=7) { PC0[0] = f<<3; HW0 = f>>5; }
-		void ModePin1(byte f, byte driver=7) { PC0[1] = f<<3; HW1 = f>>5; }
-		void ModePin2(byte f, byte driver=7) { PC0[2] = f<<3; HW2 = f>>5; }
-		void ModePin3(byte f, byte driver=7) { PC0[3] = f<<3; HW3 = f>>5; }
-		void ModePin4(byte f, byte driver=7) { PC4[0] = f<<3; HW4 = f>>5; }
-		void ModePin5(byte f, byte driver=7) { PC4[1] = f<<3; HW5 = f>>5; }
-		void ModePin6(byte f, byte driver=7) { PC4[2] = f<<3; HW6 = f>>5; }
-		void ModePin7(byte f, byte driver=7) { PC4[3] = f<<3; HW7 = f>>5; }
-		void ModePin8(byte f, byte driver=7) { PC8[0] = f<<3; HW8 = f>>5; }
-		void ModePin9(byte f, byte driver=7) { PC8[1] = f<<3; HW9 = f>>5; }
-		void ModePin10(byte f, byte driver=7) { PC8[2] = f<<3; HW10 = f>>5; }
-		void ModePin11(byte f, byte driver=7) { PC8[3] = f<<3; HW11 = f>>5; }
-		void ModePin12(byte f, byte driver=7) { PC12[0] = f<<3; HW12 = f>>5; }
-		void ModePin13(byte f, byte driver=7) { PC12[1] = f<<3; HW13 = f>>5; }
-		void ModePin14(byte f, byte driver=7) { PC12[2] = f<<3; HW14 = f>>5; }
-		void ModePin15(byte f, byte driver=7) { PC12[3] = f<<3; HW15 = f>>5; }
+//		void Driver(byte pin, byte driver) { __IO u32* pdr = &(((__IO u32*)(&PDR0))[pin>>3]); byte sh = (pin&7)*4; *pdr = *pdr & ~(7<<sh) | ((driver&7)<<sh); }
+
+//		void ModePin(byte pin, byte f, byte driver=7) { PC0[pin] = f<<3; byte sh = pin*2; HWSEL = (HWSEL & ~(3<<sh)) | (((f>>5)&3)<<sh); Driver(pin, driver);	}
+
+		void ModePin0(byte f, byte driver=7) { PC0[0] = f<<3; 	HW0	= 	f>>5; /*Driver(0, driver); */	}
+		void ModePin1(byte f, byte driver=7) { PC0[1] = f<<3; 	HW1	= 	f>>5; /*Driver(1, driver); */	}
+		void ModePin2(byte f, byte driver=7) { PC0[2] = f<<3; 	HW2	= 	f>>5; /*Driver(2, driver); */	}
+		void ModePin3(byte f, byte driver=7) { PC0[3] = f<<3; 	HW3	= 	f>>5; /*Driver(3, driver); */	}
+		void ModePin4(byte f, byte driver=7) { PC4[0] = f<<3; 	HW4	= 	f>>5; /*Driver(4, driver); */	}
+		void ModePin5(byte f, byte driver=7) { PC4[1] = f<<3; 	HW5	= 	f>>5; /*Driver(5, driver); */	}
+		void ModePin6(byte f, byte driver=7) { PC4[2] = f<<3; 	HW6	= 	f>>5; /*Driver(6, driver); */	}
+		void ModePin7(byte f, byte driver=7) { PC4[3] = f<<3; 	HW7	= 	f>>5; /*Driver(7, driver); */	}
+		void ModePin8(byte f, byte driver=7) { PC8[0] = f<<3; 	HW8	= 	f>>5; /*Driver(8, driver);	 */}
+		void ModePin9(byte f, byte driver=7) { PC8[1] = f<<3; 	HW9	= 	f>>5; /*Driver(9, driver);	 */}
+		void ModePin10(byte f, byte driver=7) { PC8[2] = f<<3; 	HW10 = 	f>>5; /*Driver(10, driver);	 */}
+		void ModePin11(byte f, byte driver=7) { PC8[3] = f<<3; 	HW11 = 	f>>5; /*Driver(11, driver);	 */}
+		void ModePin12(byte f, byte driver=7) { PC12[0] = f<<3;	HW12 = 	f>>5; /*Driver(12, driver);	 */}
+		void ModePin13(byte f, byte driver=7) { PC12[1] = f<<3;	HW13 = 	f>>5; /*Driver(13, driver);	 */}
+		void ModePin14(byte f, byte driver=7) { PC12[2] = f<<3;	HW14 = 	f>>5; /*Driver(14, driver);	 */}
+		void ModePin15(byte f, byte driver=7) { PC12[3] = f<<3;	HW15 = 	f>>5; /*Driver(15, driver);	 */}
 
 
 
@@ -3840,6 +3889,172 @@ namespace T_HW
 
 #define SRSEL0(v1,v2,v3,v4,v5,v6,v7,v8) (((v1)&15)|(((v2)&15)<<4)|(((v3)&15)<<8)|(((v4)&15)<<12)|(((v5)&15)<<16)|(((v6)&15)<<20)|(((v7)&15)<<24)|(((v8)&15)<<28))
 #define SRSEL1(v1,v2,v3,v4)				(((v1)&15)|(((v2)&15)<<4)|(((v3)&15)<<8)|(((v4)&15)<<12))
+
+//DMA Request Source Selection
+
+#define DRL0_ERU0_SR0		0
+#define DRL0_VADC_C0SR0		1
+#define DRL0_VADC_G0SR3		2
+#define DRL0_VADC_G2SR0		3
+#define DRL0_VADC_G2SR3		4
+#define DRL0_DSD_SRM0		5
+#define DRL0_CCU40_SR0		6
+#define DRL0_CCU80_SR0		7
+//#define DRL0_Reserved		8
+#define DRL0_CAN_SR0		9
+#define DRL0_USIC0_SR0		10
+#define DRL0_USIC1_SR0		11
+//#define DRL0_Reserved		12
+#define DRL0_VADC_G3SR3		13
+#define DRL0_CCU42_SR0		14
+
+#define DRL1_ERU0_SR3		0
+#define DRL1_VADC_C0SR1		1
+#define DRL1_VADC_G0SR2		2
+#define DRL1_VADC_G1SR0		3
+#define DRL1_VADC_G2SR2		4
+#define DRL1_DAC_SR0		5
+#define DRL1_CCU40_SR0		6
+#define DRL1_CCU80_SR0		7
+//#define DRL1_Reserved		8
+#define DRL1_CAN_SR0		9
+#define DRL1_USIC0_SR0		10
+#define DRL1_USIC1_SR0		11
+//#define DRL1_Reserved		12
+#define DRL1_VADC_G3SR0		13
+#define DRL1_CCU42_SR0		14
+
+#define DRL2_ERU0_SR1		0
+#define DRL2_VADC_C0SR2		1
+#define DRL2_VADC_C0SR3		2
+#define DRL2_VADC_G1SR3		3
+#define DRL2_VADC_G2SR1		4
+#define DRL2_DSD_SRM1		5
+#define DRL2_DSD_SRM3		6
+#define DRL2_CCU40_SR1		7
+#define DRL2_CCU80_SR1		8
+//#define DRL2_Reserved		9
+#define DRL2_CAN_SR1		10
+#define DRL2_USIC0_SR1		11
+#define DRL2_USIC1_SR1		12
+#define DRL2_VADC_G3SR2		13
+#define DRL2_CCU42_SR1		14
+
+#define DRL3_ERU0_SR2		0
+#define DRL3_VADC_C0SR2		1
+#define DRL3_VADC_C0SR3		2
+#define DRL3_VADC_G1SR1		3
+#define DRL3_VADC_G1SR2		4
+#define DRL3_DSD_SRM2		5
+#define DRL3_DAC_SR1		6
+#define DRL3_CCU40_SR1		7
+#define DRL3_CCU80_SR1		8
+//#define DRL3_Reserved		9
+#define DRL3_CAN_SR1		10
+#define DRL3_USIC0_SR1		11
+#define DRL3_USIC1_SR1		12
+#define DRL3_VADC_G3SR1		13
+#define DRL3_CCU42_SR1		14
+
+#define DRL4_ERU0_SR2		0
+#define DRL4_VADC_G0SR0		1
+#define DRL4_VADC_G0SR1		2
+#define DRL4_VADC_G2SR1		3
+#define DRL4_VADC_G2SR2		4
+#define DRL4_DSD_SRM2		5
+#define DRL4_DAC_SR1		6
+#define DRL4_CCU41_SR0		7
+#define DRL4_CCU81_SR0		8
+//#define DRL4_Reserved		9
+#define DRL4_CAN_SR2		10
+#define DRL4_USIC0_SR0		11
+#define DRL4_USIC1_SR0		12
+#define DRL4_VADC_G3SR1		13
+#define DRL4_CCU43_SR0		14
+
+#define DRL5_ERU0_SR1		0
+#define DRL5_VADC_G0SR0		1
+#define DRL5_VADC_G0SR1		2
+#define DRL5_VADC_G1SR2		3
+#define DRL5_VADC_G2SR0		4
+#define DRL5_DAC_SR0		5
+#define DRL5_CCU41_SR0		6
+#define DRL5_CCU81_SR0		7
+//#define DRL5_Reserved		8
+#define DRL5_CAN_SR2		9
+#define DRL5_USIC0_SR0		10
+#define DRL5_USIC1_SR0		11
+#define DRL5_Reserved		12
+#define DRL5_VADC_G3SR2		13
+#define DRL5_CCU43_SR0		14
+
+#define DRL6_ERU0_SR3		0
+#define DRL6_VADC_C0SR1		1
+#define DRL6_VADC_G0SR2		2
+#define DRL6_VADC_G1SR1		3
+#define DRL6_VADC_G2SR3		4
+#define DRL6_DSD_SRM1		5
+#define DRL6_DSD_SRM3		6
+#define DRL6_CCU41_SR1		7
+#define DRL6_CCU81_SR1		8
+//#define DRL6_Reserved		9
+#define DRL6_CAN_SR3		10
+#define DRL6_USIC0_SR1		11
+#define DRL6_USIC1_SR1		12
+#define DRL6_VADC_G3SR0		13
+#define DRL6_CCU43_SR1		14
+
+#define DRL7_ERU0_SR0		0
+#define DRL7_VADC_C0SR0		1
+#define DRL7_VADC_G0SR3		2
+#define DRL7_VADC_G1SR0		3
+#define DRL7_VADC_G1SR3		4
+#define DRL7_DSD_SRM0		5
+#define DRL7_CCU41_SR1		6
+#define DRL7_CCU81_SR1		7
+//#define DRL7_Reserved		8
+#define DRL7_CAN_SR3		9
+#define DRL7_USIC0_SR1		10
+#define DRL7_USIC1_SR1		11
+//#define DRL7_Reserved		12
+#define DRL7_VADC_G3SR3		13
+#define DRL7_CCU43_SR1		14
+
+#define DRL8_ERU0_SR0		0
+#define DRL8_VADC_C0SR0		1
+#define DRL8_VADC_G3SR0		2
+#define DRL8_DSD_SRM0		3
+#define DRL8_DAC_SR0		4
+#define DRL8_CCU42_SR0		5
+#define DRL8_USIC2_SR0		6
+#define DRL8_USIC2_SR2		7
+							
+#define DRL9_ERU0_SR1		0	
+#define DRL9_VADC_C0SR1		1	
+#define DRL9_VADC_G3SR1		2	
+#define DRL9_DSD_SRM1		3	
+#define DRL9_DAC_SR1		4	
+#define DRL9_CCU42_SR1		5	
+#define DRL9_USIC2_SR1		6
+#define DRL9_USIC2_SR3		7
+
+#define DRL10_ERU0_SR2		0
+#define DRL10_VADC_C0SR2	1
+#define DRL10_VADC_G3SR2	2
+#define DRL10_DSD_SRM2		3
+#define DRL10_DAC_SR0		4
+#define DRL10_CCU43_SR0		5
+#define DRL10_USIC2_SR0		6
+#define DRL10_USIC2_SR2		7
+
+#define DRL11_ERU0_SR3		0
+#define DRL11_VADC_C0SR3	1
+#define DRL11_VADC_G3SR3	2
+#define DRL11_DSD_SRM3		3
+#define DRL11_DAC_SR1		4
+#define DRL11_CCU43_SR1		5
+#define DRL11_USIC2_SR1		6
+#define DRL11_USIC2_SR3		7
 
 /* ---------------------------------  DLR_SRSEL1  --------------------------------- */
 #define DLR_SRSEL1_RS8_Pos                    (0UL)                     /*!< DLR SRSEL1: RS8 (Bit 0)                                     */
@@ -5215,7 +5430,13 @@ namespace T_HW
 
 #define INT_EN				(0x1UL)					/*!< GPDMA1_CH CTLL: INT_EN (Bitfield-Mask: 0x01)                */
 #define DST_TR_WIDTH(v)		(((v)&7)<<1)         	/*!< GPDMA1_CH CTLL: DST_TR_WIDTH (Bit 1)                        */
+#define DST_TR_WIDTH_8		(0<<1)         			/*!< GPDMA1_CH CTLL: DST_TR_WIDTH (Bit 1)                        */
+#define DST_TR_WIDTH_16		(1<<1)         			/*!< GPDMA1_CH CTLL: DST_TR_WIDTH (Bit 1)                        */
+#define DST_TR_WIDTH_32		(2<<1)         			/*!< GPDMA1_CH CTLL: DST_TR_WIDTH (Bit 1)                        */
 #define SRC_TR_WIDTH(v)		(((v)&7)<<4)         	/*!< GPDMA1_CH CTLL: SRC_TR_WIDTH (Bit 4)                        */
+#define SRC_TR_WIDTH_8		(0<<4)         			/*!< GPDMA1_CH CTLL: SRC_TR_WIDTH (Bit 4)                        */
+#define SRC_TR_WIDTH_16		(1<<4)         			/*!< GPDMA1_CH CTLL: SRC_TR_WIDTH (Bit 4)                        */
+#define SRC_TR_WIDTH_32		(2<<4)         			/*!< GPDMA1_CH CTLL: SRC_TR_WIDTH (Bit 4)                        */
 #define DINC(v)				(((v)&3)<<7)         	/*!< GPDMA1_CH CTLL: DINC (Bit 7)                                */
 #define DST_INC				(0<<7)         			
 #define DST_DEC				(1<<7)         			
@@ -5225,8 +5446,22 @@ namespace T_HW
 #define SRC_DEC				(1<<9)         			
 #define SRC_NOCHANGE		(2<<9)         			
 #define DEST_MSIZE(v)		(((v)&7)<<11)        	/*!< GPDMA1_CH CTLL: DEST_MSIZE (Bit 11)                         */
+#define DEST_MSIZE_1		(0<<11)		        	/*!< GPDMA1_CH CTLL: DEST_MSIZE (Bit 11)                         */
+#define DEST_MSIZE_4		(1<<11)		        	/*!< GPDMA1_CH CTLL: DEST_MSIZE (Bit 11)                         */
+#define DEST_MSIZE_8		(2<<11)		        	/*!< GPDMA1_CH CTLL: DEST_MSIZE (Bit 11)                         */
 #define SRC_MSIZE(v)		(((v)&7)<<14)        	/*!< GPDMA1_CH CTLL: SRC_MSIZE (Bit 14)                          */
+#define SRC_MSIZE_1			(0<<14)		        	/*!< GPDMA1_CH CTLL: SRC_MSIZE (Bit 14)                          */
+#define SRC_MSIZE_4			(1<<14)		        	/*!< GPDMA1_CH CTLL: SRC_MSIZE (Bit 14)                          */
+#define SRC_MSIZE_8			(2<<14)		        	/*!< GPDMA1_CH CTLL: SRC_MSIZE (Bit 14)                          */
 #define TT_FC(v)			(((v)&7)<<20)        	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
+#define TT_FC_M2M_GPDMA		(0<<20)			       	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
+#define TT_FC_M2P_GPDMA		(1<<20)			       	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
+#define TT_FC_P2M_GPDMA		(2<<20)			       	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
+#define TT_FC_P2P_GPDMA		(3<<20)			       	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
+#define TT_FC_P2M_PER		(4<<20)			       	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
+#define TT_FC_P2P_SRC		(5<<20)			       	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
+#define TT_FC_M2P_PER		(6<<20)			       	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
+#define TT_FC_P2P_DST		(7<<20)			       	/*!< GPDMA1_CH CTLL: TT_FC (Bit 20)                              */
 #define LLP_DST_EN		    (0x8000000UL)             /*!< GPDMA0_CH0_1 CTLL: LLP_DST_EN (Bitfield-Mask: 0x01)         */
 #define LLP_SRC_EN			(0x10000000UL)            /*!< GPDMA0_CH0_1 CTLL: LLP_SRC_EN (Bitfield-Mask: 0x01)         */
 
@@ -6120,6 +6355,35 @@ namespace T_HW
 #define SCU_CLK_CGATCLR3_EBU_Msk              (0x4UL)                   /*!< SCU_CLK CGATCLR3: EBU (Bitfield-Mask: 0x01)                 */
 
 
+#define PID_VADC            (0UL)                     /*!< SCU_CLK CGATSTAT0: VADC (Bit 0)                             */
+#define PID_DSD             (1UL)                     /*!< SCU_CLK CGATSTAT0: DSD (Bit 1)                              */
+#define PID_CCU40           (2UL)                     /*!< SCU_CLK CGATSTAT0: CCU40 (Bit 2)                            */
+#define PID_CCU41           (3UL)                     /*!< SCU_CLK CGATSTAT0: CCU41 (Bit 3)                            */
+#define PID_CCU42           (4UL)                     /*!< SCU_CLK CGATSTAT0: CCU42 (Bit 4)                            */
+#define PID_CCU80           (7UL)                     /*!< SCU_CLK CGATSTAT0: CCU80 (Bit 7)                            */
+#define PID_CCU81           (8UL)                     /*!< SCU_CLK CGATSTAT0: CCU81 (Bit 8)                            */
+#define PID_POSIF0          (9UL)                     /*!< SCU_CLK CGATSTAT0: POSIF0 (Bit 9)                           */
+#define PID_POSIF1          (10UL)                    /*!< SCU_CLK CGATSTAT0: POSIF1 (Bit 10)                          */
+#define PID_USIC0           (11UL)                    /*!< SCU_CLK CGATSTAT0: USIC0 (Bit 11)                           */
+#define PID_ERU1            (16UL)                    /*!< SCU_CLK CGATSTAT0: ERU1 (Bit 16)                            */
+#define PID_CCU43           (32UL+0UL)                     /*!< SCU_CLK CGATSTAT1: CCU43 (Bit 0)                            */
+#define PID_LEDTSCU0        (32UL+3UL)                     /*!< SCU_CLK CGATSTAT1: LEDTSCU0 (Bit 3)                         */
+#define PID_MCAN0           (32UL+4UL)                     /*!< SCU_CLK CGATSTAT1: MCAN0 (Bit 4)                            */
+#define PID_DAC             (32UL+5UL)                     /*!< SCU_CLK CGATSTAT1: DAC (Bit 5)                              */
+#define PID_MMCI            (32UL+6UL)                     /*!< SCU_CLK CGATSTAT1: MMCI (Bit 6)                             */
+#define PID_USIC1           (32UL+7UL)                     /*!< SCU_CLK CGATSTAT1: USIC1 (Bit 7)                            */
+#define PID_USIC2           (32UL+8UL)                     /*!< SCU_CLK CGATSTAT1: USIC2 (Bit 8)                            */
+#define PID_PPORTS          (32UL+9UL)                     /*!< SCU_CLK CGATSTAT1: PPORTS (Bit 9)                           */
+#define PID_WDT             (64UL+1UL)                     /*!< SCU_CLK CGATSTAT2: WDT (Bit 1)                              */
+#define PID_ETH0            (64UL+2UL)                     /*!< SCU_CLK CGATSTAT2: ETH0 (Bit 2)                             */
+#define PID_DMA0            (64UL+4UL)                     /*!< SCU_CLK CGATSTAT2: DMA0 (Bit 4)                             */
+#define PID_DMA1            (64UL+5UL)                     /*!< SCU_CLK CGATSTAT2: DMA1 (Bit 5)                             */
+#define PID_FCE             (64UL+6UL)                     /*!< SCU_CLK CGATSTAT2: FCE (Bit 6)                              */
+#define PID_USB             (64UL+7UL)                     /*!< SCU_CLK CGATSTAT2: USB (Bit 7)                              */
+#define PID_ECAT0           (64UL+10UL)                    /*!< SCU_CLK CGATSTAT2: ECAT0 (Bit 10)                           */
+#define PID_EBU             (96UL+2UL)                     /*!< SCU_CLK CGATSTAT3: EBU (Bit 2)                              */
+
+
 /* ================================================================================ */
 /* ================        struct 'SCU_OSC' Position & Mask        ================ */
 /* ================================================================================ */
@@ -6140,6 +6404,12 @@ namespace T_HW
 #define SCU_OSC_OSCHPCTRL_MODE_Msk            (0x30UL)                  /*!< SCU_OSC OSCHPCTRL: MODE (Bitfield-Mask: 0x03)               */
 #define SCU_OSC_OSCHPCTRL_OSCVAL_Pos          (16UL)                    /*!< SCU_OSC OSCHPCTRL: OSCVAL (Bit 16)                          */
 #define SCU_OSC_OSCHPCTRL_OSCVAL_Msk          (0xf0000UL)               /*!< SCU_OSC OSCHPCTRL: OSCVAL (Bitfield-Mask: 0x0f)             */
+
+#define OSC_X1DEN           	(0x1UL)									/*!< SCU_OSC OSCHPCTRL: X1DEN (Bitfield-Mask: 0x01)              */
+#define OSC_SHBY            	(0x2UL)									/*!< SCU_OSC OSCHPCTRL: SHBY (Bitfield-Mask: 0x01)               */
+#define OSC_GAINSEL(v)			((v)<<SCU_OSC_OSCHPCTRL_GAINSEL_Pos)    /*!< SCU_OSC OSCHPCTRL: GAINSEL (Bitfield-Mask: 0x03)            */
+#define OSC_MODE(v)				((v)<<SCU_OSC_OSCHPCTRL_MODE_Pos)       /*!< SCU_OSC OSCHPCTRL: MODE (Bitfield-Mask: 0x03)               */
+#define OSC_OSCVAL(v)			((v)<<SCU_OSC_OSCHPCTRL_OSCVAL_Pos)     /*!< SCU_OSC OSCHPCTRL: OSCVAL (Bitfield-Mask: 0x0f)             */
 
 /* -----------------------------  SCU_OSC_CLKCALCONST  ---------------------------- */
 #define SCU_OSC_CLKCALCONST_CALIBCONST_Pos    (0UL)                     /*!< SCU_OSC CLKCALCONST: CALIBCONST (Bit 0)                     */
@@ -19093,14 +19363,14 @@ namespace T_HW
 #define PC0123(v0,v1,v2,v3)     ((v0<<3UL)|(v1<<11UL)|(v2<<19UL)|(v3<<27UL))
 
 
-#define I0DNP  0
-#define I1DPD  1
-#define I2DPU  2
-#define I3DOS  3
-#define I4INP  4
-#define I5IPD  5
-#define I6IPU  6
-#define I7IOS  7
+#define I0DNP  0	// Direct Input - No internal pull device active
+#define I1DPD  1	// Direct Input - Internal pull-down device active
+#define I2DPU  2	// Direct Input - Internal pull-up device active
+#define I3DOS  3	// Direct Input - No internal pull device active; Pn_OUTx continuously samples the input value
+#define I4INP  4	// Inverted Input - No internal pull device active
+#define I5IPD  5	// Inverted Input - Internal pull-down device active
+#define I6IPU  6	// Inverted Input - Internal pull-up device active
+#define I7IOS  7	// Inverted Input - No internal pull device active; Pn_OUTx continuously samples the input value
 
 #define G_PP 0x10
 #define A1PP 0x11
@@ -19498,6 +19768,14 @@ namespace HW
 
 	MK_PTR (DMA0,	GPDMA_Type, GPDMA0_CH0_BASE);
 	MK_PTR (DMA1,	GPDMA_Type, GPDMA1_CH0_BASE);
+
+
+	inline void Peripheral_Enable(u32 id) { SCU_CLK->ClockEnable(id); SCU_RESET->ResetDisable(id);		}
+	//inline void Peripheral_Disable(u32 id) { SCU_CLK->ClockDisable(id); SCU_RESET->ResetEnable(id);	}
+
+	inline void CCU_Enable(u32 id) { SCU_CLK->CLKSET = SCU_CLK_CLKSET_CCUCEN_Msk;	SCU_CLK->ClockEnable(id);		SCU_RESET->ResetDisable(id);		}
+	inline void ETH_Enable()		{ SCU_CLK->CLKSET = SCU_CLK_CLKSET_ETH0CEN_Msk; SCU_CLK->ClockEnable(PID_ETH0); SCU_RESET->ResetDisable(PID_ETH0);	}
+	inline void EBU_Enable(u32 div) { HW::SCU_CLK->EBUCLKCR = div; SCU_CLK->CLKSET = SCU_CLK_CLKSET_EBUCEN_Msk;	SCU_CLK->ClockEnable(PID_EBU);	SCU_RESET->ResetDisable(PID_EBU);	}
 
 };
 

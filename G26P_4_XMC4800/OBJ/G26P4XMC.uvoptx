@@ -117,6 +117,10 @@
       <TargetDriverDllRegistry>
         <SetRegEntry>
           <Number>0</Number>
+          <Key>DLGUARM</Key>
+        </SetRegEntry>
+        <SetRegEntry>
+          <Number>0</Number>
           <Key>UL2CM3</Key>
           <Name>UL2CM3(-S0 -C0 -P0 ) -FN2 -FC1000 -FD20000000 -FF0XMC4800_2048 -FF1XMC4800c_2048 -FL0100000 -FL1100000 -FS0C000000 -FS18000000 -FP0($$Device:XMC4800-F144x2048$Flash\XMC4800_2048.FLM) -FP1($$Device:XMC4800-F144x2048$Flash\XMC4800c_2048.FLM)</Name>
         </SetRegEntry>
@@ -141,7 +145,24 @@
           <Name></Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint/>
+      <Breakpoint>
+        <Bp>
+          <Number>0</Number>
+          <Type>0</Type>
+          <LineNumber>3114</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134235154</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\cpp\flash.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\\cpp/flash.cpp\3114</Expression>
+        </Bp>
+      </Breakpoint>
       <WatchWindow1>
         <Ww>
           <count>0</count>
@@ -394,12 +415,8 @@
       <pMultCmds></pMultCmds>
       <SystemViewers>
         <Entry>
-          <Name>System Viewer\GPDMA0_CH1</Name>
+          <Name>System Viewer\EBU</Name>
           <WinId>35905</WinId>
-        </Entry>
-        <Entry>
-          <Name>System Viewer\USIC1_CH0</Name>
-          <WinId>35904</WinId>
         </Entry>
       </SystemViewers>
     </TargetOption>

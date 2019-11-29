@@ -188,8 +188,8 @@ static void InitFireM()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*1;
-	SCT->MATCH_L[2] = 25*21; //335
-	SCT->MATCH_L[3] = 25*22; //345
+	SCT->MATCH_L[2] = 25*63; //335
+	SCT->MATCH_L[3] = 25*64; //345
 	//SCT->MATCH_L[4] = 0;
 
 	SCT->OUTPUT = 2;
@@ -216,9 +216,9 @@ static void InitFireXX()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*2;
-	SCT->MATCH_L[2] = 25*278; //335
-	SCT->MATCH_L[3] = 25*280; //345
-	SCT->MATCH_L[4] = 25*556;
+	SCT->MATCH_L[2] = 25*32; //335
+	SCT->MATCH_L[3] = 25*34; //345
+	SCT->MATCH_L[4] = 25*64;
 
 	SCT->OUTPUT = 2;
 	HW::SWM->CTOUT_0 = 17;
@@ -229,6 +229,7 @@ static void InitFireXX()
 	SCT->EVFLAG = 1<<3;
 	SCT->EVEN = 1<<3;
 
+	reqFireCount = 3;
 
 //	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 }
@@ -243,9 +244,9 @@ static void InitFireYY()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*2;
-	SCT->MATCH_L[2] = 25*278; //335
-	SCT->MATCH_L[3] = 25*280; //345
-	SCT->MATCH_L[4] = 25*556;
+	SCT->MATCH_L[2] = 25*293; //335
+	SCT->MATCH_L[3] = 25*295; //345
+	SCT->MATCH_L[4] = 25*590;
 
 	SCT->OUTPUT = 2;
 	HW::SWM->CTOUT_0 = 4;
@@ -255,6 +256,8 @@ static void InitFireYY()
 	SCT->HALT_L = 0;//1<<4;
 	SCT->EVFLAG = 1<<3;
 	SCT->EVEN = 1<<3;
+
+	reqFireCount = 3;
 
 	//W::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 }

@@ -19771,7 +19771,7 @@ namespace HW
 
 
 	inline void Peripheral_Enable(u32 id) { SCU_CLK->ClockEnable(id); SCU_RESET->ResetDisable(id);		}
-	//inline void Peripheral_Disable(u32 id) { SCU_CLK->ClockDisable(id); SCU_RESET->ResetEnable(id);	}
+	inline void Peripheral_Disable(u32 id) { SCU_CLK->ClockDisable(id); SCU_RESET->ResetEnable(id);	}
 
 	inline void CCU_Enable(u32 id) { SCU_CLK->CLKSET = SCU_CLK_CLKSET_CCUCEN_Msk;	SCU_CLK->ClockEnable(id);		SCU_RESET->ResetDisable(id);		}
 	inline void ETH_Enable()		{ SCU_CLK->CLKSET = SCU_CLK_CLKSET_ETH0CEN_Msk; SCU_CLK->ClockEnable(PID_ETH0); SCU_RESET->ResetDisable(PID_ETH0);	}

@@ -30,7 +30,9 @@ static void Send_UART_DMA();
 
 static byte len = 1;
 
-static u16 temp = 0;
+static i16 temp = 0;
+static i16 tempClock = 0;
+static i16 cpu_temp = 0;
 
 u16 manRcvData[10];
 u16 manTrmData[50];
@@ -359,16 +361,8 @@ static void UpdateTemp()
 	static byte reg = 0;
 	static u16 rbuf = 0;
 	static byte buf[10];
-	//static byte *romData = 0;
-	//static u16 romAdr = 0;
-	//static u16 revRomAdr = 0;
-	//static u16 romWrLen = 0;
-	//static u16 romRdLen = 0;
-	//static u16 pageLen = 0;
 
 	static TM32 tm;
-
-//	HW::GPIO->SET0 = 1<<12;
 
 	switch (i)
 	{
@@ -386,18 +380,6 @@ static void UpdateTemp()
 				dsc.wdata2 = 0;
 				dsc.wlen2 = 0;
 
-				//buf[0] = 0x0E;
-				//buf[1] = 0x20;
-				//buf[2] = 0xC8;
-
-				//dsc.adr = 0x68;
-				//dsc.wdata = buf;
-				//dsc.wlen = 3;
-				//dsc.rdata = 0;
-				//dsc.rlen = 0;
-				//dsc.wdata2 = 0;
-				//dsc.wlen2 = 0;
-
 				if (AddRequest_TWI(&dsc))
 				{
 					i++;
@@ -410,7 +392,14 @@ static void UpdateTemp()
 
 			if (dsc.ready)
 			{
-				temp = ((i16)ReverseWord(rbuf) + 128) / 256;
+				i16 t = ((i16)ReverseWord(rbuf) + 128) / 256;
+
+				if (t < (-60))
+				{
+					t += 256;
+				};
+
+				tempClock = t;
 
 				i++;
 			};
@@ -419,24 +408,21 @@ static void UpdateTemp()
 
 		case 2:
 
-//			if (tm.Check(100))
+			buf[0] = 0x0E;
+			buf[1] = 0x20;
+			buf[2] = 0xC8;
+
+			dsc2.adr = 0x68;
+			dsc2.wdata = buf;
+			dsc2.wlen = 3;
+			dsc2.rdata = 0;
+			dsc2.rlen = 0;
+			dsc2.wdata2 = 0;
+			dsc2.wlen2 = 0;
+
+			if (AddRequest_TWI(&dsc2))
 			{
-				buf[0] = 0x0E;
-				buf[1] = 0x20;
-				buf[2] = 0xC8;
-
-				dsc2.adr = 0x68;
-				dsc2.wdata = buf;
-				dsc2.wlen = 3;
-				dsc2.rdata = 0;
-				dsc2.rlen = 0;
-				dsc2.wdata2 = 0;
-				dsc2.wlen2 = 0;
-
-				if (AddRequest_TWI(&dsc2))
-				{
-					i++;
-				};
+				i++;
 			};
 
 			break;
@@ -445,6 +431,49 @@ static void UpdateTemp()
 
 			if (dsc2.ready)
 			{
+				i++;
+			};
+
+			break;
+
+		case 4:
+
+			buf[0] = 0;
+
+			dsc.adr = 0x49;
+			dsc.wdata = buf;
+			dsc.wlen = 1;
+			dsc.rdata = &rbuf;
+			dsc.rlen = 2;
+			dsc.wdata2 = 0;
+			dsc.wlen2 = 0;
+
+			if (AddRequest_TWI(&dsc))
+			{
+				i++;
+			};
+
+			break;
+
+		case 5:
+
+			if (dsc.ready)
+			{
+				temp = ((i16)ReverseWord(rbuf) + 64) / 128;
+
+				HW::SCU_GENERAL->DTSCON = SCU_GENERAL_DTSCON_START_Msk;
+
+				i++;
+			};
+
+			break;
+
+		case 6:
+
+			if (HW::SCU_GENERAL->DTSSTAT & SCU_GENERAL_DTSSTAT_RDY_Msk)
+			{
+				cpu_temp = ((i32)(HW::SCU_GENERAL->DTSSTAT & SCU_GENERAL_DTSSTAT_RESULT_Msk) - 605) * 1000 / 205;
+
 				i = 0;
 			};
 
@@ -517,19 +546,19 @@ int main()
 
 	FLASH_Init();
 
-
 	//buf[4999] = 0x55;
 
 	//wb.len = 5000;
 
 	while(1)
 	{
-		HW::P2->BSET(6);
+		HW::P5->BSET(7);
+
 		f++;
 
 		Update();
 
-		HW::P2->BCLR(6);
+		HW::P5->BCLR(7);
 
 		if (rtm.Check(1000))
 		{	

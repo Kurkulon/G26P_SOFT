@@ -358,6 +358,7 @@
 #define OMSS_RMII_STATUS            (1 << 1)
 
 //EXCON register
+#define EXCON_EDPD_EN				(0 << 11)
 #define EXCON_EDPD_DIS              (1 << 11)
 
 //ICSR register

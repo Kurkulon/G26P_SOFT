@@ -105,6 +105,8 @@ Reset_Handler   PROC
                 IMPORT  SystemInit
                 IMPORT  __main
                 
+                CPSID    i
+
                 MOVS	R0, #(VecTableIntSize+VecTableExtSize-4)
                 LDR		R1, =VectorTableInt
                 LDR		R2, =Dummy_Handler

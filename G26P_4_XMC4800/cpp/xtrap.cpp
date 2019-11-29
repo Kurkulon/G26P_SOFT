@@ -302,7 +302,7 @@ static void UpdateSendTraps()
 	
 	if (ComputerFind && tm.Check(500))
 	{ 
-//		TRAP_CLOCK_SendMain();
+		TRAP_CLOCK_SendMain();
 	};
 }
 

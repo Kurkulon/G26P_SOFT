@@ -51,4 +51,5 @@ extern void ManRcvStop();
 extern bool SendMLT3(MTB *mtb);
 extern void SetClock(const RTC &t);
 
+
 #endif // HARDWARE_H__15_05_2009__14_35

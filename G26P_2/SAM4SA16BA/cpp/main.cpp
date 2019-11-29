@@ -3181,7 +3181,7 @@ int main()
 {
 //	static byte i = 0;
 
-	HW::PIOA->SODR = 1<<22;
+	EnableRecieverPower();
 
 	InitHardware();
 

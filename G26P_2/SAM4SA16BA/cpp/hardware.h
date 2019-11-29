@@ -55,6 +55,8 @@ extern void ManRcvStop();
 
 extern bool SendMLT3(MTB *mtb);
 
+inline void EnableRecieverPower() {	HW::PIOA->SODR = 1UL<<27; }
+inline void DisableRecieverPower() { HW::PIOA->CODR = 1UL<<27; }
 
 
 #endif // HARDWARE_H__15_05_2009__14_35

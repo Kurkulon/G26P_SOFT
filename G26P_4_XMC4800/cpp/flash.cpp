@@ -17,6 +17,8 @@
 #pragma diag_suppress 550,177
 
 
+static void NandReadData(void *data, u16 len);
+static bool CheckDataComplete();
 
 /**************************************************/
 /*
@@ -90,7 +92,9 @@ static bool writeFlashEnabled = false;
 static bool flashFull = false;
 static bool flashEmpty = false;
 
-static bool testWriteFlash = false;
+static bool testWriteFlash = false;	
+
+static const bool verifyWritePage = false; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
 
 
 //__packed struct SI
@@ -587,12 +591,16 @@ static bool Read_ID(NandID *id)
 	CMD_LATCH(NAND_CMD_READ_ID);
 	*FLA = 0;
 
-	byte *p = (byte*)id;
+	//byte *p = (byte*)id;
 
-	for(byte i = 0; i < sizeof(NandID); i++) 
-	{ 
-		*p++ = *FLD;
-	}
+	//for(byte i = 0; i < sizeof(NandID); i++) 
+	//{ 
+	//	*p++ = *FLD;
+	//}
+
+	NandReadData(id, sizeof(NandID));
+
+	while (!CheckDataComplete());
 
 	return true;
 }
@@ -1279,11 +1287,15 @@ bool Write::Update()
 
 					state = WRITE_PAGE_4;
 				}
-				else 
+				else if (verifyWritePage)
 				{
 					CmdReadPage(0, wr.block, wr.page);
 					
 					state = WRITE_PAGE_6;
+				}
+				else
+				{
+					state = WRITE_PAGE_8;
 				};
 			};
 
@@ -1355,32 +1367,55 @@ bool Write::Update()
 				}
 				else
 				{
-					if (wr_count == 0)
-					{
-						Finish();
+					//if (wr_count == 0)
+					//{
+					//	Finish();
 
-						state = (createFile) ? WRITE_CREATE_FILE_1 : WAIT;
-					}
-					else
-					{
-						state = WRITE_START;
-					};
+					//	state = (createFile) ? WRITE_CREATE_FILE_1 : WAIT;
+					//}
+					//else
+					//{
+					//	state = WRITE_START;
+					//};
 
-					wr.NextPage();
+					//wr.NextPage();
 
-					spare.fpn += 1;
+					//spare.fpn += 1;
 
-					spare.vecFstOff = -1;
-					spare.vecFstLen = 0;
+					//spare.vecFstOff = -1;
+					//spare.vecFstLen = 0;
 
-					spare.vecLstOff = -1;
-					spare.vecLstLen = 0;
+					//spare.vecLstOff = -1;
+					//spare.vecLstLen = 0;
+
+					state = WRITE_PAGE_8;
 				};
 			};
 
 			break;
 
 		case WRITE_PAGE_8:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (wr_count == 0)
+			{
+				Finish();
+
+				state = (createFile) ? WRITE_CREATE_FILE_1 : WAIT;
+			}
+			else
+			{
+				state = WRITE_START;
+			};
+
+			wr.NextPage();
+
+			spare.fpn += 1;
+
+			spare.vecFstOff = -1;
+			spare.vecFstLen = 0;
+
+			spare.vecLstOff = -1;
+			spare.vecLstLen = 0;
 
 			break;	
 
@@ -3083,12 +3118,12 @@ static void NAND_Init()
 	HW::EBU->ADDRSEL0 = EBU_REGENAB/*|EBU_ALTENAB*/;
 
 	EBU->BUSRCON0 = EBU_AGEN(4)|EBU_WAIT(0)|EBU_PORTW(1);
-	EBU->BUSRAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITRDC(12)|EBU_DATAC(0)|EBU_RDRECOVC(4)|EBU_RDDTACS(0);
+	EBU->BUSRAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITRDC(NS2CLK(60))|EBU_DATAC(0)|EBU_RDRECOVC(NS2CLK(20))|EBU_RDDTACS(0);
 
 	EBU->BUSWCON0 = EBU_AGEN(4)|EBU_WAIT(0)|EBU_PORTW(1);
 
 //				 = |			|				 |		tWP		 |			   |			   |				;
-	EBU->BUSWAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITWRC(8)|EBU_DATAC(0)|EBU_WRRECOVC(4)|EBU_WRDTACS(0);
+	EBU->BUSWAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITWRC(NS2CLK(40))|EBU_DATAC(0)|EBU_WRRECOVC(NS2CLK(20))|EBU_WRDTACS(0);
 
 //	PMC->PCER0 = PID::SMC_M;
 

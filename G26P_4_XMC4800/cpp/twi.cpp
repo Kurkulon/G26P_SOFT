@@ -113,8 +113,6 @@ static __irq void Handler_TWI()
 {
 	using namespace HW;
 
-	HW::P5->BSET(7);
-
 	u32 a = TWI->PSR_IICMode;
 
 	if(a & ACK)
@@ -211,8 +209,6 @@ static __irq void Handler_TWI()
 	};
 
 	TWI->PSCR = a;
-
-	HW::P5->BCLR(7);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -291,11 +287,44 @@ bool AddRequest_TWI(DSCTWI *d)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void delay(u32 cycles)
+{
+	for(u32 i = 0UL; i < cycles ;++i)
+	{
+		__nop();
+	}
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void Init_TWI()
 {
 	using namespace HW;
 
 	//num &= 1;
+
+	HW::Peripheral_Disable(PID_USIC2);
+
+	P5->ModePin2(G_OD);
+	P5->ModePin0(G_OD);
+	P5->BSET(0);
+
+	for (byte i = 0; i < 32; i++)
+	{
+		P5->BTGL(2);
+		delay(MCK_MHz);
+	};
+
+	P5->BCLR(0);
+
+	for (byte i = 0; i < 32; i++)
+	{
+		P5->BTGL(2);
+		delay(MCK_MHz);
+	};
+
+	P5->BSET(2);
+	P5->BSET(0);
 
 	HW::Peripheral_Enable(PID_USIC2);
 
@@ -375,6 +404,9 @@ void Init_TWI()
 	//CM4::NVIC->SET_ER(USIC1_1_IRQn);
 
 //	return true;
+
+	delay(1000);
+
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

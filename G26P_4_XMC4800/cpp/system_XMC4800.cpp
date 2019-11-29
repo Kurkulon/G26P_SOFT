@@ -506,11 +506,12 @@ void SystemInit(void)
 
 	P1->SET(0xF|(0xF<<6));
 
+	P2->BSET(6);
 	P2->ModePin0(	HWIO0	);
-	P2->ModePin1(	I2DPU	);
+	P2->ModePin1(	I1DPD	);
 	P2->ModePin2(	I2DPU	);
-	P2->ModePin3(	I2DPU	);
-	P2->ModePin4(	I2DPU	);
+	P2->ModePin3(	I1DPD	);
+	P2->ModePin4(	I1DPD	);
 	P2->ModePin5(	A1PP	);
 	P2->ModePin6(	G_PP	);
 	P2->ModePin7(	A1PP	);
@@ -565,7 +566,7 @@ void SystemInit(void)
 	P15->ModePin2(	I2DPU	);
 	P15->ModePin3(	I2DPU	);
 	P15->ModePin8(	I2DPU	);
-	P15->ModePin9(	I2DPU	);
+	P15->ModePin9(	I1DPD	);
 
 	P15->PPS = 0;
 	P15->PDISC = 0;
@@ -589,13 +590,13 @@ void SystemCoreSetup(void)
   uint32_t temp;
 
   /* relocate vector table */
-  __disable_irq();
+ // __disable_irq();
 //  SCB->VTOR = (uint32_t)(&__Vectors);
   
  // InitVectorTable();  
 
   __DSB();
-  __enable_irq();
+ // __enable_irq();
 
   /* __FPU_PRESENT = 1 defined in device header file */
   /* __FPU_USED value depends on compiler/linker options. */

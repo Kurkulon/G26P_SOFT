@@ -19776,6 +19776,8 @@ namespace HW
 	inline void CCU_Enable(u32 id) { SCU_CLK->CLKSET = SCU_CLK_CLKSET_CCUCEN_Msk;	SCU_CLK->ClockEnable(id);		SCU_RESET->ResetDisable(id);		}
 	inline void ETH_Enable()		{ SCU_CLK->CLKSET = SCU_CLK_CLKSET_ETH0CEN_Msk; SCU_CLK->ClockEnable(PID_ETH0); SCU_RESET->ResetDisable(PID_ETH0);	}
 	inline void EBU_Enable(u32 div) { HW::SCU_CLK->EBUCLKCR = div; SCU_CLK->CLKSET = SCU_CLK_CLKSET_EBUCEN_Msk;	SCU_CLK->ClockEnable(PID_EBU);	SCU_RESET->ResetDisable(PID_EBU);	}
+	inline void WDT_Enable()		{ SCU_RESET->ResetEnable(PID_WDT); SCU_CLK->CLKSET = SCU_CLK_CLKSET_WDTCEN_Msk; SCU_CLK->ClockEnable(PID_WDT); SCU_RESET->ResetDisable(PID_WDT);	}
+	inline void ResetWDT()			{ WDT->SRV = 0xABADCAFE; }
 
 };
 

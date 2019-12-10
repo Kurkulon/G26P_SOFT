@@ -97,7 +97,7 @@ win32_link_options = -NOLOGO -SUBSYSTEM:CONSOLE -DEBUG -MACHINE:X86 kernel32.lib
 ##################################################################################################
 !ifneq version Win32_Debug
 
-$(objdir)\G26P4XMC.axf : $(libname) $(objdir)\startup_XMC4800.o test.o system_XMC4800.o emac.o xtrap.o trap.o flash.o twi.o hardware.o # $(modules_obj)
+$(objdir)\G26P4XMC.axf : $(libname) $(objdir)\startup_XMC4800.o $(modules_obj)
 	@echo Linking ...
 	@$(bindir)\armlink	$(link_options) &
 	--feedback "$^*.fed" &

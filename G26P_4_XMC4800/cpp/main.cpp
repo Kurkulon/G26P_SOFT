@@ -1,23 +1,38 @@
-#include "ComPort.h"
-#include "time.h"
-#include "CRC16.h"
-#include "hardware.h"
 #include "emac.h"
+#include "core.h"
 #include "xtrap.h"
 #include "flash.h"
-#include "vector.h"
-#include "list.h"
-//#include "fram.h"
+#include "time.h"
+#include "ComPort.h"
+#include "twi.h"
+#include "hardware.h"
+#include "main.h"
 
 #pragma diag_suppress 546,550,177
 
-#pragma O3
-#pragma Otime
+//#pragma O3
+//#pragma Otime
 
+byte buf[5000] = {0x55,0,0,0,0,0,0,0,0,0x55};
+
+static ComPort com1;
+//static TWI twi;
 
 u32 fps = 0;
+u32 f = 0;
 
-//extern byte Heap_Mem[10];
+ComPort::WriteBuffer wb = { .transmited = false, .len = 0, .data = buf };
+ComPort::ReadBuffer rb = { .recieved = false, .len = 0, .maxLen = sizeof(buf), .data = buf };
+
+static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len);
+static void Init_UART_DMA();
+static void Send_UART_DMA();
+
+static byte len = 1;
+
+static i16 temp = 0;
+static i16 tempClock = 0;
+static i16 cpu_temp = 0;
 
 u16 manRcvData[10];
 u16 manTrmData[50];
@@ -34,19 +49,6 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
 
 static i16 temperature = 0;
 
-
-//static bool ReqMan00(u16 *buf, u16 len, MTB* mtb);
-//static bool ReqMan01(u16 *buf, u16 len, MTB* mtb);
-//static bool ReqMan02(u16 *buf, u16 len, MTB* mtb);
-//static bool ReqMan03(u16 *buf, u16 len, MTB* mtb);
-//static bool ReqMan04(u16 *buf, u16 len, MTB* mtb);
-//
-//typedef bool (*RMF)(u16 *buf, u16 len, MTB* mtb);
-//
-//static const RMF ReqManTbl[5] = {ReqMan00, ReqMan01, ReqMan02, ReqMan03, ReqMan04};
-
-static byte status = 0;
-
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
@@ -54,8 +56,8 @@ static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
 	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0;
-	manTrmData[1] = 0xEC00;
-	manTrmData[2] = 0xEC00;
+	manTrmData[1] = GetNumDevice();
+	manTrmData[2] = VERSION;
 
 	mtb->data = manTrmData;
 	mtb->len = 3;
@@ -95,7 +97,7 @@ static bool ReqMan20(u16 *buf, u16 len, MTB* mtb)
 	rsp.wrVec = FLASH_Vectors_Saved_Get();
 	rsp.errVec = FLASH_Vectors_Errors_Get();
 	*((__packed u64*)rsp.wrAdr) = FLASH_Current_Adress_Get();
-	rsp.temp = temperature;
+	rsp.temp = temp;
 	rsp.status = FLASH_Status();
 
 	GetTime(&rsp.rtc);
@@ -254,7 +256,7 @@ static void UpdateMan()
 
 	static byte i = 0;
 
-	static RTM32 tm;
+	static RTM tm;
 
 
 //	u16 c;
@@ -348,74 +350,138 @@ static void UpdateMan()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//static void UpdateMan()
-//{
-//	static MTB mtb;
-//	static MRB mrb;
-//
-//	static byte i = 0;
-//
-//	static RTM32 tm;
-//
-//	bool parityErr;
-//	u32 *s;
-//	u16 *d;
-//
-//	u16 c;
-//
-//	switch (i)
-//	{
-//		case 0:
-//
-//			if (tm.Check(MS2RT(100)))
-//			{
-//				mtb.data = tableCRC;
-//				mtb.len = 70;
-//
-//				SetTrmBoudRate(2); SendMLT3(&mtb);
-////				SetTrmBoudRate(0); SendManData(&mtb);
-//
-//				i++;
-//			};
-//
-//			break;
-//
-//		case 1:
-//
-//			if (mtb.ready)
-//			{
-//				i = 0;
-//			};
-//
-//			break;
-//
-//	};
-//}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void InitTemp()
-{
-	using namespace HW;
-
-	PMC->PCER0 = PID::AFEC0_M;
-
-	AFE0->MR = 0x0031FF80;
-	AFE0->CHER = (1<<15)|15;
-	AFE0->CR = 2;
-}
-
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void UpdateTemp()
 {
-	HW::AFE0->CSELR = 15;
-	temperature = (((i32)HW::AFE0->CDR - 1787*2) * 11234/2) / 65536 + 27;
+	static byte i = 0;
+
+	static DSCTWI dsc, dsc2;
+	static byte reg = 0;
+	static u16 rbuf = 0;
+	static byte buf[10];
+
+	static TM32 tm;
+
+	switch (i)
+	{
+		case 0:
+
+			if (tm.Check(100))
+			{
+				buf[0] = 0x11;
+
+				dsc.adr = 0x68;
+				dsc.wdata = buf;
+				dsc.wlen = 1;
+				dsc.rdata = &rbuf;
+				dsc.rlen = 2;
+				dsc.wdata2 = 0;
+				dsc.wlen2 = 0;
+
+				if (AddRequest_TWI(&dsc))
+				{
+					i++;
+				};
+			};
+
+			break;
+
+		case 1:
+
+			if (dsc.ready)
+			{
+				i16 t = ((i16)ReverseWord(rbuf) + 128) / 256;
+
+				if (t < (-60))
+				{
+					t += 256;
+				};
+
+				tempClock = t;
+
+				i++;
+			};
+
+			break;
+
+		case 2:
+
+			buf[0] = 0x0E;
+			buf[1] = 0x20;
+			buf[2] = 0xC8;
+
+			dsc2.adr = 0x68;
+			dsc2.wdata = buf;
+			dsc2.wlen = 3;
+			dsc2.rdata = 0;
+			dsc2.rlen = 0;
+			dsc2.wdata2 = 0;
+			dsc2.wlen2 = 0;
+
+			if (AddRequest_TWI(&dsc2))
+			{
+				i++;
+			};
+
+			break;
+
+		case 3:
+
+			if (dsc2.ready)
+			{
+				i++;
+			};
+
+			break;
+
+		case 4:
+
+			buf[0] = 0;
+
+			dsc.adr = 0x49;
+			dsc.wdata = buf;
+			dsc.wlen = 1;
+			dsc.rdata = &rbuf;
+			dsc.rlen = 2;
+			dsc.wdata2 = 0;
+			dsc.wlen2 = 0;
+
+			if (AddRequest_TWI(&dsc))
+			{
+				i++;
+			};
+
+			break;
+
+		case 5:
+
+			if (dsc.ready)
+			{
+				temp = ((i16)ReverseWord(rbuf) + 64) / 128;
+
+				HW::SCU_GENERAL->DTSCON = SCU_GENERAL_DTSCON_START_Msk;
+
+				i++;
+			};
+
+			break;
+
+		case 6:
+
+			if (HW::SCU_GENERAL->DTSSTAT & SCU_GENERAL_DTSSTAT_RDY_Msk)
+			{
+				cpu_temp = ((i32)(HW::SCU_GENERAL->DTSSTAT & SCU_GENERAL_DTSSTAT_RESULT_Msk) - 605) * 1000 / 205;
+
+				i = 0;
+			};
+
+			break;
+	};
+
+//	HW::GPIO->CLR0 = 1<<12;
 }
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -428,10 +494,11 @@ static void UpdateMisc()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
+		CALL( UpdateMan();		);
+		CALL( UpdateTemp();		);
+		CALL( FLASH_Update();	);
 		CALL( UpdateEMAC();	);
 		CALL( UpdateTraps();	);
-		CALL( UpdateMan();		);
-		CALL( FLASH_Update();	);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -463,9 +530,15 @@ static void Update()
 
 int main()
 {
-	InitHardware();
+	static TM32 rtm;
+	//static MTB mtb;
+	//static u16 manbuf[10];
+	//static DSCTWI dsctwi;
+	//static DSCTWI dsc;
 
-//	__breakpoint(0);
+	//__breakpoint(0);
+
+	InitHardware();
 
 	InitEMAC();
 
@@ -473,49 +546,37 @@ int main()
 
 	FLASH_Init();
 
+	//buf[4999] = 0x55;
 
-	InitTemp();
-
-	u32 f = 0;
-
-
-	static TM32 tm;
-//	static RTM32 rtm2;
-
-	HW::PIOB->PER = 1<<13;
-	HW::PIOB->OER = 1<<13;
+	//wb.len = 5000;
 
 	while(1)
 	{
-		HW::P2->BSET(6);
+		HW::P5->BSET(7);
 
-		Update();		
+		Update();
 
-		HW::P2->BCLR(6);
-
-		RTC rtc;
-
-		GetTime(&rtc);
-
-		//if (rtc.msec > 999)
-		//{
-		//	__breakpoint(0);
-		//};
+		HW::P5->BCLR(7);
 		
 		f++;
 
-		if (tm.Check(1000))
-		{
-			UpdateTemp();
-			fps = f;
-			f = 0;
+		if (rtm.Check(1000))
+		{	
+			fps = f; f = 0; 
+
+			HW::ResetWDT();
+
+			//mtb.data = manbuf;
+			//mtb.len = 3;
+
+			//manbuf[0] = 0xAA00;
+
+			//SendManData(&mtb);
+			//SendMLT3(&mtb);
 		};
-
-		HW::ResetWDT();
-
-//		__asm { WFE };
 	};
 
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+

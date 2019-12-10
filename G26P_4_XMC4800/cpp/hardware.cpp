@@ -2,6 +2,7 @@
 #include "time.h"
 #include "hardware.h"
 #include "twi.h"
+#include "system_XMC4800.h"
 
 //#pragma O3
 //#pragma Otime
@@ -822,6 +823,25 @@ static void InitClock()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void WDT_Init()
+{
+	HW::WDT_Enable();
+
+	HW::WDT->WLB = OFI_FREQUENCY/2;
+	HW::WDT->WUB = (3 * OFI_FREQUENCY)/2;
+	HW::SCU_CLK->WDTCLKCR = 0|SCU_CLK_WDTCLKCR_WDTSEL_OFI;
+
+	#ifndef _DEBUG
+	HW::WDT->CTR = WDT_CTR_ENB_Msk|WDT_CTR_DSP_Msk;
+	#else
+	HW::WDT->CTR = WDT_CTR_ENB_Msk;
+	#endif
+
+//	HW::ResetWDT();
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void InitHardware()
 {
 	Init_time();
@@ -833,6 +853,8 @@ void InitHardware()
 	InitManRecieve();
 	
 	EnableVCORE();
+
+	WDT_Init();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -88,7 +88,8 @@ static U32u filtrValue;
 static u16 resistValue = 0;
 static byte numStations = 0;
 static u16 voltage = 0;
-static i16 temperature = 0;
+i16 temperature = 0;
+i16 cpuTemp = 0;
 
 static byte mainModeState = 0;
 
@@ -110,12 +111,12 @@ static byte savesCount = 0;
 
 static TWI	twi;
 
-static DSCTWI dsc;
-static byte buf[100];
+//static DSCTWI dsc;
+static byte framBuf[100];
 
-static u16 maxOff = 0;
+//static u16 maxOff = 0;
 
-static void SaveVars();
+static void UpdateI2C();
 
 inline void SaveParams() { savesCount = 1; }
 
@@ -132,7 +133,7 @@ static SPI::Buffer	bufGyro;
 
 static i16 ax = 0, ay = 0, az = 0, at = 0;
 
-static i32 ang_x = 0, ang_y = 0, ang_z = 0;
+//static i32 ang_x = 0, ang_y = 0, ang_z = 0;
 
 static u8 txAccel[25] = { 0 };
 static u8 rxAccel[25];
@@ -1638,12 +1639,12 @@ static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_10(u16 *buf, u16 len, MTB* mtb)
+static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 {
 	//__packed struct T { u16 g[8]; u16 st; u16 len; u16 delay; u16 voltage; };
 	//__packed struct Rsp { u16 hdr; u16 rw; T t1, t2, t3; };
 	
-	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
+	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	u16* p = manTrmData+1;
 
@@ -1677,7 +1678,7 @@ static bool RequestMan_10(u16 *buf, u16 len, MTB* mtb)
 
 static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 {
-	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
+	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = manReqWord|0x20;
 	manTrmData[1] = GD(&fireCounter, u16, 0);
@@ -1731,15 +1732,15 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 
 //	if (buf == 0 || len < 3 || len > 4 || mtb == 0) return false;
 
-	if (buf == 0 || len == 0 || len > 4 || mtb == 0) return false;
+	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
 
 	byte nf = ((req.rw>>4)-3)&3;
 	byte nr = req.rw & 7;
 
 	curRcv[nf] = nr;
 
-	u16 c = 0;
-	u16 off = 0;
+//	u16 c = 0;
+//	u16 off = 0;
 	//u16 diglen = 500;
 	//u16 hdrlen = (sizeof(hdr)/2);
 
@@ -1936,7 +1937,7 @@ static bool RequestMan_60(u16 *data, u16 len, MTB* mtb)
 	
 	static Rsp rsp; 
 
-	if (buf == 0 || len == 0 || len > 4 || mtb == 0) return false;
+	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
 
 	mtb->data2 = 0;
 	mtb->len2 = 0;
@@ -2895,6 +2896,26 @@ static void UpdateMan()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateSlow()
+{
+	static byte i = 0;
+
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( UpdateADC()			);
+		CALL( UpdateI2C()			);
+		CALL( UpdateAccel()			);
+		CALL( spi.Update()			);
+	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
+}
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void UpdateMisc()
@@ -2906,13 +2927,10 @@ static void UpdateMisc()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( UpdateADC()			);
 		CALL( MainMode()			);
-		CALL( SaveVars()			);
 		CALL( UpdateTrmReq02()		);
-		CALL( UpdateAccel()			);
-		CALL( UpdateGyro()			);
-		CALL( spi.Update()			);
+		CALL( UpdateMan()			);
+		CALL( UpdateSlow()			);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -2933,7 +2951,6 @@ static void UpdateParams()
 	{
 		CALL( UpdateRcvTrm()		);
 		CALL( qmem.Update()			);
-		CALL( UpdateMan()			);
 		CALL( UpdateMisc()			);
 	};
 
@@ -2972,7 +2989,7 @@ static void InitRcv()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void InitTemp()
+static void InitTempCPU()
 {
 	using namespace HW;
 
@@ -2986,24 +3003,26 @@ static void InitTemp()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateTemp()
+static void UpdateTempCPU()
 {
-	temperature = (((i32)HW::ADC->CDR[15] - 1787) * 11234) / 65536 + 27;
+	cpuTemp = (((i32)HW::ADC->CDR[15] - 1787) * 11234) / 65536 + 27;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void LoadVars()
 {
+	static DSCTWI dsc;
+
 	twi.Init(1);
 
-	PointerCRC p(buf);
+	PointerCRC p(framBuf);
 
 	dsc.MMR = 0x500200;
 	dsc.IADR = 0;
 	dsc.CWGR = 0x7575;
-	dsc.data = buf;
-	dsc.len = sizeof(buf);
+	dsc.data = framBuf;
+	dsc.len = sizeof(framBuf);
 
 	if (twi.Read(&dsc))
 	{
@@ -3054,20 +3073,26 @@ static void LoadVars()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void SaveVars()
+static void UpdateI2C()
 {
-	PointerCRC p(buf);
+	PointerCRC p(framBuf);
 
 	static byte i = 0;
-	static RTM32 tm;
+	static TM32 tm;
+	static DSCTWI dsc;
+	static u16 tempBuf;
 
 	switch (i)
 	{
 		case 0:
 
-			if (/*tm.Check(MS2RT(1000)) &&*/ savesCount > 0)
+			if (savesCount > 0)
 			{
 				i++;
+			}
+			else if (tm.Check(100))
+			{
+				i = 3;
 			};
 
 			break;
@@ -3077,8 +3102,8 @@ static void SaveVars()
 			dsc.MMR = 0x500200;
 			dsc.IADR = 0;
 			dsc.CWGR = 0x07575; 
-			dsc.data = buf;
-			dsc.len = sizeof(buf);
+			dsc.data = framBuf;
+			dsc.len = sizeof(framBuf);
 
 			for (byte j = 0; j < 2; j++)
 			{
@@ -3100,6 +3125,29 @@ static void SaveVars()
 			if (!twi.Update())
 			{
 				savesCount--;
+				i = 0;
+			};
+
+			break;
+
+		case 3:
+
+			dsc.MMR = 0x491100;
+			dsc.IADR = 0;
+			dsc.CWGR = 0x07575; 
+			dsc.data = &tempBuf;
+			dsc.len = sizeof(tempBuf);
+
+			i = (twi.Read(&dsc)) ? (i+1) : 0;
+
+			break;
+
+		case 4:
+
+			if (!twi.Update())
+			{
+				temperature = (dsc.rlen == 2) ? (((i16)ReverseWord(tempBuf) + 64) / 128) : cpuTemp;
+
 				i = 0;
 			};
 
@@ -3193,7 +3241,7 @@ int main()
 
 	InitRmemList();
 
-	InitTemp();
+	InitTempCPU();
 
 	commem.Connect(0, 6250000, 0);
 	comtr.Connect(1, 1562500, 0);
@@ -3226,7 +3274,7 @@ int main()
 
 		if (tm.Check(1000))
 		{ 
-			UpdateTemp();
+			UpdateTempCPU();
 			qtrm.Add(CreateTrmReq03());
 			fc = fps; fps = 0; 
 //			startFire = true;

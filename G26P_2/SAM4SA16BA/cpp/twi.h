@@ -12,6 +12,7 @@ struct DSCTWI
 	u32		CWGR;
 	void*	data;
 	u16		len;
+	u16		rlen; // recieved len
 	bool	ready;
 };
 

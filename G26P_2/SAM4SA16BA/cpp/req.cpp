@@ -210,7 +210,7 @@ void RequestQuery::Update()
 		//		_state = 0;
 		//	};
 
-			break;
+		//	break;
 
 		default:
 

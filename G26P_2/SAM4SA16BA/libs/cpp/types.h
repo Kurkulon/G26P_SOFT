@@ -41,6 +41,27 @@ inline bool dIsValid(float v) { return (((u32*)&v)[2] & 0x7FF0) != 0x7FF0; }
 
 #define GD(adr, t, i) (*(((t*)adr)+i))
 
+#define ONE(v, m) ((v & m) != 0)
+#define ZRO(v, m) ((v & m) == 0)
+#define AND(v, m) ((v & m) == m)
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline void Read32(u32 v) { u32 t; __asm { add t, v }; }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline u16 ReverseWord(u16 v) { __asm	{ rev16 v, v };	return v; }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline u32 ReverseDword(u32 v) { return __rev(v); }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline dword SwapDword(dword v) { __asm { rev16 v, v }; return v; }
+
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 union DataCRC
 {
@@ -109,6 +130,10 @@ union ConstDataPointer
 	void operator=(__packed const void *p) { v = p; } 
 };
 
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline float ReverseFloat(F32u v) { __asm { rev v.d, v.d };	return v.f; }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

@@ -96,6 +96,8 @@ bool TWI::Update()
 	{
 		hw->PDC.PTCR = 0x202;
 		dsc->ready = true;
+		dsc->rlen = (hw->MMR & 0x1000) ? ((byte*)hw->PDC.RPR - (byte*)dsc->data) : 0;
+		
 		dsc = 0;
 
 		return false;
@@ -140,7 +142,11 @@ __irq void TWI::Handler0()
 	else if(a & 2) // RXRDY
 	{
 		TWI1->IDR = 2;
-		*(T_HW::AT91_REG*)TWI1->PDC.RPR = TWI1->RHR;
+
+		byte **p = (byte**)&TWI1->PDC.RPR;
+
+		*((*p)++) = TWI1->RHR;
+		//p[0]++;
 	};
 }
 

@@ -35,7 +35,7 @@ enum trap_status
 static trap_status trapStatus = TRAP_WAIT;
 
 
-static const bool __trace = true;
+static const bool __trace = false;
 
 //char TrapTxDataBuffer[TRAP_TX_DATA_BUFFER_SIZE];
 
@@ -150,12 +150,12 @@ bool TRAP_INFO_SendInfo()
 	trap.hdr.cmd = TRAP_INFO_COMMAND_INFO;
 
 	trap.version = VERSION;
-	trap.number = 0; //FRAM_Main_Device_Number_Get();
+	trap.number = GetNumDevice();; //FRAM_Main_Device_Number_Get();
 	trap.memory_mask = FLASH_Chip_Mask_Get();
 	trap.memory_size = FLASH_Full_Size_Get();
 	trap.devices_mask = TRAP_DEVICES_MASK;
-	trap.device_type = 0;//FRAM_Main_Device_Type_Get();
-	trap.device_telemetry = 0;//FRAM_Main_Device_Telemetry_Get();
+	trap.device_type = 1;// память 
+	trap.device_telemetry = 2; // USART
 	
 	buf->len = sizeof(EthUdp) + sizeof(trap);
 
@@ -552,7 +552,10 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 					case TRAP_INFO_COMMAND_SET_NUMBER:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
-//						FRAM_Main_Device_Number_Set(ts.number);
+						
+						SetNumDevice(ts.number);
+						SaveParams();
+
 						break;
 
 					case TRAP_INFO_COMMAND_SET_TYPE:

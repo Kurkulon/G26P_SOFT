@@ -149,7 +149,7 @@ void SendFragTrap(SmallTx *p)
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static byte		indSmallTx = 0;
-static SmallTx	smallTxBuf[8];
+static SmallTx	smallTxBuf[16];
 
 SmallTx* GetSmallTxBuffer()
 {

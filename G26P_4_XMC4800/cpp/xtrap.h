@@ -12,14 +12,14 @@ __packed struct SmallTx : public EthUdpBuf
 {
 	TrapHdr th;		// 9
 
-	byte data[75];
+	byte data[256];
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct HugeTx : public SmallTx
 {
-	byte exdata[IP_MTU - sizeof(UdpHdr) - sizeof(TrapHdr) - 75];
+	byte exdata[IP_MTU - sizeof(UdpHdr) - sizeof(TrapHdr) - 256];
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

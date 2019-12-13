@@ -392,14 +392,21 @@ static void UpdateTemp()
 
 			if (dsc.ready)
 			{
-				i16 t = ((i16)ReverseWord(rbuf) + 128) / 256;
-
-				if (t < (-60))
+				if (dsc.ack && dsc.readedLen == dsc.rlen)
 				{
-					t += 256;
-				};
+					i16 t = ((i16)ReverseWord(rbuf) + 128) / 256;
 
-				tempClock = t;
+					if (t < (-60))
+					{
+						t += 256;
+					};
+
+					tempClock = t;
+				}
+				else
+				{
+					tempClock = -273;
+				};
 
 				i++;
 			};
@@ -459,7 +466,14 @@ static void UpdateTemp()
 
 			if (dsc.ready)
 			{
-				temp = ((i16)ReverseWord(rbuf) + 64) / 128;
+				if (dsc.ack && dsc.readedLen == dsc.rlen)
+				{
+					temp = ((i16)ReverseWord(rbuf) + 64) / 128;
+				}
+				else
+				{
+					temp = -273;
+				};
 
 				HW::SCU_GENERAL->DTSCON = SCU_GENERAL_DTSCON_START_Msk;
 

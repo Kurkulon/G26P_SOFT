@@ -3,6 +3,30 @@
 #include "time.h"
 
 
+#define PIN_FX1			17 
+#define PIN_FX2			13 
+#define PIN_FY1			12 
+#define PIN_FY2			4 
+#define PIN_EN			11
+#define PIN_CHARGE		8
+#define PIN_TR1			7
+#define PIN_RTS			0
+#define PIN_UTX			6
+#define PIN_URX			14
+#define PIN_SCK			9
+#define PIN_MISO		15
+#define PIN_ADCS		16
+
+#define FX1				(1<<PIN_FX1) 
+#define FX2				(1<<PIN_FX2) 
+#define FY1				(1<<PIN_FY1) 
+#define FY2				(1<<PIN_FY2) 
+#define EN				(1<<PIN_EN) 
+#define CHARGE			(1<<PIN_CHARGE) 
+#define TR1				(1<<PIN_TR1) 
+#define RTS				(1<<PIN_RTS) 
+
+
 u16 curHV = 0;
 u16 reqHV = 800;
 byte reqFireCount = 1;
@@ -16,6 +40,7 @@ bool	syncActive = false;
 u32		syncTime = 0;
 
 bool	charge = false;
+
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -71,12 +96,12 @@ extern "C" void SystemInit()
 
 	SYSCON->SYSAHBCLKCTRL |= CLK::SWM_M | CLK::IOCON_M | CLK::GPIO_M | HW::CLK::MRT_M | HW::CLK::UART0_M | HW::CLK::CRC_M;
 
-	GPIO->CLR0 = (1<<17)|(1<<4);
-	GPIO->SET0 = (1<<13)|(1<<12);
+	GPIO->CLR0 = FX1|FY2|CHARGE|TR1;	//(1<<17)|(1<<4);
+	GPIO->SET0 = FX2|FY1;				//(1<<13)|(1<<12);
 
-	GPIO->DIR0 |= (1<<11)|(1<<17)|(1<<0)|(1<<7)|(1<<8)|(1<<13)|(1<<12)|(1<<4);
-	GPIO->CLR0 = (1<<11)|(1<<17)|(1<<4);
-	GPIO->SET0 = (1<<8)|(1<<13)|(1<<12);
+	GPIO->DIR0 |= EN|RTS|TR1|CHARGE|FX1|FX2|FY1|FY2;	//(1<<11)|(1<<17)|(1<<0)|(1<<7)|(1<<8)|(1<<13)|(1<<12)|(1<<4);
+	GPIO->CLR0 = EN|FX1|FY2|CHARGE|TR1;					//(1<<11)|(1<<17)|(1<<4);
+	GPIO->SET0 = FX2|FY1;								//(1<<8)|(1<<13)|(1<<12);
 
 
 	IOCON->PIO0_1.B.MODE = 0;// &= ~(0x3 << 3);
@@ -98,8 +123,8 @@ extern "C" void SystemInit()
 //	SYSCON->SYSAHBCLKDIV  = SYSAHBCLKDIV_Val;
 
 	SYSCON->UARTCLKDIV = 1;
-	SWM->U0_RXD = 14;
-	SWM->U0_TXD = 6;
+	SWM->U0_RXD = PIN_URX;
+	SWM->U0_TXD = PIN_UTX;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -120,11 +145,11 @@ static void UpdateADC()
 
 	if (curHV < (reqHV-5))
 	{
-		GPIO->SET0 = 1<<11;
+		GPIO->SET0 = EN;
 	}
 	else if (curHV > (reqHV+5))
 	{
-		GPIO->CLR0 = 1<<11;
+		GPIO->CLR0 = EN;
 	};
 }
 
@@ -149,7 +174,7 @@ static void UpdateCharge()
 
 				if (tm.Check(1))
 				{
-					GPIO->CLR0 = 1<<8;
+					GPIO->CLR0 = CHARGE;
 
 					i++;
 				};
@@ -160,7 +185,7 @@ static void UpdateCharge()
 
 				if (tm.Check(100))
 				{
-					GPIO->SET0 = 1<<8;
+					GPIO->SET0 = CHARGE;
 				
 					charge = false;
 				};
@@ -170,8 +195,8 @@ static void UpdateCharge()
 	}
 	else
 	{
-		GPIO->SET0 = 1<<8;
-		GPIO->DIR0 |= (1<<8);
+		GPIO->SET0 = CHARGE;
+		GPIO->DIR0 |= CHARGE;
 		i = 0;
 
 		tm.Reset();
@@ -187,23 +212,23 @@ static void InitFireM()
 	SCT->CTRL_L = (1<<2); // HALT
 
 	SCT->MATCH_L[0] = 0; 
-	SCT->MATCH_L[1] = 25*1;
-	SCT->MATCH_L[2] = 25*63; //335
-	SCT->MATCH_L[3] = 25*64; //345
-	//SCT->MATCH_L[4] = 0;
+	SCT->MATCH_L[1] = 25*2;
+	SCT->MATCH_L[2] = 25*32; //335
+	SCT->MATCH_L[3] = 25*34; //345
+	SCT->MATCH_L[4] = 25*64;
 
 	SCT->OUTPUT = 2;
+	HW::SWM->CTOUT_0 = PIN_TR1;
+	HW::SWM->CTOUT_1 = PIN_CHARGE;
 
-	SWM->CTOUT_0 = 7;
-	SWM->CTOUT_1 = -1;
+	SCT->LIMIT_L = 1<<4;
+	SCT->HALT_L = 0;//1<<4;
+	SCT->EVFLAG = 1<<3;
+	SCT->EVEN = 1<<3;
 
-	SCT->LIMIT_L = 1<<3;
-	SCT->HALT_L = 1<<3;
-	SCT->EVEN = 0;
+	reqFireCount = 3;
 
-//	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
-
-	charge = true;
+//	charge = true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -221,8 +246,8 @@ static void InitFireXX()
 	SCT->MATCH_L[4] = 25*64;
 
 	SCT->OUTPUT = 2;
-	HW::SWM->CTOUT_0 = 17;
-	HW::SWM->CTOUT_1 = 13;
+	HW::SWM->CTOUT_0 = PIN_FX1; //17;
+	HW::SWM->CTOUT_1 = PIN_FX2; //13;
 
 	SCT->LIMIT_L = 1<<4;
 	SCT->HALT_L = 0;//1<<4;
@@ -249,8 +274,8 @@ static void InitFireYY()
 	SCT->MATCH_L[4] = 25*590;
 
 	SCT->OUTPUT = 2;
-	HW::SWM->CTOUT_0 = 4;
-	HW::SWM->CTOUT_1 = 12;
+	HW::SWM->CTOUT_0 = PIN_FY2; //4;
+	HW::SWM->CTOUT_1 = PIN_FY1; //12;
 
 	SCT->LIMIT_L = 1<<4;
 	SCT->HALT_L = 0;//1<<4;
@@ -279,6 +304,8 @@ static __irq void SCT_Handler()
 	if (count >= reqFireCount)
 	{
 		HW::SCT->CTRL_L = 1<<2;
+		HW::SWM->CTOUT_0 = -1;
+		HW::SWM->CTOUT_1 = -1;
 		count = 0;
 	};
 }
@@ -326,9 +353,9 @@ static void InitFire()
 	using namespace HW;
 
 	SYSCON->SYSAHBCLKCTRL |= CLK::SCT_M;
-	GPIO->DIR0 |= (1<<13)|(1<<17)|(1<<12)|(1<<4);
-	GPIO->CLR0 = (1<<17)|(1<<4);
-	GPIO->SET0 = (1<<13)|(1<<12);
+	GPIO->DIR0 |= FX1|FX2|FY1|FY2|TR1|CHARGE;	//(1<<13)|(1<<17)|(1<<12)|(1<<4);
+	GPIO->CLR0 = FX1|FY2|TR1;					//(1<<17)|(1<<4);
+	GPIO->SET0 = FX2|FY1|CHARGE;				//(1<<13)|(1<<12);
 //	SWM->PINASSIGN.U0_TXD = 0;
 
 	SCT->STATE_L = 0;
@@ -381,7 +408,7 @@ static void InitFire()
 //	SCT->CTRL_L &= ~(3<<1);
 
 
-	SYSCON->PINTSEL[0] = 14;
+	SYSCON->PINTSEL[0] = PIN_URX; //14;
 	PIN_INT->ISEL = 0;
 	//PIN_INT->SIENF = 1;
 	//PIN_INT->FALL = 1;
@@ -405,11 +432,9 @@ static void InitADC()
 	//SWM->PINASSIGN[3] = (SWM->PINASSIGN[3] & 0x00FFFFFF) | 0x09000000;
 	//SWM->PINASSIGN[4] = (SWM->PINASSIGN[4] & 0xFF000000) | 0x00100FFF;
 
-	SWM->SPI0_SCK = 9;
-	SWM->SPI0_MISO = 15;
-	SWM->SPI0_SSEL = 16;
-
-
+	SWM->SPI0_SCK	= PIN_SCK;	//9;
+	SWM->SPI0_MISO	= PIN_MISO;	//15;
+	SWM->SPI0_SSEL	= PIN_ADCS;	//16;
 
 	SYSCON->SYSAHBCLKCTRL |= CLK::SPI0_M;
 
@@ -418,7 +443,6 @@ static void InitADC()
 	SPI0->DIV = 24;
 
 	SPI0->TXDATCTL = 0x0F100000; //SPI_TXDATCTL_FLEN(7) | SPI_TXDATCTL_EOT | SPI_TXDATCTL_SSEL_N(0xe);
-
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -446,7 +470,7 @@ void InitHardware()
 void UpdateHardware()
 {
 	UpdateADC();
-	UpdateCharge();
+	//UpdateCharge();
 
 	HW::ResetWDT();
 }

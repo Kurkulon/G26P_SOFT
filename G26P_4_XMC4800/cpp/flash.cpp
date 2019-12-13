@@ -124,6 +124,8 @@ __packed struct NVV // NonVolatileVars
 	u16 index;
 
 	u32 prevFilePage;
+
+	u32 badBlocks[8];
 };
 
 
@@ -829,6 +831,7 @@ bool EraseBlock::Update()
 				if (spare.validPage != 0xFFFF && spare.validBlock != 0xFFFF)									
 				{																												
 					errBlocks += 1;																							
+					nvv.badBlocks[er.chip] += 1;
 																																
 					er.NextBlock();	
 
@@ -864,6 +867,7 @@ bool EraseBlock::Update()
 				if (check && (CmdReadStatus() & 1) != 0) // erase error																	
 				{																												
 					errBlocks += 1;	
+					nvv.badBlocks[er.chip] += 1;
 
 //					__breakpoint(0);																							
 																																
@@ -3070,7 +3074,11 @@ void NAND_Idle()
 
 			if (!UpdateSendSession())
 			{
-				nandState = NAND_STATE_WAIT;
+				if (TRAP_TRACE_PrintString("NAND chip mask: 0x%02hX; Bad Blocks: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", 
+					nandSize.mask, nvv.badBlocks[0], nvv.badBlocks[1], nvv.badBlocks[2], nvv.badBlocks[3], nvv.badBlocks[4], nvv.badBlocks[5], nvv.badBlocks[6], nvv.badBlocks[7]))
+				{
+					nandState = NAND_STATE_WAIT;
+				};
 			};
 
 			break;
@@ -4010,6 +4018,11 @@ static void LoadVars()
 		GetTime(&nvv.f.start_rtc);
 		GetTime(&nvv.f.stop_rtc);
 		nvv.f.flags = 0;
+
+		for (u32 i = 0; i < ArraySize(nvv.badBlocks); i++)
+		{
+			nvv.badBlocks[i] = 0;
+		};
 
 		savesCount = 2;
 	};

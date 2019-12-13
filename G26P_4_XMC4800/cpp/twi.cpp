@@ -123,6 +123,8 @@ static __irq void Handler_TWI()
 
 			wrCount--;
 
+			dsc->ack = true;
+
 			if(wrCount == 0 && wrCount2 != 0)
 			{
 				wrPtr = wrPtr2;
@@ -170,6 +172,7 @@ static __irq void Handler_TWI()
 	else
 	{
 		dsc->ready = true;
+		dsc->readedLen = dsc->rlen - rdCount;
 
 		state = 0;
 		
@@ -181,6 +184,7 @@ static __irq void Handler_TWI()
 			dsc = ndsc;
 
 			dsc->ready = false;
+			dsc->ack = false;
 
 			wrPtr = (byte*)dsc->wdata;	
 			rdPtr = (byte*)dsc->rdata;	
@@ -227,6 +231,7 @@ bool Write_TWI(DSCTWI *d)
 	CM4::NVIC->SET_ER(USIC2_0_IRQn);
 
 	d->ready = false;
+	d->ack = false;
 
 	wrPtr = (byte*)dsc->wdata;	
 	rdPtr = (byte*)dsc->rdata;	

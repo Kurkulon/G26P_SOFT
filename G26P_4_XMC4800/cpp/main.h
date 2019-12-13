@@ -1,7 +1,7 @@
 #ifndef MEMORY_AT91SAM7X256_H
 #define MEMORY_AT91SAM7X256_H
 
-#define VERSION			0x0102
+#define VERSION			0x0201
 
 //#define MAIN_MODE_CHECK_MS	500
 //

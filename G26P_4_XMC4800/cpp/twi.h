@@ -14,8 +14,10 @@ struct DSCTWI
 	u16				wlen;
 	u16				wlen2;
 	u16				rlen;
+	u16				readedLen;
 	byte			adr;
 	volatile bool	ready;
+	volatile bool	ack;
 };
 
 extern void Init_TWI();

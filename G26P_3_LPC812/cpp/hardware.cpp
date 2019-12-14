@@ -30,6 +30,12 @@
 u16 curHV = 0;
 u16 reqHV = 800;
 byte reqFireCount = 1;
+byte reqFireCountM = 3;
+byte reqFireCountXY = 1;
+
+static byte fireCount = 0;
+static u32 fireMaskClr = 0;
+static u32 fireEndTime = 0;
 
 //#define eVal_IntervalTimer ((MCK / 5000) * 10)
 //#define eVal_StartSample   ((MCK / 5000) *  6)
@@ -226,7 +232,8 @@ static void InitFireM()
 	SCT->EVFLAG = 1<<3;
 	SCT->EVEN = 1<<3;
 
-	reqFireCount = 3;
+	fireCount = reqFireCountM;
+	fireMaskClr = CHARGE;
 
 //	charge = true;
 }
@@ -254,7 +261,8 @@ static void InitFireXX()
 	SCT->EVFLAG = 1<<3;
 	SCT->EVEN = 1<<3;
 
-	reqFireCount = 3;
+	fireCount = reqFireCountXY;
+	fireMaskClr = 0;
 
 //	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 }
@@ -282,7 +290,8 @@ static void InitFireYY()
 	SCT->EVFLAG = 1<<3;
 	SCT->EVEN = 1<<3;
 
-	reqFireCount = 3;
+	fireCount = reqFireCountXY;
+	fireMaskClr = 0;
 
 	//W::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
 }
@@ -295,18 +304,29 @@ static void InitFireYY()
 
 static __irq void SCT_Handler()
 {
-	static byte count = 0;
+	if (HW::SCT->EVFLAG & (1<<3))
+	{
+		fireCount--;
 
-	count++;
+		HW::SCT->EVFLAG = 1<<3;
 
-	HW::SCT->EVFLAG = 1<<3;
-
-	if (count >= reqFireCount)
+		if (fireCount == 0)
+		{
+			HW::SCT->HALT_L = 1<<4;
+			HW::SCT->EVFLAG = 1<<4;
+			HW::SCT->EVEN = 1<<4;
+		};
+	}
+	else if (HW::SCT->EVFLAG & (1<<4))
 	{
 		HW::SCT->CTRL_L = 1<<2;
+		HW::SCT->EVFLAG = 1<<4;
+		HW::SCT->EVEN = 0;
+
+	//	HW::GPIO->CLR0 = fireMaskClr;
 		HW::SWM->CTOUT_0 = -1;
 		HW::SWM->CTOUT_1 = -1;
-		count = 0;
+		fireEndTime = GetMilliseconds();
 	};
 }
 
@@ -471,6 +491,13 @@ void UpdateHardware()
 {
 	UpdateADC();
 	//UpdateCharge();
+
+	if ((GetMilliseconds() - fireEndTime) >= 1)
+	{
+		HW::GPIO->DIR0 |= FX1|FX2|FY1|FY2|TR1|CHARGE;	
+		HW::GPIO->CLR0 = FX1|FY2|TR1;					
+		HW::GPIO->SET0 = FX2|FY1|CHARGE;				
+	};
 
 	HW::ResetWDT();
 }

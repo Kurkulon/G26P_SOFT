@@ -49,11 +49,11 @@ inline bool IsSyncActive()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline u32 GetSyncTime()
-{
-	extern u32 syncTime;
-	return syncTime;
-}
+//inline u32 GetSyncTime()
+//{
+//	extern u32 syncTime;
+//	return syncTime;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

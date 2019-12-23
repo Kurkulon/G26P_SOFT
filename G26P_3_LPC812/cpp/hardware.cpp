@@ -248,9 +248,9 @@ static void InitFireXX()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*2;
-	SCT->MATCH_L[2] = 25*32; //335
-	SCT->MATCH_L[3] = 25*34; //345
-	SCT->MATCH_L[4] = 25*64;
+	SCT->MATCH_L[2] = 25*293; //335
+	SCT->MATCH_L[3] = 25*295; //345
+	SCT->MATCH_L[4] = 25*590;
 
 	SCT->OUTPUT = 2;
 	HW::SWM->CTOUT_0 = PIN_FX1; //17;
@@ -261,7 +261,7 @@ static void InitFireXX()
 	SCT->EVFLAG = 1<<3;
 	SCT->EVEN = 1<<3;
 
-	fireCount = reqFireCountXY;
+	fireCount = reqFireCount;
 	fireMaskClr = 0;
 
 //	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
@@ -290,7 +290,7 @@ static void InitFireYY()
 	SCT->EVFLAG = 1<<3;
 	SCT->EVEN = 1<<3;
 
-	fireCount = reqFireCountXY;
+	fireCount = reqFireCount;
 	fireMaskClr = 0;
 
 	//W::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
@@ -312,6 +312,7 @@ static __irq void SCT_Handler()
 
 		if (fireCount == 0)
 		{
+			HW::SCT->LIMIT_L = 0;
 			HW::SCT->HALT_L = 1<<4;
 			HW::SCT->EVFLAG = 1<<4;
 			HW::SCT->EVEN = 1<<4;
@@ -388,10 +389,10 @@ static void InitFire()
 	SCT->MATCH_L[4] = 25*566;
 
 	SCT->OUT[0].SET = 0x0002;
-	SCT->OUT[0].CLR = 0x0015;
+	SCT->OUT[0].CLR = 0x0005;
 
 	SCT->OUT[1].SET = 0x0008;
-	SCT->OUT[1].CLR = 0x0011;
+	SCT->OUT[1].CLR = 0x0001;
 
 //	SCT->OUTPUT |= 1;
 

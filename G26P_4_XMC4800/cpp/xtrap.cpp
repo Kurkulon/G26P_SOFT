@@ -148,18 +148,18 @@ void SendFragTrap(SmallTx *p)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static byte		indSmallTx = 0;
-static SmallTx	smallTxBuf[16];
-
 SmallTx* GetSmallTxBuffer()
 {
+	static byte		indSmallTx = 0;
+	static SmallTx	smallTxBuf[16];
 
 	SmallTx *p = &smallTxBuf[indSmallTx];
 
 	if (p->len == 0)
 	{
 		p->len = 1;
-		indSmallTx = (indSmallTx + 1) & 7;
+		indSmallTx += 1;
+		if (indSmallTx >= ArraySize(smallTxBuf)) indSmallTx = 0;
 		return p;
 	}
 	else
@@ -179,7 +179,9 @@ HugeTx* GetHugeTxBuffer()
 
 	if (p->len == 0)
 	{
-		indHugeTx = (indHugeTx + 1) & 7;
+		p->len = 1;
+		indHugeTx += 1;
+		if (indHugeTx >= ArraySize(hugeTxBuf)) indHugeTx = 0;
 		return p;
 	}
 	else

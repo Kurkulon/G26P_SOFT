@@ -24,6 +24,8 @@ static const u32 flashPages[] = {
 #include "G26P.LDR.H"
 };
 
+static bool runMainMode = false;
+
 u16 flashLen = 0;
 u16 flashCRC = 0;
 
@@ -1701,6 +1703,8 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
+	runMainMode = true;
+
 	return true;
 }
 
@@ -2606,13 +2610,16 @@ static void MainMode()
 	{
 		case 0:
 
-			req = CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 0);
-
-			if (req != 0)
+			if (runMainMode)
 			{
-				qrcv.Add(req);
+				req = CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 0);
 
-				mainModeState++;
+				if (req != 0)
+				{
+					qrcv.Add(req);
+
+					mainModeState++;
+				};
 			};
 
 			break;

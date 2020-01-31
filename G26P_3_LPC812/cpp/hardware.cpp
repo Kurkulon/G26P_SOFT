@@ -29,8 +29,8 @@
 
 u16 curHV = 0;
 u16 reqHV = 800;
-byte reqFireCount = 1;
-byte reqFireCountM = 3;
+//byte reqFireCount = 1;
+byte reqFireCountM = 1;
 byte reqFireCountXY = 1;
 
 static byte fireCount = 0;
@@ -261,7 +261,7 @@ static void InitFireXX()
 	SCT->EVFLAG = 1<<3;
 	SCT->EVEN = 1<<3;
 
-	fireCount = reqFireCount;
+	fireCount = reqFireCountXY;
 	fireMaskClr = 0;
 
 //	HW::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);
@@ -290,7 +290,7 @@ static void InitFireYY()
 	SCT->EVFLAG = 1<<3;
 	SCT->EVEN = 1<<3;
 
-	fireCount = reqFireCount;
+	fireCount = reqFireCountXY;
 	fireMaskClr = 0;
 
 	//W::SCT->CTRL_L = (HW::SCT->CTRL_L & ~(3<<1)) | (1<<3);

@@ -77,13 +77,14 @@ static u16 manReqWord = 0xAA00;
 static u16 manReqMask = 0xFF00;
 
 static u16 numDevice = 0;
-static u16 verDevice = 0x102;
+static u16 verDevice = 0x103;
 
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
 
 static u16 reqVoltage = 800;
-static byte reqFireCount = 2;
+static byte reqFireCountM = 3;
+static byte reqFireCountXY = 2;
 
 static u16 adcValue = 0;
 static U32u filtrValue;
@@ -1429,11 +1430,12 @@ static REQ* CreateTrmReq03()
 	wb.data = &req;
 	wb.len = sizeof(req);
 	
-	req[2].len			= req[1].len		= req[0].len		= sizeof(req[0]) - 1;
-	req[2].f			= req[1].f			= req[0].f			= 3;
-	req[2].fireCount	= req[1].fireCount	= req[0].fireCount	= reqFireCount;
-	req[2].hv			= req[1].hv			= req[0].hv			= reqVoltage;
-	req[2].crc			= req[1].crc		= req[0].crc		= GetCRC16(&req[0].f, sizeof(req[0])-3);
+	req[2].len			= req[1].len			= req[0].len			= sizeof(req[0]) - 1;
+	req[2].f			= req[1].f				= req[0].f				= 3;
+	req[2].fireCountM	= req[1].fireCountM		= req[0].fireCountM		= reqFireCountM;
+	req[2].fireCountXY	= req[1].fireCountXY	= req[0].fireCountXY	= reqFireCountXY;
+	req[2].hv			= req[1].hv				= req[0].hv				= reqVoltage;
+	req[2].crc			= req[1].crc			= req[0].crc			= GetCRC16(&req[0].f, sizeof(req[0])-3);
 
 	return &q;
 }
@@ -1650,6 +1652,10 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 
 	u16* p = manTrmData+1;
 
+	*(p++) =  reqVoltage;
+	*(p++) =  reqFireCountM;
+	*(p++) =  reqFireCountXY;
+
 	for (byte i = 0; i < 3; i++)
 	{
 		*(p++) =  gain[0][i];
@@ -1663,13 +1669,12 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 		*(p++) =  sampleTime[i];
 		*(p++) =  sampleLen[i];
 		*(p++) =  sampleDelay[i];
-		*(p++) =  reqVoltage - reqVoltage % 10 + reqFireCount;
 	};
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
 
 	mtb->data1 = manTrmData;
-	mtb->len1 = 1+12*3;
+	mtb->len1 = 1+3+11*3;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
@@ -1688,18 +1693,15 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	manTrmData[3] = voltage;
 	manTrmData[4] = numStations|(((u16)rcvStatus)<<8);
 	manTrmData[5] = resistValue;
-	manTrmData[6] = temperature;
+	manTrmData[6] = (cpuTemp+5)/10;
 	manTrmData[7] = -ax;
 	manTrmData[8] = az;
 	manTrmData[9] = -ay;
 	manTrmData[10] = at;
-	manTrmData[11] = gYaw % 360;
-	manTrmData[12] = gPitch % 360;
-	manTrmData[13] = gRoll % 360;
-	manTrmData[14] = gt;
+	manTrmData[11] = temperature;
  
 	mtb->data1 = manTrmData;
-	mtb->len1 = 15;
+	mtb->len1 = 12;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
@@ -2026,21 +2028,60 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
 
-	byte nf = ((data[1]>>4) & 3)-1;
+	byte nf = ((data[1]>>4) & 3);
 	byte nr = data[1] & 0xF;
 	byte st;
 	u16 sl;
 
-	if (nf > 2) return false;
+	if (nf > 3) return false;
 
-	if (nr < 8)
+	if (nf == 0)
 	{
-		gain[nr][nf] = data[2]&7;
+		switch(nr)
+		{
+			case 0x0:
+
+				reqVoltage = data[2];
+
+				if (reqVoltage > 950) { reqVoltage = 950; };
+
+				break;
+
+			case 0x1:
+
+				reqFireCountM = data[2];
+
+				if (reqFireCountM == 0) { reqFireCountM = 1; };
+
+				if (reqFireCountM > 5) { reqFireCountM = 5; };
+
+				break;
+
+			case 0x2:
+
+				reqFireCountXY = data[2];
+
+				if (reqFireCountXY == 0) { reqFireCountXY = 1; };
+
+				if (reqFireCountXY > 5) { reqFireCountXY = 5; };
+
+				break;
+
+			default:
+
+				return false;
+		};
+	}
+	else if (nr < 8)
+	{
+		gain[nr][nf-1] = data[2]&7;
 		
 		qrcv.Add(CreateRcvReq04(nr+1, gain[nr], 2));
 	}
 	else
 	{
+		nf -= 1;
+
 		switch(nr)
 		{
 			case 0x8:
@@ -2062,18 +2103,6 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 			case 0xA:
 
 				sampleDelay[nf] = data[2];
-
-				break;
-
-			case 0xB:
-
-				reqVoltage = data[2];
-
-				if (reqVoltage > 800) { reqVoltage = 800; };
-
-				reqFireCount = data[2] % 10;
-
-				if (reqFireCount == 0) { reqFireCount = 1; };
 
 				break;
 		};
@@ -3012,7 +3041,8 @@ static void InitTempCPU()
 
 static void UpdateTempCPU()
 {
-	cpuTemp = (((i32)HW::ADC->CDR[15] - 1787) * 11234) / 65536 + 27;
+	cpuTemp = (((i32)HW::ADC->CDR[15] - 1787) * 5617*5) / 16384 + 270;
+	//cpuTemp = (((i32)HW::ADC->CDR[15] - 1787) * 11234) / 65536 + 27;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3046,6 +3076,9 @@ static void LoadVars()
 		p.ReadArrayB(sampleTime, sizeof(sampleTime));
 		p.ReadArrayW(sampleLen, ArraySize(sampleLen));
 		p.ReadArrayW(sampleDelay, ArraySize(sampleDelay));
+		reqVoltage = p.ReadW();
+		reqFireCountM = p.ReadB();
+		reqFireCountXY = p.ReadB();
 		p.ReadW();
 
 		if (p.CRC.w == 0) { c = true; break; };
@@ -3073,6 +3106,10 @@ static void LoadVars()
 		sampleDelay[0] = 200;
 		sampleDelay[1] = 500;
 		sampleDelay[2] = 500;
+
+		reqVoltage = 800;
+		reqFireCountM = 3;
+		reqFireCountXY = 2;
 
 		savesCount = 2;
 	};
@@ -3120,6 +3157,9 @@ static void UpdateI2C()
 				p.WriteArrayB(sampleTime, sizeof(sampleTime));
 				p.WriteArrayW(sampleLen, ArraySize(sampleLen));
 				p.WriteArrayW(sampleDelay, ArraySize(sampleDelay));
+				p.WriteW(reqVoltage);
+				p.WriteB(reqFireCountM);
+				p.WriteB(reqFireCountXY);
 				p.WriteW(p.CRC.w);
 			};
 
@@ -3153,7 +3193,7 @@ static void UpdateI2C()
 
 			if (!twi.Update())
 			{
-				temperature = (dsc.rlen == 2) ? (((i16)ReverseWord(tempBuf) + 64) / 128) : cpuTemp;
+				temperature = (dsc.rlen == 2) ? (((i16)ReverseWord(tempBuf) * 5 + 32) / 64) : cpuTemp;
 
 				i = 0;
 			};

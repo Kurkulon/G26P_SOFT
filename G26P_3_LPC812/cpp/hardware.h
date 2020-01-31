@@ -33,10 +33,20 @@ inline void SetReqHV(u16 v)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void SetReqFireCount(byte v)
+inline void SetReqFireCountXY(byte v)
 {
-	extern byte reqFireCount;
-	reqFireCount = v;
+	extern byte reqFireCountXY;
+	if (v == 0) { v = 1; };
+	reqFireCountXY = v;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+inline void SetReqFireCountM(byte v)
+{
+	extern byte reqFireCountM;
+	if (v == 0) { v = 1; };
+	reqFireCountM = v;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

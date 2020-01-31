@@ -18,7 +18,7 @@ __packed struct Req
 	{
 		__packed struct  { byte n; word crc; } f1;  // старт оцифровки
 		__packed struct  { word crc; } f2;  // чтение вектора
-		__packed struct  { byte fireCount; u16 hv; word crc; } f3;  // установка шага и длины оцифровки вектора
+		__packed struct  { byte fireCountM; byte fireCountXY; u16 hv; word crc; } f3;  // установка шага и длины оцифровки вектора
 	};
 };
 
@@ -69,7 +69,8 @@ static bool Request03(Req *req, ComPort::WriteBuffer *wb)
 
 	static Rsp rsp;
 	
-	SetReqFireCount(req->f3.fireCount);
+	SetReqFireCountM(req->f3.fireCountM);
+	SetReqFireCountXY(req->f3.fireCountXY);
 	SetReqHV(req->f3.hv);
 
 	rsp.f = 3;

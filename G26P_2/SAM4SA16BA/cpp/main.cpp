@@ -3108,7 +3108,7 @@ static void LoadVars()
 		sampleDelay[2] = 500;
 
 		reqVoltage = 800;
-		reqFireCountM = 3;
+		reqFireCountM = 1;
 		reqFireCountXY = 2;
 
 		savesCount = 2;

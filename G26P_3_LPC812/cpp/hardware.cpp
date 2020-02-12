@@ -479,9 +479,9 @@ void InitHardware()
 
 	SYSCON->SYSAHBCLKCTRL |= HW::CLK::WWDT_M;
 	SYSCON->PDRUNCFG &= ~(1<<6); // WDTOSC_PD = 0
-	SYSCON->WDTOSCCTRL = (1<<5)|1; 
+	SYSCON->WDTOSCCTRL = (1<<5)|1; // 150 kHz 6.66us
 
-	WDT->TC = 0x1FF;
+	WDT->TC = 10 * 150000 / 1000; //0x1FF; 10ms
 	WDT->MOD = 0x3;
 	ResetWDT();
 }

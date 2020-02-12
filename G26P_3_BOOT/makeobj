@@ -9,14 +9,14 @@ version = Release
 
 curdir = $+ $(%cdrive):$(%cwd) $-
 hdir = cpp
-libdir = $(curdir)\libs
+libdir = $(curdir)\..\G26P_3_LPC812\libs
 bindir = $(%ARMCC50BIN)
 
 !ifeq version Debug
 
-debug_compiler_options = -O0 --debug
+debug_compiler_options = -O1 --debug -D_DEBUG
 debug_linker_options = 
-libsuffix=d
+libsuffix=r
 
 !else ifeq version Win32_Debug
 
@@ -26,7 +26,7 @@ libsuffix=Win32
 
 !else
 
-debug_compiler_options = -O3 -Otime --debug
+debug_compiler_options = -O3 -Ospace --debug
 debug_linker_options = 
 libsuffix=r
 
@@ -61,13 +61,13 @@ libname = $(libdir)\LPC812_$(libsuffix).a
 
 ##################################################################################################
 
-compiler_options = $(debug_compiler_options) --asm -g -c --cpu=CORTEX-M0 --thumb --diag_style=ide &
-	  --feedback "$(objdir)\G26P3LPC812.fed" --diag_suppress=68,368,1165,1299,3017 &
+compiler_options = $(debug_compiler_options) --asm --interleave -g -c --cpu=CORTEX-M0 --thumb --diag_style=ide &
+	  --feedback "$(objdir)\G26P_3_BOOT.fed" --diag_suppress=68,368,1165,1299,3017 &
 	 -D__MICROLIB --no_depend_system_headers --reduce_paths -I$(libdir)\cpp
 
 ##################################################################################################
 
-asm_options = --cpu CORTEX-M0 -g --apcs /interwork --xref --diag_style=ide --pd "__MICROLIB SETA 1" --pd "__PROGNAME__ SETS \"KAPCAP G26P.3(8AD73_PRD_UPR)-1.2\"" --cpreproc
+asm_options = --cpu CORTEX-M0 -g --apcs /interwork --xref --diag_style=ide --pd "__MICROLIB SETA 1" --pd "__PROGNAME__ SETS \"BOOT G26P.3(8AD73_PRD_UPR)-1.2\"" --cpreproc
 
 ##################################################################################################
 
@@ -80,7 +80,7 @@ link_options = --cpu CORTEX-M0 --bestdebug --strict --map --xref --callgraph --s
 
 ##################################################################################################
 
-$(objdir)\G26P3LPC812.axf : $(objdir)\startup_LPC8xx.o $(modules_obj)
+$(objdir)\G26P_3_BOOT.axf : $(objdir)\startup_LPC8xx.o $(modules_obj)
 	@echo Linking ...
 	@$(bindir)\armlink	$(link_options) &
 	--feedback "$^*.fed" &

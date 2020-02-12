@@ -24,7 +24,7 @@
 ;   <o> Stack Size (in Bytes) <0x0-0xFFFFFFFF:8>
 ; </h>
 
-Stack_Size      EQU     0x00000200
+Stack_Size      EQU     0x00000100
 
                 AREA    STACK, NOINIT, READWRITE, ALIGN=3
 Stack_Mem       SPACE   Stack_Size
@@ -116,14 +116,24 @@ __Vectors       DCD     __initial_sp              ; Top of Stack
                 DCB		__DATE__, "\n"
                 DCB		__TIME__, "\n"
 
-;                IF      :LNOT::DEF:NO_CRP
-;                AREA    |.ARM.__at_0x02FC|, CODE, READONLY
-;CRP_Key         DCD     0xFFFFFFFF
-;                ENDIF
+                IF      :LNOT::DEF:NO_CRP
+                AREA    |.ARM.__at_0x02FC|, CODE, READONLY
+CRP_Key         DCD     0xFFFFFFFF
+                ENDIF
 
 
-                AREA    |.text|, CODE, READONLY
+                ;AREA    |.text|, CODE, READONLY
 
+
+_MainAppStart	PROC
+				EXPORT	_MainAppStart
+				
+				LDR		R1, [R0]
+				MOV		SP, R1
+				LDR		R0, [R0, #4]
+				BX		R0
+
+                ENDP
 
 ; Reset Handler
 

@@ -117,6 +117,10 @@
       <TargetDriverDllRegistry>
         <SetRegEntry>
           <Number>0</Number>
+          <Key>DLGUARM</Key>
+        </SetRegEntry>
+        <SetRegEntry>
+          <Number>0</Number>
           <Key>UL2CM3</Key>
           <Name>UL2CM3(-S0 -C0 -P0 ) -FN2 -FC1000 -FD20000000 -FF0XMC4800_2048 -FF1XMC4800c_2048 -FL0100000 -FL1100000 -FS0C000000 -FS18000000 -FP0($$Device:XMC4800-F144x2048$Flash\XMC4800_2048.FLM) -FP1($$Device:XMC4800-F144x2048$Flash\XMC4800c_2048.FLM)</Name>
         </SetRegEntry>
@@ -133,7 +137,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=1392,230,1832,773,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=2682,267,2930,841,0)(1012=2055,165,2522,466,0)</Name>
+          <Name>(1010=1392,230,1832,773,0)(1007=2771,224,2948,485,0)(1008=-1,-1,-1,-1,0)(1009=2682,267,2930,841,0)(1012=2055,165,2522,466,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -141,24 +145,7 @@
           <Name></Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint>
-        <Bp>
-          <Number>0</Number>
-          <Type>0</Type>
-          <LineNumber>3114</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134235154</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\cpp\flash.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\\cpp/flash.cpp\3114</Expression>
-        </Bp>
-      </Breakpoint>
+      <Breakpoint/>
       <WatchWindow1>
         <Ww>
           <count>0</count>
@@ -234,16 +221,6 @@
           <count>14</count>
           <WinNumber>1</WinNumber>
           <ItemText>fps,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>15</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>\\G26P4XMC\cpp/test.cpp\fps</ItemText>
-        </Ww>
-        <Ww>
-          <count>16</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>com1._lli</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -409,12 +386,6 @@
       <pszMrule></pszMrule>
       <pSingCmds></pSingCmds>
       <pMultCmds></pMultCmds>
-      <SystemViewers>
-        <Entry>
-          <Name>System Viewer\EBU</Name>
-          <WinId>35905</WinId>
-        </Entry>
-      </SystemViewers>
     </TargetOption>
   </Target>
 

@@ -90,7 +90,7 @@ static bool ReqMan20(u16 *buf, u16 len, MTB* mtb)
 	Rsp &rsp = *((Rsp*)&manTrmData);
 
 	rsp.rw = (manReqWord & manReqMask) | 0x20;
-	rsp.device = 0xEC00;  
+	rsp.device = 0xAA00;  
 	rsp.session = FLASH_Session_Get();	  
 	rsp.rcvVec =  FLASH_Vectors_Recieved_Get();
 	rsp.rejVec = FLASH_Vectors_Rejected_Get();

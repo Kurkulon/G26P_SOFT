@@ -3827,7 +3827,7 @@ static void UpdateCom()
 					{
 						FLASH_WriteEnable();
 					}
-					else if (writeFlashEnabled && (nvv.f.size > 456789012))
+					else if (writeFlashEnabled && (nvv.f.size > 5000000000))
 					{	
 						FLASH_WriteDisable();
 						tm.Reset();

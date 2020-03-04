@@ -1584,7 +1584,7 @@ static void CreateMemReq02(R02 &r, bool crc)
 
 static void CreateMemReq_20()
 {
-	static u16 manTrmData[16];
+	static u16 manTrmData[13];
 
 	static ComPort::WriteBuffer wb;
 	
@@ -1606,19 +1606,16 @@ static void CreateMemReq_20()
 	manTrmData[3] = voltage;
 	manTrmData[4] = numStations|(((u16)rcvStatus)<<8);
 	manTrmData[5] = resistValue;
-	manTrmData[6] = temperature;
+	manTrmData[6] = (cpuTemp+5)/10;
 	manTrmData[7] = -ax;
 	manTrmData[8] = az;
 	manTrmData[9] = -ay;
 	manTrmData[10] = at;
-	manTrmData[11] = gYaw % 360;
-	manTrmData[12] = gPitch % 360;
-	manTrmData[13] = gRoll % 360;
-	manTrmData[14] = gt;
+	manTrmData[11] = temperature;
 
 	
 	wb.data = manTrmData;
-	wb.len = 30;
+	wb.len = sizeof(manTrmData)-2;
 
 	qmem.Add(&q);
 }

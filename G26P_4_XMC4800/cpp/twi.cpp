@@ -1,5 +1,6 @@
 #include "twi.h"
 #include "COM_DEF.h"
+#include "time.h"
 
 #pragma O3
 #pragma Otime
@@ -57,14 +58,14 @@
 
 #define __BRG (DCTQ(24))
 
-#define __DX0CR (DSEL(1) | INSW(0) | DFEN(0) | DSEN(1) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
-#define __DX1CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(1) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+#define __DX0CR (DSEL(1) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
+#define __DX1CR (DSEL(0) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
 #define __DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 #define __DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 
 #define __PCR (STIM)
 
-#define __FDR (STEP(0x3FF) | DM(1))
+#define __FDR ((1024 - (((MCK + 400000/2) / 400000 + 8) / 16)) | DM(1))
 
 #define __TCSR (TDEN(1)|TDSSM(1))
 
@@ -81,31 +82,9 @@ static u16 wrCount2 = 0;
 static byte adr = 0;
 static DSCTWI* dsc = 0;
 static DSCTWI* lastDsc = 0;
-static byte state = 0;
+//static byte state = 0;
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool Update_TWI()
-{
-	if (dsc == 0)
-	{ 
-		return false; 
-	}
-	//else if ((hw->SR & 1) != 0)
-	//{
-	//	hw->PDC.PTCR = 0x202;
-	//	dsc->ready = true;
-	//	dsc = 0;
-
-	//	return false;
-	//}
-	else
-	{
-		return true;
-	};
-
-}
-
+u32 twiErr = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -174,7 +153,7 @@ static __irq void Handler_TWI()
 		dsc->ready = true;
 		dsc->readedLen = dsc->rlen - rdCount;
 
-		state = 0;
+//		state = 0;
 		
 		DSCTWI *ndsc = dsc->next;
 
@@ -185,6 +164,7 @@ static __irq void Handler_TWI()
 
 			dsc->ready = false;
 			dsc->ack = false;
+			dsc->readedLen = 0;
 
 			wrPtr = (byte*)dsc->wdata;	
 			rdPtr = (byte*)dsc->rdata;	
@@ -232,6 +212,7 @@ bool Write_TWI(DSCTWI *d)
 
 	d->ready = false;
 	d->ack = false;
+	d->readedLen = 0;
 
 	wrPtr = (byte*)dsc->wdata;	
 	rdPtr = (byte*)dsc->rdata;	
@@ -249,9 +230,9 @@ bool Write_TWI(DSCTWI *d)
 
 	TWI->PSCR = ~0;//RIF|AIF|TBIF|ACK|NACK|PCR;
 
-	state = (wrCount == 0) ? 1 : 0;
+	//state = (wrCount == 0) ? 1 : 0;
 
-	TWI->TBUF[0] = TDF_MASTER_START | (dsc->adr << 1) | state;
+	TWI->TBUF[0] = TDF_MASTER_START | (dsc->adr << 1) | ((wrCount == 0) ? 1 : 0);
 
 	TWI->CCR |= RIEN|AIEN;
 	TWI->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
@@ -334,13 +315,13 @@ void Init_TWI()
 	HW::Peripheral_Enable(PID_USIC2);
 
  	P5->ModePin0(A1OD);
-	P5->ModePin2(A1OD);
+	P5->ModePin2(A1PP);
 
 	TWI->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
 
 	TWI->SCTR = __SCTR;
 
-	TWI->FDR = (1024 - (((MCK + 400000/2) / 400000 + 8) / 16)) | DM(1);
+	TWI->FDR = __FDR;
 	TWI->BRG = __BRG;
     
 	TWI->TCSR = __TCSR;
@@ -357,61 +338,106 @@ void Init_TWI()
 
 	TWI->PCR_IICMode = __PCR;
 
-  //XMC_I2C_CH_MasterStart(XMC_I2C1_CH0, IO_EXPANDER_ADDRESS, XMC_I2C_CH_CMD_WRITE);
-
-/*	while(TWI->TCSR & USIC_CH_TCSR_TDV_Msk);
-
-	TWI->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
-
-	TWI->TBUF[0] = 0xA0 | TDF_MASTER_START | 1;
-
-
-	while((TWI->PSR_IICMode & USIC_CH_PSR_IICMode_ACK_Msk) == 0U);
-  
-	TWI->PSCR = USIC_CH_PSR_IICMode_ACK_Msk;
-
-  //XMC_I2C_CH_MasterTransmit(XMC_I2C1_CH0, IO_DIR);
-
-	while(TWI->TCSR & USIC_CH_TCSR_TDV_Msk);
-
-	TWI->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
-
-	TWI->TBUF[0] = 0 | TDF_MASTER_RECEIVE_NACK;
-
-
-	while((TWI->PSR_IICMode & USIC_CH_PSR_IICMode_ACK_Msk) == 0U);
-  
-	TWI->PSCR = USIC_CH_PSR_IICMode_ACK_Msk;
-
-
- // XMC_I2C_CH_MasterTransmit(XMC_I2C1_CH0, 0xffU);
-
-
-	while(TWI->TCSR & USIC_CH_TCSR_TDV_Msk);
-
-	TWI->PSCR = USIC_CH_PSR_IICMode_TBIF_Msk;
-
-	TWI->TBUF[0] = 0xFF | TDF_MASTER_RECEIVE_NACK;
-
-
-	while((TWI->PSR_IICMode & USIC_CH_PSR_IICMode_ACK_Msk) == 0U);
-  
-	TWI->PSCR = USIC_CH_PSR_IICMode_ACK_Msk;
-*/
-
-
-
-
-
-
-	//VectorTableExt[USIC1_1_IRQn] = Handler0;
-	//CM4::NVIC->CLR_PR(USIC1_1_IRQn);
-	//CM4::NVIC->SET_ER(USIC1_1_IRQn);
-
-//	return true;
-
 	delay(1000);
+}
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void Update_TWI()
+{
+	using namespace HW;
+
+	static TM32 tm;
+
+//	HW::P5->BSET(7);
+
+	__disable_irq();
+
+	if (dsc != 0)
+	{
+		if (TWI->PSR_IICMode & (PCR|NACK|ACK|RIF|AIF))
+		{
+			tm.Reset();
+		}
+		else if (tm.Check(10))
+		{
+			HW::Peripheral_Disable(PID_USIC2);
+
+			twiErr++;
+
+ 			P5->ModePin0(A1OD);
+			P5->ModePin2(A1PP);
+
+			HW::Peripheral_Enable(PID_USIC2);
+
+			TWI->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+
+			TWI->SCTR = __SCTR;
+
+			TWI->FDR = __FDR;
+			TWI->BRG = __BRG;
+		    
+			TWI->TCSR = __TCSR;
+
+			TWI->PSCR = ~0;
+
+			TWI->CCR = 0;
+
+			TWI->DX0CR = __DX0CR;
+			TWI->DX1CR = __DX1CR;
+
+			TWI->CCR = __CCR;
+
+			TWI->PCR_IICMode = __PCR;
+
+			dsc->ready = true;
+			dsc->readedLen = dsc->rlen - rdCount;
+
+			DSCTWI *ndsc = dsc->next;
+
+			if (ndsc != 0)
+			{
+				dsc->next = 0;
+				dsc = ndsc;
+
+				dsc->ready = false;
+				dsc->ack = false;
+				dsc->readedLen = 0;
+
+				wrPtr = (byte*)dsc->wdata;	
+				rdPtr = (byte*)dsc->rdata;	
+				wrPtr2 = (byte*)dsc->wdata2;	
+				wrCount = dsc->wlen;
+				wrCount2 = dsc->wlen2;
+				rdCount = dsc->rlen;
+				adr = dsc->adr;
+
+				if (wrPtr2 == 0) wrCount2 = 0;
+
+				TWI->PSCR = ~0;//RIF|AIF|TBIF|ACK|NACK|PCR;
+
+				TWI->CCR |= RIEN|AIEN;
+				TWI->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
+
+				TWI->TBUF[0] = TDF_MASTER_START | (dsc->adr << 1) | ((wrCount == 0) ? 1 : 0);
+			}
+			else
+			{
+				TWI->CCR = __CCR;
+				TWI->PCR_IICMode = __PCR;
+
+				lastDsc = dsc = 0;
+			};
+		};
+	}
+	else
+	{
+		tm.Reset();
+	};
+	
+	__enable_irq();
+
+//	HW::P5->BCLR(7);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

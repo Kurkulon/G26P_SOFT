@@ -159,6 +159,8 @@ static void SaveVars();
 static bool loadVarsOk = false;
 static bool loadSessionsOk = false;
 
+static NVSI bbsi[128]; // Black box sessions info
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 const SessionInfo* GetLastSessionInfo()
@@ -2088,12 +2090,12 @@ static void ReadSpareNow(SpareArea *spare, FLADR *rd, bool crc)
 
 	CmdReadPage(rd->pg, rd->block, rd->page);
 
-	while(!NAND_BUSY());
-	while(NAND_BUSY());
+//	while(!NAND_BUSY());
+	while(NAND_BUSY()) { HW::WDT->Update(); };
 
 	NandReadData(spare, sizeof(*spare));
 
-	while (!CheckDataComplete());
+	while (!CheckDataComplete()) { HW::WDT->Update(); };
 
 	if (crc)
 	{
@@ -2109,12 +2111,12 @@ static void ReadDataNow(void *dst, u16 len, FLADR *rd)
 
 	CmdReadPage(rd->col, rd->block, rd->page);
 
-	while(!NAND_BUSY());
-	while(NAND_BUSY());
+//	while(!NAND_BUSY());
+	while(NAND_BUSY()) { HW::WDT->Update(); };
 
 	NandReadData(dst, len);
 
-	while (!CheckDataComplete());
+	while (!CheckDataComplete()) { HW::WDT->Update(); };
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2403,302 +2405,185 @@ static void InitSessions()
 //
 ////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static void SimpleBuildFileTable()
-//{
-//	FLADR rd(0, 0, 0, 0);
-//
-//	u32 bs;
-//	u32 be;
-//	u32 bm;
-//	u32 endBlock;
-//
-//	SpareArea spare;
-//
-//	byte state;
-//
-//	FileDsc curf;
-//	FileDsc prf;
-//	FileDsc lastf;
-//
-//	//rd.block = 1 << (nandSize.bitBlock-1);
-//	//rd.page = 0;
-//	//rd.chip = 0;
-//
-////	__breakpoint(0);
-//
-////	rd.SetRawBlock(-1);
+static void BlackBoxSessionsInit()
+{
+	FLADR rd(0, 0, 0, 0);
+
+	u32 bs;
+	u32 be;
+	u32 bm;
+	u32 endBlock;
+
+	SpareArea spare;
+
+	byte state;
+
+	FileDsc curf;
+	FileDsc prf;
+	FileDsc lastf;
+
+	//rd.block = 1 << (nandSize.bitBlock-1);
+	//rd.page = 0;
+	//rd.chip = 0;
+
+//	__breakpoint(0);
+
+	rd.SetRawBlock(~0);
 //	rd.SetRawPage(0xC0000);
 //	endBlock = rd.GetRawBlock();
-//
-//	bs = 0;
-//	be = endBlock;
-//	bm = (be+bs)/2;
-//
-//	rd.SetRawBlock(bm);
-//
-//	while (be > bs)// && bm < be && bm > bs)
-//	{
-//		ReadSpareNow(&spare, &rd, false);
-//
-//		if (spare.validBlock != 0xFFFF)
-//		{
-//			rd.NextBlock();
-//			bm = rd.GetRawBlock();
-//		}
-//		else if (spare.validPage != 0xFFFF)
-//		{
-//			rd.NextPage();
-//			bm = rd.GetRawBlock();
-//		}
-//		else
-//		{
-//			if (/*spare.lpn == -1 ||*/ spare.start == -1 || spare.fpn == -1 )
-//			{
-//				be = bm-1;
-//			}
-//			else
-//			{
-//				bs = bm;
-//			};
-//
-//			bm = (bs + be + 1) / 2;
-//
-//			rd.SetRawBlock(bm);
-//		};
-//	};
-//
-//	rd.SetRawBlock(bs);
-//
-//	ReadSpareNow(&spare, &rd, true);
-//
-//	if (bs >= endBlock || bm < bs)
-//	{
-//		// Флэха полностью заполнена
-//		
-//		flashFull = true;
-//
-//		Write::Init(0, 1, -1);
-//
-//		//wr.SetRawBlock(0);
-//
-//		//Write::spare.file = 1;
-//		//Write::spare.lpn = 0;
-//		//Write::spare.start = 0;
-//		//Write::spare.fpn = 0;	
-//		//Write::spare.prev = -1;
-//
-//		//Write::spare.vectorCount = 0;
-//
-//		//Write::spare.vecFstOff = -1;
-//		//Write::spare.vecFstLen = 0;
-//
-//		//Write::spare.vecLstOff = -1;
-//		//Write::spare.vecLstLen = 0;
-//
-//		//Write::wr_prev_pg = -1;
-//		//Write::wr_prev_col = 0;
-//
-//		//Write::spare.fbb = 0;		
-//		//Write::spare.fbp = 0;		
-//
-//		//Write::spare.chipMask = nandSize.mask;	
-//
-//	}
-//	else if (spare.validBlock != 0xFFFF || /*spare.lpn == -1 ||*/ spare.start == -1 || spare.fpn == -1)
-//	{
-//		// Флэха пустая
-//
-//		flashEmpty = true;
-//
-//		wr.SetRawBlock(0);
-//
-//		Write::Init(0, 1, -1);
-//
-//		//Write::spare.file = 1;
-//		//Write::spare.lpn = 0;
-//		//Write::spare.start = 0;
-//		//Write::spare.fpn = 0;	
-//		//Write::spare.prev = -1;
-//
-//		//Write::spare.vectorCount = 0;
-//
-//		//Write::spare.vecFstOff = -1;
-//		//Write::spare.vecFstLen = 0;
-//
-//		//Write::spare.vecLstOff = -1;
-//		//Write::spare.vecLstLen = 0;
-//
-//		//Write::wr_prev_pg = -1;
-//		//Write::wr_prev_col = 0;
-//
-//		//Write::spare.fbb = 0;		
-//		//Write::spare.fbp = 0;		
-//
-//		//Write::spare.chipMask = nandSize.mask;	
-//		
-//		Write::eraseBlock.Start(wr, true, false);
-//		while (Write::eraseBlock.Update());
-//
-//		adrLastVector = -1;
-//
-//		return;
-//	}
-//	else if (spare.crc == 0)
-//	{
-//		// Заебошить лук
-//
-//		//wr.SetRawBlock(bs);
-//		//wr.NextBlock();
-//
-//		Write::Init(bs+1, 1, -1);
-//
-//		//Write::spare.file = spare.file + 1;  
-//		//Write::spare.lpn = wr.GetRawPage();
-//
-//		//Write::spare.prev = spare.start;		
-//
-//		//Write::spare.start = wr.GetRawPage();		
-//		//Write::spare.fpn = 0;	
-//
-//		//Write::spare.vectorCount = 0;
-//
-//		//Write::spare.vecFstOff = -1;
-//		//Write::spare.vecFstLen = 0;
-//
-//		//Write::spare.vecLstOff = -1;
-//		//Write::spare.vecLstLen = 0;
-//
-//		//Write::wr_prev_pg = -1;
-//		//Write::wr_prev_col = 0;
-//
-//		//Write::spare.fbb = 0;		
-//		//Write::spare.fbp = 0;		
-//
-//		//Write::spare.chipMask = nandSize.mask;
-//
-//		Write::eraseBlock.Start(wr, true, false);
-//		while (Write::eraseBlock.Update());
-//
-//
-//
-//		//Write::spare.file = spare.file;
-//		//Write::spare.start = spare.start;
-//		//Write::spare.fpn = spare.fpn;	
-//		//Write::spare.prev = spare.prev;
-//	}
-//	else
-//	{
-//
-//	};
-//
-//	// Найти последнюю записанную страницу в блоке
-//
-//	lastSessionBlock = bs;
-//
-//	bs = rd.GetRawPage();
-//	be = bs + (1<<NAND_PAGE_BITS) - 1;
-//
-//	bm = (be+bs)/2;
-//
-//	rd.SetRawPage(bm);
-//
-//	while (be > bs)
-//	{
-//		ReadSpareNow(&spare, &rd, false);
-//
-//		if (spare.validPage != 0xFFFF)
-//		{
-//			rd.NextPage();
-//			bm = rd.GetRawPage();
-//		}
-//		else
-//		{
-//			if (/*spare.lpn == -1 ||*/ spare.start == -1 || spare.fpn == -1 )
-//			{
-//				be = bm-1;
-//			}
-//			else
-//			{
-//				bs = bm;
-//			};
-//
-//			bm = (bs + be + 1) / 2;
-//
-//			rd.SetRawPage(bm);
-//		};
-//	};
-//
-//	lastSessionPage = bs;
-//
-//	rd.SetRawPage(bs);
-//
-//	ReadSpareNow(&spare, &rd, true);
-//
-//	while (spare.vecLstOff == 0xFFFF || spare.crc != 0)
-//	{
-//		rd.PrevPage();
-//		
-//		ReadSpareNow(&spare, &rd, true);
-//	}
-//
-//	adrLastVector = rd.GetRawAdr() + spare.vecLstOff;
-//
-//
-//
-//	static VecData::Hdr hdr;
-//
-//	rd.raw = adrLastVector;
-//
-//	ReadSpareNow(&spare, &rd, true);
-//
-//	lastSessionInfo.size = (u64)lastSessionPage << NAND_COL_BITS;
-//
-//	lastSessionInfo.last_adress = adrLastVector;
-//
-//	ReadVecHdrNow(&hdr, &rd);
-//
-//	if (hdr.crc == 0)
-//	{
-//		lastSessionInfo.stop_rtc = hdr.rtc;
-//	}
-//	else
-//	{
-//
-//	};
-//
-//	rd.SetRawPage(0);
-//
-//	ReadSpareNow(&spare, &rd, true);
-//
-//	while (spare.validPage != 0xFFFF || spare.validBlock != 0xFFFF)
-//	{
-//		if (spare.validBlock != 0xFFFF)
-//		{
-//			rd.NextBlock();
-//			ReadSpareNow(&spare, &rd, true);
-//		}
-//		else if (spare.validPage != 0xFFFF)
-//		{
-//			rd.NextPage();
-//			ReadSpareNow(&spare, &rd, true);
-//		};
-//	};
-//
-//	lastSessionInfo.session = spare.file;
-//	lastSessionInfo.flags = 0;
-//
-//	ReadVecHdrNow(&hdr, &rd);
-//
-//	if (hdr.crc == 0)
-//	{
-//		lastSessionInfo.start_rtc = hdr.rtc;
-//	}
-//	else
-//	{
-//
-//	};
-//
-//}
+
+	bs = 0;
+	be = rd.GetRawBlock();
+	bm = (be+bs)/2;
+
+	rd.SetRawBlock(bm);
+
+	while (be > bs)// && bm < be && bm > bs)
+	{
+		ReadSpareNow(&spare, &rd, false);
+
+		if (spare.validBlock != 0xFFFF)
+		{
+			rd.NextBlock();
+			bm = rd.GetRawBlock();
+		}
+		else if (spare.validPage != 0xFFFF)
+		{
+			rd.NextPage();
+			bm = rd.GetRawBlock();
+		}
+		else
+		{
+			if (spare.start == ~0 || spare.fpn == ~0  || spare.rawPage == ~0 )
+			{
+				be = bm-1;
+			}
+			else
+			{
+				bs = bm;
+			};
+
+			bm = (bs + be) / 2;
+
+			rd.SetRawBlock(bm);
+		};
+	};
+
+	rd.SetRawBlock(bs);
+
+	ReadSpareNow(&spare, &rd, true);
+
+
+	// Найти последнюю записанную страницу в блоке
+
+	lastSessionBlock = bs;
+
+	bs = rd.GetRawPage();
+	be = bs + (1<<NAND_PAGE_BITS) - 1;
+
+	bm = (be+bs)/2;
+
+	rd.SetRawPage(bm);
+
+	while (be > bs)
+	{
+		ReadSpareNow(&spare, &rd, false);
+
+		if (spare.validPage != 0xFFFF)
+		{
+			rd.NextPage();
+			bm = rd.GetRawPage();
+		}
+		else
+		{
+			if (/*spare.lpn == -1 ||*/ spare.start == -1 || spare.fpn == -1 )
+			{
+				be = bm-1;
+			}
+			else
+			{
+				bs = bm;
+			};
+
+			bm = (bs + be + 1) / 2;
+
+			rd.SetRawPage(bm);
+		};
+	};
+
+	lastSessionPage = bs;
+
+	rd.SetRawPage(bs);
+
+	ReadSpareNow(&spare, &rd, true);
+
+	while (spare.vecLstOff == 0xFFFF || spare.crc != 0)
+	{
+		rd.PrevPage();
+		
+		ReadSpareNow(&spare, &rd, true);
+	}
+
+	lastSessionPage = rd.GetRawPage();
+
+	adrLastVector = rd.GetRawAdr() + spare.vecLstOff;
+
+
+
+	//static VecData::Hdr hdr;
+
+	//rd.raw = adrLastVector;
+
+	//ReadSpareNow(&spare, &rd, true);
+
+	//lastSessionInfo.size = (u64)lastSessionPage << NAND_COL_BITS;
+
+	//lastSessionInfo.last_adress = adrLastVector;
+
+	//ReadVecHdrNow(&hdr, &rd);
+
+	//if (hdr.crc == 0)
+	//{
+	//	lastSessionInfo.stop_rtc = hdr.rtc;
+	//}
+	//else
+	//{
+
+	//};
+
+	//rd.SetRawPage(0);
+
+	//ReadSpareNow(&spare, &rd, true);
+
+	//while (spare.validPage != 0xFFFF || spare.validBlock != 0xFFFF)
+	//{
+	//	if (spare.validBlock != 0xFFFF)
+	//	{
+	//		rd.NextBlock();
+	//		ReadSpareNow(&spare, &rd, true);
+	//	}
+	//	else if (spare.validPage != 0xFFFF)
+	//	{
+	//		rd.NextPage();
+	//		ReadSpareNow(&spare, &rd, true);
+	//	};
+	//};
+
+	//lastSessionInfo.session = spare.file;
+	//lastSessionInfo.flags = 0;
+
+	//ReadVecHdrNow(&hdr, &rd);
+
+	//if (hdr.crc == 0)
+	//{
+	//	lastSessionInfo.start_rtc = hdr.rtc;
+	//}
+	//else
+	//{
+
+	//};
+
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3990,7 +3875,11 @@ static void LoadVars()
 
 	if (AddRequest_TWI(&dsc))
 	{
-		while (!dsc.ready);
+		while (!dsc.ready)
+		{ 
+			Update_TWI();
+			HW::WDT->Update(); 
+		};
 	};
 
 //	bool c = false;
@@ -4040,41 +3929,44 @@ static void SaveVars()
 
 	static byte i = 0;
 	static u16 adr;
-//	static RTM32 tm;
+	static TM32 tm;
 
 	switch (i)
 	{
 		case 0:
 
-			if (savesCount > 0)
+			if (tm.Check(200))
 			{
-				savesCount--;
-				i++;
-			}
-			else if (savesSessionsCount > 0)
-			{
-				savesSessionsCount--;
-				i = 3;
-			}
-			else if (eraseSessionsCount > 0)
-			{
-				eraseSessionsCount--;
-
-				for (u16 n = 0; n < ArraySize(nvsi); n++)
+				if (savesCount > 0)
 				{
-					nvsi[n].f.size = 0;
-					nvsi[n].crc = 0;
+					savesCount--;
+					i++;
+				}
+				else if (savesSessionsCount > 0)
+				{
+					savesSessionsCount--;
+					i = 3;
+				}
+				else if (eraseSessionsCount > 0)
+				{
+					eraseSessionsCount--;
+
+					for (u16 n = 0; n < ArraySize(nvsi); n++)
+					{
+						nvsi[n].f.size = 0;
+						nvsi[n].crc = 0;
+					};
+
+					nvv.f.session += 1;
+					nvv.f.size = 0;
+					//nvv.f.startPage = 0;
+					//nvv.f.lastPage = 0;
+					nvv.index = 0;
+
+					savesCount = 1;
+
+					i = 4;
 				};
-
-				nvv.f.session += 1;
-				nvv.f.size = 0;
-				//nvv.f.startPage = 0;
-				//nvv.f.lastPage = 0;
-				nvv.index = 0;
-
-				savesCount = 1;
-
-				i = 4;
 			};
 
 			break;
@@ -4185,7 +4077,11 @@ static void LoadSessions()
 
 		if (AddRequest_TWI(&dsc))
 		{
-			while (!dsc.ready);
+			while (!dsc.ready)
+			{ 
+				Update_TWI();
+				HW::WDT->Update(); 
+			};
 		};
 
 		if (GetCRC16(&si, sizeof(si)) != 0)
@@ -4214,7 +4110,11 @@ static void LoadSessions()
 
 			AddRequest_TWI(&dsc);
 
-			while (!dsc.ready);
+			while (!dsc.ready)
+			{ 
+				Update_TWI();
+				HW::WDT->Update(); 
+			};
 		};
 	};
 }
@@ -4234,6 +4134,8 @@ void FLASH_Init()
 	//FLASH_Reset();
 
 	InitCom();
+
+//	BlackBoxSessionsInit();
 
 	InitSessions();
 }

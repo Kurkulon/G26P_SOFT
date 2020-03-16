@@ -988,6 +988,9 @@ namespace T_HW
 	  __IO u32  WUB;                               /*!< (@ 0x50008014) WDT Window Upper Bound Register                        */
 	  __I  u32  WDTSTS;                            /*!< (@ 0x50008018) WDT Status Register                                    */
 	  __O  u32  WDTCLR;                            /*!< (@ 0x5000801C) WDT Clear Register                                     */
+	
+	  void Update() { if (TIM > WLB) SRV = 0xABADCAFE; }
+
 	} WDT_GLOBAL_Type;
 
 
@@ -19778,6 +19781,7 @@ namespace HW
 	inline void EBU_Enable(u32 div) { HW::SCU_CLK->EBUCLKCR = div; SCU_CLK->CLKSET = SCU_CLK_CLKSET_EBUCEN_Msk;	SCU_CLK->ClockEnable(PID_EBU);	SCU_RESET->ResetDisable(PID_EBU);	}
 	inline void WDT_Enable()		{ SCU_RESET->ResetEnable(PID_WDT); SCU_CLK->CLKSET = SCU_CLK_CLKSET_WDTCEN_Msk; SCU_CLK->ClockEnable(PID_WDT); SCU_RESET->ResetDisable(PID_WDT);	}
 	inline void ResetWDT()			{ WDT->SRV = 0xABADCAFE; }
+
 
 };
 

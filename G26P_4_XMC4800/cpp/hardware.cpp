@@ -809,7 +809,10 @@ static void InitClock()
 
 	AddRequest_TWI(&dsc);
 
-	while (!dsc.ready);
+	while (!dsc.ready)
+	{ 
+		Update_TWI();
+	};
 
 	t.sec	= (buf[0]&0xF) + ((buf[0]>>4)*10);
 	t.min	= (buf[1]&0xF) + ((buf[1]>>4)*10);
@@ -837,7 +840,7 @@ static void WDT_Init()
 	HW::WDT->CTR = WDT_CTR_ENB_Msk;
 	#endif
 
-//	HW::ResetWDT();
+	//HW::ResetWDT();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -24,7 +24,7 @@ extern void Init_TWI();
 
 //extern bool Write_TWI(DSCTWI *d);
 //inline bool Read_TWI(DSCTWI *d) { return Write_TWI(d); }
-//extern bool Update_TWI();
+extern void Update_TWI();
 extern bool AddRequest_TWI(DSCTWI *d);
 
 #endif // TWI_H__24_04_13__11_25

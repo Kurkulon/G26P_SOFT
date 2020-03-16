@@ -366,13 +366,90 @@ static void UpdateTemp()
 
 	switch (i)
 	{
+		//case 0:
+
+		//	if (tm.Check(100))
+		//	{
+		//		buf[0] = 0x11;
+
+		//		dsc.adr = 0x68;
+		//		dsc.wdata = buf;
+		//		dsc.wlen = 1;
+		//		dsc.rdata = &rbuf;
+		//		dsc.rlen = 2;
+		//		dsc.wdata2 = 0;
+		//		dsc.wlen2 = 0;
+
+		//		if (AddRequest_TWI(&dsc))
+		//		{
+		//			i++;
+		//		};
+		//	};
+
+		//	break;
+
+		//case 1:
+
+		//	if (dsc.ready)
+		//	{
+		//		if (dsc.ack && dsc.readedLen == dsc.rlen)
+		//		{
+		//			i16 t = ((i16)ReverseWord(rbuf) + 128) / 256;
+
+		//			if (t < (-60))
+		//			{
+		//				t += 256;
+		//			};
+
+		//			tempClock = t;
+		//		}
+		//		else
+		//		{
+		//			tempClock = -273;
+		//		};
+
+		//		i++;
+		//	};
+
+		//	break;
+
+		//case 2:
+
+		//	buf[0] = 0x0E;
+		//	buf[1] = 0x20;
+		//	buf[2] = 0xC8;
+
+		//	dsc2.adr = 0x68;
+		//	dsc2.wdata = buf;
+		//	dsc2.wlen = 3;
+		//	dsc2.rdata = 0;
+		//	dsc2.rlen = 0;
+		//	dsc2.wdata2 = 0;
+		//	dsc2.wlen2 = 0;
+
+		//	if (AddRequest_TWI(&dsc2))
+		//	{
+		//		i++;
+		//	};
+
+		//	break;
+
+		//case 3:
+
+		//	if (dsc2.ready)
+		//	{
+		//		i++;
+		//	};
+
+		//	break;
+
 		case 0:
 
 			if (tm.Check(100))
 			{
-				buf[0] = 0x11;
+				buf[0] = 0;
 
-				dsc.adr = 0x68;
+				dsc.adr = 0x49;
 				dsc.wdata = buf;
 				dsc.wlen = 1;
 				dsc.rdata = &rbuf;
@@ -394,80 +471,6 @@ static void UpdateTemp()
 			{
 				if (dsc.ack && dsc.readedLen == dsc.rlen)
 				{
-					i16 t = ((i16)ReverseWord(rbuf) + 128) / 256;
-
-					if (t < (-60))
-					{
-						t += 256;
-					};
-
-					tempClock = t;
-				}
-				else
-				{
-					tempClock = -273;
-				};
-
-				i++;
-			};
-
-			break;
-
-		case 2:
-
-			buf[0] = 0x0E;
-			buf[1] = 0x20;
-			buf[2] = 0xC8;
-
-			dsc2.adr = 0x68;
-			dsc2.wdata = buf;
-			dsc2.wlen = 3;
-			dsc2.rdata = 0;
-			dsc2.rlen = 0;
-			dsc2.wdata2 = 0;
-			dsc2.wlen2 = 0;
-
-			if (AddRequest_TWI(&dsc2))
-			{
-				i++;
-			};
-
-			break;
-
-		case 3:
-
-			if (dsc2.ready)
-			{
-				i++;
-			};
-
-			break;
-
-		case 4:
-
-			buf[0] = 0;
-
-			dsc.adr = 0x49;
-			dsc.wdata = buf;
-			dsc.wlen = 1;
-			dsc.rdata = &rbuf;
-			dsc.rlen = 2;
-			dsc.wdata2 = 0;
-			dsc.wlen2 = 0;
-
-			if (AddRequest_TWI(&dsc))
-			{
-				i++;
-			};
-
-			break;
-
-		case 5:
-
-			if (dsc.ready)
-			{
-				if (dsc.ack && dsc.readedLen == dsc.rlen)
-				{
 					temp = ((i16)ReverseWord(rbuf) + 64) / 128;
 				}
 				else
@@ -482,7 +485,7 @@ static void UpdateTemp()
 
 			break;
 
-		case 6:
+		case 2:
 
 			if (HW::SCU_GENERAL->DTSSTAT & SCU_GENERAL_DTSSTAT_RDY_Msk)
 			{
@@ -499,7 +502,7 @@ static void UpdateTemp()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateMisc()
+static void UpdateIdle()
 {
 	static byte i = 0;
 
@@ -511,8 +514,28 @@ static void UpdateMisc()
 		CALL( UpdateMan();		);
 		CALL( UpdateTemp();		);
 		CALL( FLASH_Update();	);
-		CALL( UpdateEMAC();	);
+		CALL( Update_TWI();		);
 		CALL( UpdateTraps();	);
+	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateMisc()
+{
+	static byte i = 0;
+
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( UpdateIdle();		);
+		CALL( UpdateEMAC();	);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;

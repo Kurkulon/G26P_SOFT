@@ -145,7 +145,72 @@
           <Name></Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint/>
+      <Breakpoint>
+        <Bp>
+          <Number>0</Number>
+          <Type>0</Type>
+          <LineNumber>2431</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134224628</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\cpp\flash.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P4XMC\cpp/flash.cpp\2431</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>2472</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134224768</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\cpp\flash.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P4XMC\cpp/flash.cpp\2472</Expression>
+        </Bp>
+        <Bp>
+          <Number>2</Number>
+          <Type>0</Type>
+          <LineNumber>2463</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134224750</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\cpp\flash.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P4XMC\cpp/flash.cpp\2463</Expression>
+        </Bp>
+        <Bp>
+          <Number>3</Number>
+          <Type>0</Type>
+          <LineNumber>2457</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134224728</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800\cpp\flash.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P4XMC\cpp/flash.cpp\2457</Expression>
+        </Bp>
+      </Breakpoint>
       <WatchWindow1>
         <Ww>
           <count>0</count>
@@ -221,6 +286,26 @@
           <count>14</count>
           <WinNumber>1</WinNumber>
           <ItemText>fps,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>15</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>wrPtr</ItemText>
+        </Ww>
+        <Ww>
+          <count>16</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>wrCount</ItemText>
+        </Ww>
+        <Ww>
+          <count>17</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>rdPtr</ItemText>
+        </Ww>
+        <Ww>
+          <count>18</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>rdCount</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -386,6 +471,16 @@
       <pszMrule></pszMrule>
       <pSingCmds></pSingCmds>
       <pMultCmds></pMultCmds>
+      <SystemViewers>
+        <Entry>
+          <Name>System Viewer\USIC2_CH0</Name>
+          <WinId>35905</WinId>
+        </Entry>
+        <Entry>
+          <Name>System Viewer\WDT</Name>
+          <WinId>35904</WinId>
+        </Entry>
+      </SystemViewers>
     </TargetOption>
   </Target>
 

@@ -910,6 +910,8 @@ static bool UpdateSendVector()
 			{
 				if (flrb.len == 0 || flrb.hdr.session != ses)
 				{
+					t->len = 0;
+
 					TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_VECTOR_READY);
 
 					stop = false;

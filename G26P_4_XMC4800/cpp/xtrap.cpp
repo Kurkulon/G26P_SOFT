@@ -158,14 +158,17 @@ SmallTx* GetSmallTxBuffer()
 	if (p->len == 0)
 	{
 		p->len = 1;
-		indSmallTx += 1;
-		if (indSmallTx >= ArraySize(smallTxBuf)) indSmallTx = 0;
-		return p;
 	}
 	else
 	{
-		return 0;
+		p = 0;
 	};
+
+	indSmallTx += 1;
+
+	if (indSmallTx >= ArraySize(smallTxBuf)) indSmallTx = 0;
+
+	return p;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -180,14 +183,17 @@ HugeTx* GetHugeTxBuffer()
 	if (p->len == 0)
 	{
 		p->len = 1;
-		indHugeTx += 1;
-		if (indHugeTx >= ArraySize(hugeTxBuf)) indHugeTx = 0;
-		return p;
 	}
 	else
 	{
-		return 0;
+		p = 0;
 	};
+
+	indHugeTx += 1;
+
+	if (indHugeTx >= ArraySize(hugeTxBuf)) indHugeTx = 0;
+
+	return p;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

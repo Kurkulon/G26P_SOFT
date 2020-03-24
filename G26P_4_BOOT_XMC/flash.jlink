@@ -1,0 +1,3 @@
+speed 4000
+loadbin obj\G26P_4_BOOT_XMC.bin,0xC000000
+exit

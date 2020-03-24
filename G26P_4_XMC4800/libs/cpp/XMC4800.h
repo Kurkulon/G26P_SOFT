@@ -989,7 +989,7 @@ namespace T_HW
 	  __I  u32  WDTSTS;                            /*!< (@ 0x50008018) WDT Status Register                                    */
 	  __O  u32  WDTCLR;                            /*!< (@ 0x5000801C) WDT Clear Register                                     */
 	
-	  void Update() { if (TIM > WLB) SRV = 0xABADCAFE; }
+	  __forceinline void Update() { if (TIM > WLB) SRV = 0xABADCAFE; }
 
 	} WDT_GLOBAL_Type;
 
@@ -1065,9 +1065,9 @@ namespace T_HW
 	  //__O  u32  CGATSET3;                          /*!< (@ 0x50004668) Peripheral 3 Clock Gating Set                          */
 	  //__O  u32  CGATCLR3;                          /*!< (@ 0x5000466C) Peripheral 3 Clock Gating Clear                        */
 	
-	  bool ClockStatus(u32 id) { return (CGAT[id/32].STAT & (1<<(id&31))) == 0; }
-	  void ClockEnable(u32 id) { CGAT[id/32].CLR = (1<<(id&31)); } 
-	  void ClockDisable(u32 id) { CGAT[id/32].SET = (1<<(id&31)); } 
+	  __forceinline bool ClockStatus(u32 id) { return (CGAT[id/32].STAT & (1<<(id&31))) == 0; }
+	  __forceinline void ClockEnable(u32 id) { CGAT[id/32].CLR = (1<<(id&31)); } 
+	  __forceinline void ClockDisable(u32 id) { CGAT[id/32].SET = (1<<(id&31)); } 
 
 
 	} SCU_CLK_Type;
@@ -1327,9 +1327,9 @@ namespace T_HW
 	  //__O  u32  PRSET3;                            /*!< (@ 0x50004434) RCU Peripheral 3 Reset Set                             */
 	  //__O  u32  PRCLR3;                            /*!< (@ 0x50004438) RCU Peripheral 3 Reset Clear                           */
 
-	  bool ResetStatus(u32 id) { return (PR[id/32].STAT & (1<<(id&31))) != 0; }
-	  void ResetEnable(u32 id) { PR[id/32].SET = (1<<(id&31)); } 
-	  void ResetDisable(u32 id) { PR[id/32].CLR = (1<<(id&31)); } 
+	  __forceinline bool ResetStatus(u32 id) { return (PR[id/32].STAT & (1<<(id&31))) != 0; }
+	  __forceinline void ResetEnable(u32 id) { PR[id/32].SET = (1<<(id&31)); } 
+	  __forceinline void ResetDisable(u32 id) { PR[id/32].CLR = (1<<(id&31)); } 
 
 	} SCU_RESET_Type;
 
@@ -2980,28 +2980,28 @@ namespace T_HW
 			};
 		};
 
-		void SET(u16 m) { OMR = m; }
-		void CLR(u16 m) { OMR = m << 16; }
-		void NOT(u16 m) { OMR = m | (m << 16); }
-		void WBIT(u16 m, bool c) { if (c) SET(m); else CLR(m); }
-		void BSET(u16 b) { OMR = 1 << b; }
-		void BCLR(u16 b) { OMR = 1 << (b+16); }
-		void BTGL(u16 b) { OMR = (1|(1<<16)) << b; }
+		__forceinline void SET(u16 m) { OMR = m; }
+		__forceinline void CLR(u16 m) { OMR = m << 16; }
+		__forceinline void NOT(u16 m) { OMR = m | (m << 16); }
+		__forceinline void WBIT(u16 m, bool c) { if (c) SET(m); else CLR(m); }
+		__forceinline void BSET(u16 b) { OMR = 1 << b; }
+		__forceinline void BCLR(u16 b) { OMR = 1 << (b+16); }
+		__forceinline void BTGL(u16 b) { OMR = (1|(1<<16)) << b; }
 
-		bool TBSET(u16 b) { return IN & (1<<b); }
-		bool TBCLR(u16 b) { return (IN & (1<<b)) == 0; }
+		__forceinline bool TBSET(u16 b) { return IN & (1<<b); }
+		__forceinline bool TBCLR(u16 b) { return (IN & (1<<b)) == 0; }
 
-		void PIOF0(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR0 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[0] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
-		void PIOF4(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR4 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[1] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
-		void PIOF8(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR8 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[2] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
-		void PIOF12(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR12 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[3] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
+		__forceinline void PIOF0(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR0 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[0] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
+		__forceinline void PIOF4(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR4 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[1] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
+		__forceinline void PIOF8(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR8 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[2] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
+		__forceinline void PIOF12(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR12 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[3] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
 
-		inline void DriverMode0(byte m0=7, byte m1=7, byte m2=7, byte m3=7, byte m4=7, byte m5=7, byte m6=7, byte m7=7)
+		__forceinline void DriverMode0(byte m0=7, byte m1=7, byte m2=7, byte m3=7, byte m4=7, byte m5=7, byte m6=7, byte m7=7)
 		{
 			PDR0 = (m0&7)|((m1&7)<<4)|((m2&7)<<8)|((m3&7)<<12)|((m4&7)<<16)|((m5&7)<<20)|((m6&7)<<24)|((m7&7)<<28);
 		};
 
-		void DriverMode8(byte m0=7, byte m1=7, byte m2=7, byte m3=7, byte m4=7, byte m5=7, byte m6=7, byte m7=7)
+		__forceinline void DriverMode8(byte m0=7, byte m1=7, byte m2=7, byte m3=7, byte m4=7, byte m5=7, byte m6=7, byte m7=7)
 		{
 			PDR1 = (m0&7)|((m1&7)<<4)|((m2&7)<<8)|((m3&7)<<12)|((m4&7)<<16)|((m5&7)<<20)|((m6&7)<<24)|((m7&7)<<28);
 		};
@@ -3010,22 +3010,22 @@ namespace T_HW
 
 //		void ModePin(byte pin, byte f, byte driver=7) { PC0[pin] = f<<3; byte sh = pin*2; HWSEL = (HWSEL & ~(3<<sh)) | (((f>>5)&3)<<sh); Driver(pin, driver);	}
 
-		void ModePin0(byte f, byte driver=7) { PC0[0] = f<<3; 	HW0	= 	f>>5; /*Driver(0, driver); */	}
-		void ModePin1(byte f, byte driver=7) { PC0[1] = f<<3; 	HW1	= 	f>>5; /*Driver(1, driver); */	}
-		void ModePin2(byte f, byte driver=7) { PC0[2] = f<<3; 	HW2	= 	f>>5; /*Driver(2, driver); */	}
-		void ModePin3(byte f, byte driver=7) { PC0[3] = f<<3; 	HW3	= 	f>>5; /*Driver(3, driver); */	}
-		void ModePin4(byte f, byte driver=7) { PC4[0] = f<<3; 	HW4	= 	f>>5; /*Driver(4, driver); */	}
-		void ModePin5(byte f, byte driver=7) { PC4[1] = f<<3; 	HW5	= 	f>>5; /*Driver(5, driver); */	}
-		void ModePin6(byte f, byte driver=7) { PC4[2] = f<<3; 	HW6	= 	f>>5; /*Driver(6, driver); */	}
-		void ModePin7(byte f, byte driver=7) { PC4[3] = f<<3; 	HW7	= 	f>>5; /*Driver(7, driver); */	}
-		void ModePin8(byte f, byte driver=7) { PC8[0] = f<<3; 	HW8	= 	f>>5; /*Driver(8, driver);	 */}
-		void ModePin9(byte f, byte driver=7) { PC8[1] = f<<3; 	HW9	= 	f>>5; /*Driver(9, driver);	 */}
-		void ModePin10(byte f, byte driver=7) { PC8[2] = f<<3; 	HW10 = 	f>>5; /*Driver(10, driver);	 */}
-		void ModePin11(byte f, byte driver=7) { PC8[3] = f<<3; 	HW11 = 	f>>5; /*Driver(11, driver);	 */}
-		void ModePin12(byte f, byte driver=7) { PC12[0] = f<<3;	HW12 = 	f>>5; /*Driver(12, driver);	 */}
-		void ModePin13(byte f, byte driver=7) { PC12[1] = f<<3;	HW13 = 	f>>5; /*Driver(13, driver);	 */}
-		void ModePin14(byte f, byte driver=7) { PC12[2] = f<<3;	HW14 = 	f>>5; /*Driver(14, driver);	 */}
-		void ModePin15(byte f, byte driver=7) { PC12[3] = f<<3;	HW15 = 	f>>5; /*Driver(15, driver);	 */}
+		__forceinline void ModePin0(byte f, byte driver=7) { PC0[0] = f<<3; 	HW0	= 	f>>5; /*Driver(0, driver); */	}
+		__forceinline void ModePin1(byte f, byte driver=7) { PC0[1] = f<<3; 	HW1	= 	f>>5; /*Driver(1, driver); */	}
+		__forceinline void ModePin2(byte f, byte driver=7) { PC0[2] = f<<3; 	HW2	= 	f>>5; /*Driver(2, driver); */	}
+		__forceinline void ModePin3(byte f, byte driver=7) { PC0[3] = f<<3; 	HW3	= 	f>>5; /*Driver(3, driver); */	}
+		__forceinline void ModePin4(byte f, byte driver=7) { PC4[0] = f<<3; 	HW4	= 	f>>5; /*Driver(4, driver); */	}
+		__forceinline void ModePin5(byte f, byte driver=7) { PC4[1] = f<<3; 	HW5	= 	f>>5; /*Driver(5, driver); */	}
+		__forceinline void ModePin6(byte f, byte driver=7) { PC4[2] = f<<3; 	HW6	= 	f>>5; /*Driver(6, driver); */	}
+		__forceinline void ModePin7(byte f, byte driver=7) { PC4[3] = f<<3; 	HW7	= 	f>>5; /*Driver(7, driver); */	}
+		__forceinline void ModePin8(byte f, byte driver=7) { PC8[0] = f<<3; 	HW8	= 	f>>5; /*Driver(8, driver);	 */}
+		__forceinline void ModePin9(byte f, byte driver=7) { PC8[1] = f<<3; 	HW9	= 	f>>5; /*Driver(9, driver);	 */}
+		__forceinline void ModePin10(byte f, byte driver=7) { PC8[2] = f<<3; 	HW10 = 	f>>5; /*Driver(10, driver);	 */}
+		__forceinline void ModePin11(byte f, byte driver=7) { PC8[3] = f<<3; 	HW11 = 	f>>5; /*Driver(11, driver);	 */}
+		__forceinline void ModePin12(byte f, byte driver=7) { PC12[0] = f<<3;	HW12 = 	f>>5; /*Driver(12, driver);	 */}
+		__forceinline void ModePin13(byte f, byte driver=7) { PC12[1] = f<<3;	HW13 = 	f>>5; /*Driver(13, driver);	 */}
+		__forceinline void ModePin14(byte f, byte driver=7) { PC12[2] = f<<3;	HW14 = 	f>>5; /*Driver(14, driver);	 */}
+		__forceinline void ModePin15(byte f, byte driver=7) { PC12[3] = f<<3;	HW15 = 	f>>5; /*Driver(15, driver);	 */}
 
 
 
@@ -19773,14 +19773,14 @@ namespace HW
 	MK_PTR (DMA1,	GPDMA_Type, GPDMA1_CH0_BASE);
 
 
-	inline void Peripheral_Enable(u32 id) { SCU_CLK->ClockEnable(id); SCU_RESET->ResetDisable(id);		}
-	inline void Peripheral_Disable(u32 id) { SCU_CLK->ClockDisable(id); SCU_RESET->ResetEnable(id);	}
+	__forceinline void Peripheral_Enable(u32 id) { SCU_CLK->ClockEnable(id); SCU_RESET->ResetDisable(id);	}
+	__forceinline void Peripheral_Disable(u32 id) { SCU_CLK->ClockDisable(id); SCU_RESET->ResetEnable(id);	}
 
-	inline void CCU_Enable(u32 id) { SCU_CLK->CLKSET = SCU_CLK_CLKSET_CCUCEN_Msk;	SCU_CLK->ClockEnable(id);		SCU_RESET->ResetDisable(id);		}
-	inline void ETH_Enable()		{ SCU_CLK->CLKSET = SCU_CLK_CLKSET_ETH0CEN_Msk; SCU_CLK->ClockEnable(PID_ETH0); SCU_RESET->ResetDisable(PID_ETH0);	}
-	inline void EBU_Enable(u32 div) { HW::SCU_CLK->EBUCLKCR = div; SCU_CLK->CLKSET = SCU_CLK_CLKSET_EBUCEN_Msk;	SCU_CLK->ClockEnable(PID_EBU);	SCU_RESET->ResetDisable(PID_EBU);	}
-	inline void WDT_Enable()		{ SCU_RESET->ResetEnable(PID_WDT); SCU_CLK->CLKSET = SCU_CLK_CLKSET_WDTCEN_Msk; SCU_CLK->ClockEnable(PID_WDT); SCU_RESET->ResetDisable(PID_WDT);	}
-	inline void ResetWDT()			{ WDT->SRV = 0xABADCAFE; }
+	__forceinline void CCU_Enable(u32 id) { SCU_CLK->CLKSET = SCU_CLK_CLKSET_CCUCEN_Msk;	SCU_CLK->ClockEnable(id);		SCU_RESET->ResetDisable(id);		}
+	__forceinline void ETH_Enable()		{ SCU_CLK->CLKSET = SCU_CLK_CLKSET_ETH0CEN_Msk; SCU_CLK->ClockEnable(PID_ETH0); SCU_RESET->ResetDisable(PID_ETH0);	}
+	__forceinline void EBU_Enable(u32 div) { HW::SCU_CLK->EBUCLKCR = div; SCU_CLK->CLKSET = SCU_CLK_CLKSET_EBUCEN_Msk;	SCU_CLK->ClockEnable(PID_EBU);	SCU_RESET->ResetDisable(PID_EBU);	}
+	__forceinline void WDT_Enable()		{ SCU_RESET->ResetEnable(PID_WDT); SCU_CLK->CLKSET = SCU_CLK_CLKSET_WDTCEN_Msk; SCU_CLK->ClockEnable(PID_WDT); SCU_RESET->ResetDisable(PID_WDT);	}
+	__forceinline void ResetWDT()			{ WDT->SRV = 0xABADCAFE; }
 
 
 };

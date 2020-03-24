@@ -601,7 +601,7 @@ int main()
 		{	
 			fps = f; f = 0; 
 
-			HW::ResetWDT();
+			HW::WDT->Update();
 
 			//mtb.data = manbuf;
 			//mtb.len = 3;

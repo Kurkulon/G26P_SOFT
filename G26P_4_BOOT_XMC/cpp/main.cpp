@@ -1,13 +1,15 @@
+#include <string.h>
 #include "core.h"
 //#include "xtrap.h"
 //#include "flash.h"
 #include "time.h"
 #include "ComPort.h"
-//#include "twi.h"
+#include "list.h"
 #include "hardware.h"
 #include "main.h"
 #include "crc16.h"
-//#include "emac.h"
+#include "emac.h"
+#include "tftp.h"
 
 #pragma diag_suppress 546,550,177
 
@@ -63,7 +65,93 @@ static void CMD_ClearStatus()		{ *_CMD_5554 = 0xF5; }
 
 static TM32 timeOut;
 
+enum STATEWRFL { WRITE_WAIT = 0, WRITE_START, WRITE_ERASE_SECTOR, WRITE_PAGE, WRITE_PAGE_0, WRITE_OK, WRITE_ERROR, WRITE_FINISH, WRITE_INIT };
+
+STATEWRFL state_write_flash = WRITE_WAIT;
+u32 flash_write_error = 0;
+u32 flash_write_ok = 0;
+
+static MEMB memBuffer[64];
+
+static List<MEMB> freeMemBuf;
+static List<MEMB> writeFlBuf;
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitFlashBuffer()
+{
+	for (byte i = 0; i < ArraySize(memBuffer); i++)
+	{
+		freeMemBuf.Add(&memBuffer[i]);
+	};							  
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+MEMB* AllocMemBuffer()
+{
+	return freeMemBuf.Get();
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void FreeMemBuffer(MEMB* wb)
+{
+	freeMemBuf.Add(wb);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool RequestFlashWrite(MEMB* b)
+{
+	if ((b != 0) && (b->flwb.dataLen > 0))
+	{
+		writeFlBuf.Add(b);
+
+		return true;
+	}
+	else
+	{
+		return false;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma push
+#pragma O3
+#pragma Otime
+
+static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
+{
+	using namespace HW;
+
+	register u32 t __asm("r0");
+
+	HW::GPDMA1->DMACFGREG = 1;
+
+	HW::GPDMA1_CH3->CTLL = DST_INC|SRC_INC|TT_FC(0)|DEST_MSIZE(0)|SRC_MSIZE(0);
+	HW::GPDMA1_CH3->CTLH = BLOCK_TS(len);
+
+	HW::GPDMA1_CH3->SAR = (u32)src;
+	HW::GPDMA1_CH3->DAR = (u32)dst;
+	HW::GPDMA1_CH3->CFGL = 0;
+	HW::GPDMA1_CH3->CFGH = PROTCTL(1);
+
+	HW::GPDMA1->CHENREG = 0x101<<3;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CheckDataComplete()
+{
+	return (HW::GPDMA1->CHENREG & (1<<3)) == 0;
+}
+
+#pragma pop
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static u32 GetSectorAdrLen(u32 sadr, u32 *radr)
 {
@@ -97,7 +185,7 @@ static u32 GetSectorAdrLen(u32 sadr, u32 *radr)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void CMD_LoadPage(const u32* data, u16 len)
+static void CMD_LoadPage(__packed const u32* data, u16 len)
 { 
 	u16 l = len&1;
 
@@ -152,7 +240,10 @@ struct FL
 
 static FL flDscr;
 
-static bool run;
+//static bool run = false;
+static bool runCom = false;
+static bool runEmac = false;
+
 //static u32 crcErrors = 0;
 //static u32 lenErrors = 0;
 //static u32 reqErrors = 0;
@@ -219,7 +310,42 @@ static bool IAP_WritePage(u32 pa, u32 *pbuf)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool IAP_EraseSector(u32 sa)
+static bool REQ_WritePage(u32 pa, __packed u32 *pbuf)
+{
+	CMD_ResetToRead();
+
+	CMD_ClearStatus();
+
+	CMD_EnterPageMode();
+
+	while ((HW::FLASH0->FSR & (FLASH_FSR_PFPAGE_Msk|FLASH_FSR_SQER_Msk)) == 0);// { HW::WDT->Update(); };
+
+	CMD_LoadPage(pbuf, PAGEDWORDS);
+
+	CMD_WritePage(pa);
+
+	while ((HW::FLASH0->FSR & (FLASH_FSR_PROG_Msk|FLASH_FSR_SQER_Msk)) == 0);// { HW::WDT->Update(); };
+
+	return (HW::FLASH0->FSR & (FLASH_FSR_PROG_Msk|FLASH_FSR_SQER_Msk)) == FLASH_FSR_PROG_Msk;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool IsFlashReady()
+{
+	return (HW::FLASH0->FSR & FLASH_FSR_PBUSY_Msk) == 0;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool IsFlashReqOK()
+{
+	return (HW::FLASH0->FSR & (FLASH_FSR_VER_Msk|FLASH_FSR_SQER_Msk)) == 0;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool IAP_EraseSector(u32 sa)
 {
 	CMD_ResetToRead();
 	
@@ -236,7 +362,199 @@ static bool IAP_EraseSector(u32 sa)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool HandShake()
+static bool REQ_EraseSector(u32 sa)
+{
+	CMD_ResetToRead();
+	
+	CMD_ClearStatus();
+
+	CMD_ErasePhysicalSector(sa);
+
+	while ((HW::FLASH0->FSR & (FLASH_FSR_ERASE_Msk|FLASH_FSR_SQER_Msk)) == 0);// { HW::WDT->Update(); };
+
+	return (HW::FLASH0->FSR & (FLASH_FSR_ERASE_Msk|FLASH_FSR_SQER_Msk)) == FLASH_FSR_ERASE_Msk;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+u32 FLASH_Read(u32 addr, byte *data, u32 size) 
+{
+	while (HW::FLASH0->FSR & FLASH_FSR_PFPAGE_Msk);
+
+	addr += FLASH_START;
+
+	if (addr >= FLASH_END)
+	{
+		return 0;
+	};
+
+	if ((addr + size) >= FLASH_END)
+	{
+		size = FLASH_END - addr;	
+	};
+
+	CopyDataDMA((void*)addr, data, size);
+
+	while (!CheckDataComplete());
+
+	return size;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void InitFlashWrite()
+{
+	state_write_flash = WRITE_INIT;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateWriteFlash()
+{
+	static u32 secStartAdr = ~0;
+	static u32 secEndAdr = ~0;
+	static MEMB *curFlwb = 0;
+	static FLWB *flwb = 0;
+	static u32 wadr = 0;
+	static u32 wlen = 0;
+	static __packed u32 *wdata = 0;
+
+	switch(state_write_flash)
+	{
+		case WRITE_WAIT:
+
+			curFlwb = writeFlBuf.Get();
+
+			if (curFlwb != 0)
+			{
+				flwb = &curFlwb->flwb;
+				wadr = flwb->adr;
+				wlen = flwb->dataLen;
+				wdata = (__packed u32*)(flwb->data + flwb->dataOffset);
+
+				state_write_flash = WRITE_START;
+			};
+
+			break;
+
+		case WRITE_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+			
+			if (wadr >= secStartAdr &&  wadr < secEndAdr)
+			{
+				state_write_flash = WRITE_PAGE;
+			}
+			else
+			{
+				u32 len = GetSectorAdrLen(wadr, &secStartAdr);
+
+				if (len != 0)
+				{
+					secEndAdr = secStartAdr + len - 1;
+
+					if (!REQ_EraseSector(secStartAdr)) len = 0;
+				};
+
+				state_write_flash = (len != 0) ? WRITE_ERASE_SECTOR : WRITE_ERROR;
+			};
+
+			break;
+	
+		case WRITE_ERASE_SECTOR:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			if (IsFlashReady())
+			{
+				state_write_flash = (IsFlashReqOK()) ? WRITE_PAGE : WRITE_ERROR;
+			};
+
+			break;
+
+		case WRITE_PAGE:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			state_write_flash = (REQ_WritePage(wadr, wdata)) ? WRITE_PAGE_0 : WRITE_ERROR;
+
+			break;
+
+		case WRITE_PAGE_0:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			if (IsFlashReady())
+			{
+				if (IsFlashReqOK())
+				{
+					wadr += PAGESIZE;
+					wdata += PAGEDWORDS;
+
+					if (wlen >= PAGESIZE)
+					{
+						wlen -= PAGESIZE;
+					}
+					else
+					{
+						wlen = 0;	
+					};
+
+					state_write_flash = (wlen > 0) ? WRITE_START : WRITE_OK;
+				}
+				else
+				{
+					state_write_flash = WRITE_ERROR;
+				};
+			};
+
+			break;
+
+		case WRITE_OK:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			flash_write_ok++;
+
+			state_write_flash = WRITE_FINISH;
+
+			break;
+
+		case WRITE_ERROR:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			flash_write_error++;
+
+			state_write_flash = WRITE_FINISH;
+
+			break;
+		
+		case WRITE_FINISH:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			FreeMemBuffer(curFlwb);
+
+			curFlwb = 0;
+			flwb = 0;
+
+			state_write_flash = WRITE_WAIT;
+
+			break;
+
+		case WRITE_INIT:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			if (curFlwb != 0) 
+			{
+				FreeMemBuffer(curFlwb);
+			};
+
+			flash_write_error = 0;
+			flash_write_ok = 0;
+
+			secStartAdr = ~0;
+			secEndAdr = ~0;
+
+			curFlwb = 0;
+			flwb = 0;
+
+			state_write_flash = WRITE_WAIT;
+
+			break;
+
+	}; // switch(state_write_flash)
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool HandShake()
 {
 	static ReqHS req;
 	static RspHS rsp;
@@ -294,7 +612,7 @@ bool HandShake()
 
 				if (!com.Update())
 				{
-					c = true;
+					runCom = c = true;
 
 					timeOut.Reset();
 				};
@@ -302,12 +620,13 @@ bool HandShake()
 				break;
 		};
 
-		//UpdateEMAC();
+		UpdateEMAC();
 
-		//if (EmacIsConnected())
-		//{
-		//	c = true;
-		//};
+		if (EmacIsEnergyDetected() && EmacIsCableNormal())
+		{
+			runEmac = c = true;
+			timeOut.Reset();
+		};
 	};
 
 	return c;
@@ -320,7 +639,7 @@ static bool Request_F1_GetCRC(ReqMes &req, RspMes &rsp)
 	u32 len = 0;
 	u32 adr = 0;
 
-	if (req.len == sizeof(req.F1))
+	if (req.len == sizeof(req.F1) && (HW::FLASH0->FSR & FLASH_FSR_PFPAGE_Msk) == 0)
 	{
 		len = GetSectorAdrLen(req.F1.sadr, &adr);
 
@@ -330,6 +649,10 @@ static bool Request_F1_GetCRC(ReqMes &req, RspMes &rsp)
 
 			rsp.F1.sCRC = GetCRC16((void*)(FLASH_START+adr), len);
 		};
+	}
+	else
+	{
+		adr = ~0;
 	};
 
 	rsp.F1.func = req.F1.func;
@@ -338,7 +661,7 @@ static bool Request_F1_GetCRC(ReqMes &req, RspMes &rsp)
 	rsp.F1.crc = GetCRC16(&rsp.F1, sizeof(rsp.F1) - 2);
 	rsp.len = sizeof(rsp.F1);
 
-	return true;
+	return false;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -349,7 +672,7 @@ static bool Request_F2_EraseSector(ReqMes &req, RspMes &rsp)
 
 	if (req.len == sizeof(req.F2))
 	{
-		c = IAP_EraseSector(req.F2.sadr);
+		c = true; //IAP_EraseSector(req.F2.sadr);
 	};
 
 	rsp.F2.func = req.F2.func;
@@ -358,18 +681,24 @@ static bool Request_F2_EraseSector(ReqMes &req, RspMes &rsp)
 	rsp.F2.crc = GetCRC16(&rsp.F2, sizeof(rsp.F2) - 2);
 	rsp.len = sizeof(rsp.F2);
 
-	return true;
+	return false;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool Request_F3_WritePage(ReqMes &req, RspMes &rsp)
+static bool Request_F3_WritePage(MEMB *mb, RspMes &rsp)
 {
+	ReqMes &req = *((ReqMes*)mb->flwb.data);
+
 	bool c = false;
 
-	if (req.len == sizeof(req.F3))
+	if (req.len == sizeof(req.F3) && flash_write_error == 0)
 	{
-		c = IAP_WritePage(req.F3.padr, req.F3.page);
+		mb->flwb.adr = req.F3.padr;
+		mb->flwb.dataLen = sizeof(req.F3.page);
+		mb->flwb.dataOffset = (byte*)req.F3.page - mb->flwb.data;
+		
+		c = RequestFlashWrite(mb);
 	};
 
 	rsp.F3.func = req.F3.func;
@@ -378,20 +707,22 @@ static bool Request_F3_WritePage(ReqMes &req, RspMes &rsp)
 	rsp.F3.crc = GetCRC16(&rsp.F3, sizeof(rsp.F3) - 2);
 	rsp.len = sizeof(rsp.F3);
 
-	return true;
+	return c;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestHandler(ReqMes &req, RspMes &rsp)
+static bool RequestHandler(MEMB *mb, RspMes &rsp)
 {
+	ReqMes &req = *((ReqMes*)mb->flwb.data);
+
 	bool c = false;
 
 	switch (req.F1.func)
 	{
 		case 1: c = Request_F1_GetCRC(req, rsp);		break;
 		case 2: c = Request_F2_EraseSector(req, rsp);	break;
-		case 3: c = Request_F3_WritePage(req, rsp);		break;
+		case 3: c = Request_F3_WritePage(mb, rsp);		break;
 	};
 
 	return c;
@@ -404,21 +735,34 @@ static void UpdateCom()
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
 
-	static ReqMes req;
+//	static ReqMes req;
 	static RspMes rsp;
 
 	static byte i = 0;
 
-	static bool c = true;
+//	static bool c = true;
 
 	static TM32 tm;
+
+	static MEMB *mb = 0;
+	static ReqMes *req = 0;
 
 	switch (i)
 	{
 		case 0:
 
-			rb.data = &req.F1;
-			rb.maxLen = sizeof(req);
+			mb = AllocMemBuffer();
+
+			if (mb != 0)
+			{
+				req = (ReqMes*)mb->flwb.data;
+				i++;
+			};
+
+		case 1:
+
+			rb.data = &req->F1;
+			rb.maxLen = sizeof(*req);
 			
 			com.Read(&rb, MS2RT(200), MS2RT(2));
 
@@ -426,35 +770,33 @@ static void UpdateCom()
 
 			break;
 
-		case 1:
+		case 2:
 
 			if (!com.Update())
 			{
-				i++;
-			};
-
-			break;
-
-		case 2:
-
-			if (rb.recieved && rb.len > 0 && GetCRC16(rb.data, rb.len) == 0)
-			{
-				req.len = rb.len;
-
-				c = RequestHandler(req, rsp);
-
-				timeOut.Reset();
-
-				i++;
-			}
-			else
-			{
-				if (timeOut.Check(2000))
+				if (rb.recieved && rb.len > 0 && GetCRC16(rb.data, rb.len) == 0)
 				{
-					run = false;
-				};
+					req->len = rb.len;
 
-				i = 0;
+					if (RequestHandler(mb, rsp))
+					{
+						mb = 0;
+						req = 0;
+					};
+
+					timeOut.Reset();
+
+					i++;
+				}
+				else
+				{
+					if (timeOut.Check(2000))
+					{
+						runCom = false;
+					};
+
+					i = 1;
+				};
 			};
 
 			break;
@@ -477,9 +819,7 @@ static void UpdateCom()
 
 			if (!com.Update())
 			{
-				i = 0;
-
-				run = c;
+				i = (mb == 0) ? 0 : 1;
 			};
 
 			break;
@@ -494,29 +834,38 @@ int main()
 {
 	//__breakpoint(0);
 
-	//IAP_EraseSector(0);
-
-	//IAP_WritePage(0, 0);
-
 	InitHardware();
 
-//	InitEMAC();
+	InitFlashBuffer();
+	
+	InitEMAC();
 
-	run = HandShake();
+	HandShake();
 
 	HW::SCU_RESET->ResetEnable(PID_WDT); HW::SCU_CLK->CLKCLR = SCU_CLK_CLKCLR_WDTCDI_Msk; HW::SCU_CLK->ClockDisable(PID_WDT);
 
-	while(run)
+	while(runCom || runEmac)
 	{
 		HW::P5->BSET(7);
 
-		UpdateCom();
+		UpdateWriteFlash();
 
-//		UpdateEMAC();
+		if (runCom)
+		{
+			UpdateCom();
+		}
+		else
+		{
+			UpdateEMAC();
+			runEmac = TFTP_Idle();
+
+			if (!TFTP_Connected() && timeOut.Check(10000))
+			{
+				runEmac = false;
+			};
+		};
 
 		HW::P5->BCLR(7);
-
-//		HW::WDT->Update();
 	};
 
 	//__breakpoint(0);

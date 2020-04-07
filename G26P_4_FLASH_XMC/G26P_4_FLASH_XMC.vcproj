@@ -99,11 +99,12 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			CharacterSet="1"
+			CharacterSet="0"
 			WholeProgramOptimization="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
+				CommandLine="$(TargetDir)bin2cpp.exe ..\G26P_4_XMC4800\OBJ\G26P4XMC.bin $(TargetDir)G26P4XMC.bin.h"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -121,7 +122,8 @@
 				Name="VCCLCompilerTool"
 				AdditionalIncludeDirectories="$(TargetDir)"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
+				StructMemberAlignment="1"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
@@ -138,7 +140,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalOptions="opengl32.lib glu32.lib"
+				AdditionalOptions="comctl32.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="2"

@@ -29,8 +29,8 @@ inline void DisableVCORE() { HW::P2->SET(ENVCORE); }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline void ManDisable()	{ HW::P0->CLR(L1|L2); HW::P0->SET(H1|H2);} // 0110  
-inline void ManOne()		{ HW::P0->CLR(L2); HW::P0->SET(L1|H1); HW::P0->CLR(H2);} // 1100
-inline void ManZero()		{ HW::P0->CLR(L1); HW::P0->SET(L2|H2); HW::P0->CLR(H1);} // 0011
+inline void ManZero()		{ HW::P0->CLR(L2); HW::P0->SET(L1|H1); HW::P0->CLR(H2);} // 1100
+inline void ManOne()		{ HW::P0->CLR(L1); HW::P0->SET(L2|H2); HW::P0->CLR(H1);} // 0011
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

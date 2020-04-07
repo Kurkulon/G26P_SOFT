@@ -4,17 +4,7 @@
 #include "core.h"
 
 
-/* EMAC Memory Buffer configuration. */
-#define NUM_RX_BUF          8          /* 0x2000 for Rx (64*128=8K)         */
-#define ETH_RX_DRBS			8
-#define ETH_RX_BUF_SIZE     (ETH_RX_DRBS * 64)       /* EMAC Receive buffer size.         */
 
-
-#define NUM_TX_DSC          16         /* 0x0600 for Tx                     */
-//#define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
-#define IP_MTU				1480
-
-#define AT91C_PHY_ADDR      0
 
 //#define OWN_BIT				(1UL<<31)
 //#define RER_BIT				(1UL<<15)
@@ -125,12 +115,12 @@
 #define ICMP_ECHO_REQUEST	0x08
 #define ICMP_ECHO_REPLY		0x00
 
-#define SWAP16(x)	((u16)((x) << 8) | ((x) >> 8))
-#define SWAP32(x)	(((x)>>24) | (((x)&0x00ff0000) >> 8) | (((x)&0x0000ff00) << 8) | (((u32)(x)<<24)))
+#define _SWAP16(x)	((u16)((x) << 8) | ((x) >> 8))
+#define _SWAP32(x)	(((x)>>24) | (((x)&0x00ff0000) >> 8) | (((x)&0x0000ff00) << 8) | (((u32)(x)<<24)))
 
 
-#define BOOTPS SWAP16(67)	// server DHCP
-#define BOOTPC SWAP16(68)	// client DHCP
+#define BOOTPS _SWAP16(67)	// server DHCP
+#define BOOTPC _SWAP16(68)	// client DHCP
 
 #define	DHCPDISCOVER	1  
 #define	DHCPOFFER		2  
@@ -147,10 +137,6 @@
 //#define pRSTC   AT91C_BASE_RSTC
 //#define pAIC    AT91C_BASE_AIC
 //#define pPMC    AT91C_BASE_PMC
-
-#define PHYA 0
-
-#define IP32(b1, b2, b3, b4) (((u32)b1&0xFF)|(((u32)b2&0xFF)<<8)|(((u32)b3&0xFF)<<16)|(((u32)b4&0xFF)<<24))
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

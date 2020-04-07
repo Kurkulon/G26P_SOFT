@@ -56,7 +56,7 @@ static bool trmBusy = false;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SetTrmBoudRate(byte i)
+static void SetTrmBoudRate(byte i)
 {
 	trmHalfPeriod = manboud[i&3]/2;
 }
@@ -241,7 +241,7 @@ static __irq void MLT3_TrmIRQ()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool SendMLT3(MTB *mtb)
+static bool SendMLT3(MTB *mtb)
 {
 	if (mltBusy || mtb == 0 || mtb->data == 0 || mtb->len == 0)
 	{
@@ -394,7 +394,7 @@ static __irq void ManTrmIRQ()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool SendManData(MTB *mtb)
+static bool SendManData(MTB *mtb)
 {
 	if (trmBusy || rcvBusy || mtb == 0 || mtb->data == 0 || mtb->len == 0)
 	{
@@ -604,7 +604,7 @@ static __irq void ManRcvIRQ2()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void ManRcvUpdate()
+static void ManRcvUpdate()
 {
 	if (rcvBusy)
 	{
@@ -677,7 +677,7 @@ static void InitManRecieve()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool RcvManData(MRB *mrb)
+static bool RcvManData(MRB *mrb)
 {
 	if (rcvBusy /*|| trmBusy*/ || mrb == 0 || mrb->data == 0 || mrb->maxLen == 0)
 	{
@@ -721,7 +721,7 @@ bool RcvManData(MRB *mrb)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void Init_ERU()
+static void Init_ERU()
 {
 	using namespace HW;
 

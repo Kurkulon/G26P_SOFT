@@ -1,8 +1,9 @@
 #include "core.h"
 #include "emac.h"
 #include "EMAC_DEF.h"
-#include "xtrap.h"
+#include "tftp.h"
 #include "list.h"
+#include "main.h"
 
 //#pragma diag_suppress 546,550,177
 
@@ -12,9 +13,20 @@
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-/* Net_Config.c */
+/* EMAC Memory Buffer configuration. */
+#define NUM_RX_BUF          16          /* 0x2000 for Rx (64*128=8K)         */
+//#define ETH_RX_DRBS			8
+#define ETH_RX_BUF_SIZE     (1024)       /* EMAC Receive buffer size.         */
 
-#define OUR_IP_ADDR   	IP32(192, 168, 3, 234)
+#define NUM_TX_DSC          16         /* 0x0600 for Tx                     */
+//#define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
+
+#define AT91C_PHY_ADDR      0
+#define PHYA 0
+
+
+/* Net_Config.c */
+#define OUR_IP_ADDR   	IP32(192, 168, 3, 227)
 #define DHCP_IP_ADDR   	IP32(192, 168, 3, 254)
 
 static const MAC hwAdr = {0x12345678, 0x9ABC};
@@ -22,8 +34,8 @@ static const MAC hwBroadCast = {0xFFFFFFFF, 0xFFFF};
 static const u32 ipAdr = OUR_IP_ADDR;//IP32(192, 168, 10, 1);
 static const u32 ipMask = IP32(255, 255, 255, 0);
 
-static const u16 udpInPort = SWAP16(66);
-static const u16 udpOutPort = SWAP16(66);
+static const u16 udpInPort	= _SWAP16(69);
+static const u16 udpOutPort = _SWAP16(69);
 
 bool emacConnected = false;
 bool emacEnergyDetected = false;
@@ -64,7 +76,7 @@ Receive_Desc Rx_Desc[NUM_RX_BUF] __attribute__((at(0x20020000)));;
 Transmit_Desc Tx_Desc[NUM_TX_DSC];
 
 /* GMAC local buffers must be 8-byte aligned. */
-byte rx_buf[NUM_RX_BUF][ETH_RX_BUF_SIZE];
+//byte rx_buf[NUM_RX_BUF][ETH_RX_BUF_SIZE];
 //byte tx_buf[NUM_TX_BUF][ETH_TX_BUF_SIZE];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -208,6 +220,17 @@ static void FreeTxDesc()
 		TxFreeIndex = (td.stat & TD0_TER) ? 0 : TxFreeIndex + 1;
 	};
 }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//void EMAC_FreeRxDsc(Receive_Desc* dsc)
+//{
+//	if (dsc != 0)
+//	{
+//		dsc->stat |= RD0_OWN;
+//		dsc->next = 0;
+//	};
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -372,109 +395,9 @@ bool TransmitFragUdp(EthUdpBuf *b, u16 dst)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-/*
-bool EMAC_SendData(void *pData, u16 length)
+static bool RequestARP(MEMB* mb)
 {
-	static u16 TxDataID = 0;
-	
-	const u16 BLOK_LEN = 1480;	// Split to max IPlen=1500
-	const u16 MAX_TIME_TO_TRANSMIT_MS = 10;	// ms, do not write zero!
-
-	//if(!emacConnected) return false; 
-	//if(!ComputerFind)  return false;
-	//length += sizeof(AT91S_UDPHdr);
-	//unsigned int blok = 0;
-	//unsigned int sended_len = 0;
-	//unsigned short checksum;
-	//unsigned int i,j;
-	bool ready = true;
- 
-	TxDataID ++;
-
-	//AT91S_EthHdr *OurTxPacketEthHeader;
-	//AT91S_IPheader *OurTxPacketIpHeader;
-	//while(sended_len < length) 
-	//{
- //       	OurTxPacketEthHeader = (AT91S_EthHdr *)((unsigned int)((unsigned int)TxPacket + TxBuffIndex*ETH_TX_BUFFER_SIZE)&0xFFFFFFFC);
-	//	OurTxPacketIpHeader = (AT91S_IPheader *)((unsigned int)OurTxPacketEthHeader + 14);
-	//	// EthHeader
-	//	for(i=0;i<6;i++) 
-	//	{ 
-	//		OurTxPacketEthHeader->et_dest[i] = ComputerEmacAddr[i];
- //      		        OurTxPacketEthHeader->et_src[i] = OurEmacAddr[i];
-	//	}
-	//	OurTxPacketEthHeader->et_protlen = SWAP16(PROT_IP);
-	//	// IpHeader
-	//	for(i=0;i<4;i++) 
-	//	{ 
-	//		OurTxPacketIpHeader->ip_dst[i] = ComputerIpAddr[i];
-	//		OurTxPacketIpHeader->ip_src[i] = OurIpAddr[i];
-	//	}
-	//	OurTxPacketIpHeader->ip_hl_v 	= OurRxPacketIpHeader->ip_hl_v;	// may be fix  = 0x45
-	//	OurTxPacketIpHeader->ip_tos 	= OurRxPacketIpHeader->ip_tos;  // may be fix  = 0x00
-	//	OurTxPacketIpHeader->ip_id 	= SWAP16(TxDataID);
-	//	OurTxPacketIpHeader->ip_ttl	= 128;
-	//	OurTxPacketIpHeader->ip_p	= PROT_UDP;
-	//	unsigned short offset = 0x0000;
-	//	if(length - sended_len > BLOK_LEN) offset |= 0x2000;
-	//	offset |= (sended_len/8)&0x1FFF;
-	//	OurTxPacketIpHeader->ip_off 	= SWAP16(offset);
-	//	// UDP header
-	//	char *data;
- //       	if(blok==0)	
-	//	{
-	//		OurTxPacketIpHeader->udp_src 	= SWAP16(OurUDPPort);
-	//		OurTxPacketIpHeader->udp_dst 	= SWAP16(ComputerUDPPort);
-	//		OurTxPacketIpHeader->udp_len 	= SWAP16(length);
-	//		OurTxPacketIpHeader->udp_xsum	= 0;
-	//		checksum = ~NetChksumAdd(NetChksumAdd(NetChksum((unsigned short *)(&(OurTxPacketIpHeader->udp_src)), sizeof(AT91S_UDPHdr)), 
-	//						   PseudoChksum((unsigned char *)(OurTxPacketIpHeader->ip_src), (unsigned char *)(OurTxPacketIpHeader->ip_dst), SWAP16(OurTxPacketIpHeader->udp_len))),
-	//					NetChksum((unsigned short *)(pData), length-sizeof(AT91S_UDPHdr)));
-	//		OurTxPacketIpHeader->udp_xsum	= checksum;
-	//		sended_len += sizeof(AT91S_UDPHdr);
-	//		data = (char *)(&OurTxPacketIpHeader->udp_xsum) + sizeof(OurTxPacketIpHeader->udp_xsum);
-	//		i = sizeof(AT91S_UDPHdr);
-	//	}
-	//	else
-	//	{
-	//		i = 0;
-	//		data = (char *)(&OurTxPacketIpHeader->udp_src);
-	//	}
-
-	//	i = sended_len + BLOK_LEN - i;
-	//	if (i>=length) i=length;
-	//	while(sended_len < i)
-	//	{
-	//        	*((unsigned short *)data) = (*((unsigned short *)pData));
-	//		data+=2;
-	//		pData+=2;
-	//		sended_len+=2;
-	//	}
-	//	sended_len = i;
-	//	// IP Header
-	//	unsigned short ip_len		= sended_len - blok*BLOK_LEN + (OurTxPacketIpHeader->ip_hl_v&0x0F)*sizeof(unsigned int);
-	//	OurTxPacketIpHeader->ip_len 	= SWAP16(ip_len);
- //               OurTxPacketIpHeader->ip_sum	= 0;
-	//	checksum = SWAP16(IPChksum((unsigned short *)OurTxPacketIpHeader, (OurTxPacketIpHeader->ip_hl_v & 0x0F) * sizeof(unsigned int)/sizeof(unsigned short)));
-	//	OurTxPacketIpHeader->ip_sum 	= checksum;
-	//	// Transmit
-	//	ready = ready & ProcessTxEmacPacket();
-	//	TxtdList[TxBuffIndex].addr = (unsigned int)OurTxPacketEthHeader;
-	//	TxtdList[TxBuffIndex].U_Status.S_Status.Length = SWAP16(OurTxPacketIpHeader->ip_len) + 14;
-	//	TxtdList[TxBuffIndex].U_Status.S_Status.LastBuff = 1;
-	//	if (TxBuffIndex == (NB_TX_BUFFERS - 1))	TxBuffIndex = 0; else TxBuffIndex ++;
-	//	AT91C_BASE_EMAC->EMAC_NCR |= AT91C_EMAC_TSTART;
-	//	blok++;
-	//}
-	//EmacTxCounter++;
-	return ready;
-}*/
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void RequestARP(EthArp *h, u32 stat)
-{
-//	ArpHdr *pArp = (ArpHdr*)eth->data;
+	EthArp *h = (EthArp*)mb->data;
 
 	if (ReverseWord(h->arp.op) == ARP_REQUEST) // ARP REPLY operation
 	{     
@@ -486,7 +409,7 @@ static void RequestARP(EthArp *h, u32 stat)
 
 			EthBuf *buf = GetSysTxBuffer();
 
-			if (/*dsc == 0 || */buf == 0) return;
+			if (buf == 0) return false;
 
 			EthArp *t = (EthArp*)&buf->eth;
 
@@ -511,13 +434,17 @@ static void RequestARP(EthArp *h, u32 stat)
 
 			TransmitEth(buf);
 		};	
-	}			
+	};
+
+	return false;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestICMP(EthIcmp *h, u32 stat)
+static bool RequestICMP(MEMB* mb)
 {
+	EthIcmp *h = (EthIcmp*)mb->data;
+
 	if(h->icmp.type == ICMP_ECHO_REQUEST)
 	{
 		reqIcmpCount++;
@@ -526,7 +453,7 @@ static void RequestICMP(EthIcmp *h, u32 stat)
 
 		EthIpBuf *buf = (EthIpBuf*)GetSysTxBuffer();
 
-		if (/*dsc == 0 ||*/ buf == 0) return;
+		if (/*dsc == 0 ||*/ buf == 0) return false;
 
 		EthIcmp *t = (EthIcmp*)&buf->eth;
 
@@ -576,18 +503,22 @@ static void RequestICMP(EthIcmp *h, u32 stat)
 		buf->len = ReverseWord(t->iph.len) + sizeof(t->eth);
 
 		TransmitIp(buf);
-	}
+	};
+
+	return false;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestDHCP(EthDhcp *h, u32 stat)
+static bool RequestDHCP(MEMB* mb)
 {
-	if (h->dhcp.op != 1) return;
+	EthDhcp *h = (EthDhcp*)mb->data;
+
+	if (h->dhcp.op != 1) return false;
 
 	i32 optLen = (i32)ReverseWord(h->iph.len) - sizeof(h->iph) - sizeof(h->udp) - 240;
 
-	if (optLen < 3 || h->dhcp.magic != DHCPCOOKIE) return;
+	if (optLen < 3 || h->dhcp.magic != DHCPCOOKIE) return false;
 
 	i32 i = 0; 
 	bool c = false;
@@ -604,15 +535,15 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 		i += h->dhcp.options[i];
 	};
 
-	if (!c) return;
+	if (!c) return false;
 
 	byte op = h->dhcp.options[i+2];
 
-	if (op != DHCPDISCOVER && op != DHCPREQUEST) return;
+	if (op != DHCPDISCOVER && op != DHCPREQUEST) return false;
 
 	EthIpBuf *buf = (EthIpBuf*)GetSysTxBuffer();
 
-	if (buf == 0) return;
+	if (buf == 0) return false;
 
 	EthDhcp *t = (EthDhcp*)&buf->eth;
 
@@ -685,75 +616,49 @@ static void RequestDHCP(EthDhcp *h, u32 stat)
 	buf->len = ipLen + sizeof(t->eth);
 
 	TransmitIp(buf);
+
+	return false;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static void RequestMyUDP(EthUdp *h, u32 stat)
-//{
-//	Buf_Desc *buf = GetTxDesc();
-//
-//	if (buf == 0) return;
-//
-//
-//	EthUdp *t = (EthUdp*)buf->addr;
-//
-//	t->eth.dest = h->eth.src;
-//	t->eth.src  = hwAdr;
-//
-//	t->eth.protlen = SWAP16(PROT_IP);
-//
-//	t->iph.hl_v = 0x45;	
-//	t->iph.tos = 0;		
-//	t->iph.len = h->iph.len;		
-//	t->iph.id = h->iph.id;		
-//	t->iph.off = 0;		
-//	t->iph.ttl = 64;		
-//	t->iph.p = PROT_UDP;		
-//	t->iph.sum = 0;		
-//	t->iph.src = ipAdr;		
-//	t->iph.dst = h->iph.src;	
-//
-//	t->iph.sum = IpChkSum((u16*)&t->iph, 10);
-//
-//	t->udp.src = udpInPort;
-//	t->udp.dst = udpOutPort;
-//	t->udp.len = h->udp.len;
-//	t->udp.xsum = 0;
-//
-//	TransmitPacket(buf, ReverseWord(t->iph.len) + sizeof(t->eth));
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void RequestUDP(EthUdp *h, u32 stat)
+static bool RequestUDP(MEMB* mb)
 {
+	EthUdp *h = (EthUdp*)mb->data;
+
+	bool c = false;
+
 	switch (h->udp.dst)
 	{
-		case BOOTPS:	RequestDHCP((EthDhcp*)h, stat); break;
-		case udpInPort: RequestTrap(h, stat); break;
+		case BOOTPS:	c = RequestDHCP(mb); break;
+		case udpInPort: c = RequestTFTP(mb); break;
 	};
 
 	reqUdpCount++;
 
+	return c;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestIP(EthIp *h, u32 stat)
+static bool RequestIP(MEMB* mb, u32 stat)
 {
-//	IPheader *iph = (IPheader*)(eth->data);	
+	EthIp *h = (EthIp*)mb->data;
 
-	if (h->iph.hl_v != 0x45) return;
+	if (h->iph.hl_v != 0x45) return false;
 
 	reqIpCount++;
 
+	bool c = false;
+
 	switch(h->iph.p)
 	{
-		case PROT_ICMP:	RequestICMP((EthIcmp*)h, stat);	break; 
+		case PROT_ICMP:	c = RequestICMP(mb);	break; 
 
-		case PROT_UDP:	if ((stat & RD_UDP_ERR) == 0) { RequestUDP((EthUdp*)h, stat); };		break;
+		case PROT_UDP:	if ((stat & RD_UDP_ERR) == 0) { c = RequestUDP(mb); };		break;
 	};
+
+	return c;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -762,48 +667,61 @@ static void RecieveFrame()
 {
 	Receive_Desc &buf = Rx_Desc[RxBufIndex];
 
-//	register u32 t = HW::GMAC->RSR;
-//	HW::GMAC->RSR = RSR_HNO | RSR_RXOVR | RSR_REC | RSR_BNA;
-
-	//if (t & RSR_BNA)	{ countBNA++;	/*HW::GMAC->RSR = RSR_BNA;*/	};
-	//if (t & RSR_REC)	{ countREC++;	/*HW::GMAC->RSR = RSR_REC;*/	};
-	//if (t & RSR_RXOVR)	{ countRXOVR++;	/*HW::GMAC->RSR = RSR_RXOVR;*/	};
-	//if (t & RSR_HNO)	{ countHNO++;	/*HW::GMAC->RSR = RSR_HNO;*/	};
-
-
 	if(buf.stat & RD0_OWN)
 	{
 //		FreeTxDesc();
 	}
 	else
 	{
-		EthPtr ep;
+		bool c = false;
 
-		if ((buf.stat & (RD0_LS|RD0_FS|RD0_CE|RD0_FT)) == (RD0_LS|RD0_FS|RD0_FT)) // buffer contains a whole frame
+		MEMB *mb = 0;
+
+		if (buf.addr != 0 && (buf.stat & (RD0_LS|RD0_FS|RD0_CE|RD0_FT)) == (RD0_LS|RD0_FS|RD0_FT)) // buffer contains a whole frame
 		{
-			ep.eth = (EthHdr*)(buf.addr1);
+			mb = (MEMB*)((byte*)buf.addr - sizeof(mb->next));
 
-			switch (ReverseWord(ep.eth->protlen))
+			EthHdr *eth = (EthHdr*)(buf.addr);
+
+			switch (ReverseWord(eth->protlen))
 			{
 				case PROT_ARP: // ARP Packet format
 
-					RequestARP(ep.earp, buf.stat);
-					break; 
+					c = RequestARP(mb); break; 
 
 				case PROT_IP:	// IP protocol frame
 
 					if ((buf.stat & RD_IP_ERR) == 0)
 					{
-						RequestIP(ep.eip, buf.stat);
+						c = RequestIP(mb, buf.stat);
 					};
 
 					break;
 			};
+
+			if (c)
+			{
+				buf.addr = 0;
+			};
 		};
 
-		buf.stat |= RD0_OWN;
+		if (buf.addr == 0)
+		{
+			MEMB* nmb = AllocMemBuffer();
+
+			if (nmb != 0)
+			{
+				buf.addr = nmb->data;
+				//buf.ctrl = sizeof(nmb->data);
+				buf.stat |= RD0_OWN;
+			};
+		}
+		else
+		{
+			buf.stat |= RD0_OWN;		
+		};
+
 		++rxCount;
-		RxBufIndex = (RxBufIndex >= 7) ? 0 : (RxBufIndex+1);
 
 	//	HW::P5->BTGL(9);
 
@@ -812,6 +730,8 @@ static void RecieveFrame()
 		//Instruct the DMA to poll the receive descriptor list
 		HW::ETH0->RECEIVE_POLL_DEMAND = 0;
 	};
+
+	RxBufIndex = (RxBufIndex >= ArraySize(Rx_Desc)) ? 0 : (RxBufIndex+1);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1213,10 +1133,21 @@ static void rx_descr_init (void)
 
 	for (u32 i = 0; i < NUM_RX_BUF; i++)
 	{
-		Rx_Desc[i].stat = RD0_OWN;
-		Rx_Desc[i].ctrl = sizeof(rx_buf[i]);
-		Rx_Desc[i].addr1 = (u32)&rx_buf[i];
-		Rx_Desc[i].addr2 = 0;
+		MEMB *b = AllocMemBuffer();
+
+		if (b != 0)
+		{
+			Rx_Desc[i].stat = RD0_OWN;
+			Rx_Desc[i].addr = b->data;
+		}
+		else
+		{
+			Rx_Desc[i].stat = 0;
+			Rx_Desc[i].addr = 0;
+		};
+
+		Rx_Desc[i].ctrl = sizeof(b->data);
+		Rx_Desc[i].next = 0;
 	};
 
 	Rx_Desc[NUM_RX_BUF-1].ctrl |= RD1_RER; // Set the WRAP bit at the end of the list descriptor.

@@ -29,6 +29,9 @@
 
 u16 curHV = 0;
 u16 reqHV = 800;
+
+const u16 dstHV = 900;
+
 //byte reqFireCount = 1;
 byte reqFireCountM = 1;
 byte reqFireCountXY = 1;
@@ -149,11 +152,11 @@ static void UpdateADC()
 
 	SPI0->TXDATCTL = 0x0F100000; //SPI_TXDATCTL_FLEN(7) | SPI_TXDATCTL_EOT | SPI_TXDATCTL_SSEL_N(0xe);
 
-	if (curHV < (reqHV-5))
+	if (curHV < (dstHV-5))
 	{
 		GPIO->SET0 = EN;
 	}
-	else if (curHV > (reqHV+5))
+	else if (curHV > (dstHV+5))
 	{
 		GPIO->CLR0 = EN;
 	};
@@ -215,11 +218,15 @@ static void InitFireM()
 {
 	using namespace HW;
 
+	u16 t = ((u32)reqHV * 2458) >> 16;
+
+	if (t > 30) t = 30;
+
 	SCT->CTRL_L = (1<<2); // HALT
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*2;
-	SCT->MATCH_L[2] = 25*32; //335
+	SCT->MATCH_L[2] = 25*(t+2); //335
 	SCT->MATCH_L[3] = 25*34; //345
 	SCT->MATCH_L[4] = 25*64;
 

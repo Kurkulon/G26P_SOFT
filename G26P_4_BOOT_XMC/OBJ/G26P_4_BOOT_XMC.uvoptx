@@ -89,7 +89,7 @@
         <sRfunc>1</sRfunc>
         <sRbox>1</sRbox>
         <tLdApp>1</tLdApp>
-        <tGomain>1</tGomain>
+        <tGomain>0</tGomain>
         <tRbreak>1</tRbreak>
         <tRwatch>1</tRwatch>
         <tRmem>1</tRmem>
@@ -118,7 +118,6 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name> р9</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -138,7 +137,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=2763,244,3203,787,0)(1007=2771,224,2948,485,0)(1008=-1,-1,-1,-1,0)(1009=2682,267,2930,841,0)(1012=2055,165,2522,466,0)</Name>
+          <Name>(1010=2763,244,3213,797,0)(1007=2771,224,2948,485,0)(1008=-1,-1,-1,-1,0)(1009=2682,267,2940,851,0)(1012=2055,165,2522,466,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -146,7 +145,56 @@
           <Name></Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint/>
+      <Breakpoint>
+        <Bp>
+          <Number>0</Number>
+          <Type>0</Type>
+          <LineNumber>1017</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>536874438</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_BOOT_XMC\cpp\emac.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P_4_BOOT_XMC\cpp/emac.cpp\1017</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>955</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>536874278</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_BOOT_XMC\cpp\emac.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P_4_BOOT_XMC\cpp/emac.cpp\955</Expression>
+        </Bp>
+        <Bp>
+          <Number>2</Number>
+          <Type>0</Type>
+          <LineNumber>984</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>536874354</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_BOOT_XMC\cpp\emac.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P_4_BOOT_XMC\cpp/emac.cpp\984</Expression>
+        </Bp>
+      </Breakpoint>
       <WatchWindow1>
         <Ww>
           <count>0</count>

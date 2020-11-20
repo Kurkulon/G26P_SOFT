@@ -929,7 +929,7 @@ static bool UpdateSendVector()
 
 					trap.hdr.cmd = TRAP_MEMORY_COMMAND_VECTOR;
 					trap.session = flrb.hdr.session;
-					trap.device = 0xAA00; //h.device;
+					trap.device = flrb.hdr.device;
 					trap.rtc = flrb.hdr.rtc;
 					trap.flags = flrb.hdr.flags;
 
@@ -1022,6 +1022,8 @@ static bool UpdateSendVector()
 				fragLen -= flrb.len;
 				fragOff += flrb.len;
 
+				t->len = sizeof(ef.ei) + flrb.len;
+
 				crc = GetCRC16(flrb.data, flrb.len, crc, 0);
 
 				if (fragLen > 0)
@@ -1036,10 +1038,11 @@ static bool UpdateSendVector()
 				}
 				else
 				{
+					t->len -= 2;
+
 					vecReadOK += 1;
 				};
 
-				t->len = sizeof(ef.ei) + flrb.len;
 
 				SendFragTrap(t);
 

@@ -929,7 +929,7 @@ static bool UpdateSendVector()
 
 					trap.hdr.cmd = TRAP_MEMORY_COMMAND_VECTOR;
 					trap.session = flrb.hdr.session;
-					trap.device = flrb.hdr.device;
+					trap.device = ((u16)flrb.data[1]<<8); //flrb.hdr.device;
 					trap.rtc = flrb.hdr.rtc;
 					trap.flags = flrb.hdr.flags;
 

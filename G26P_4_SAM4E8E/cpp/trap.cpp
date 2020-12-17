@@ -1008,6 +1008,8 @@ static bool UpdateSendVector()
 				fragLen -= flrb.len;
 				fragOff += flrb.len;
 
+				t->len = sizeof(ef.ei) + flrb.len;
+
 				crc = GetCRC16(flrb.data, flrb.len, crc, 0);
 
 				if (fragLen > 0)
@@ -1017,9 +1019,11 @@ static bool UpdateSendVector()
 				else if (crc != 0)
 				{
 					t->iph.off = 0;
+				}
+				else
+				{
+					t->len -= 2;
 				};
-
-				t->len = sizeof(ef.ei) + flrb.len;
 
 				SendFragTrap(t);
 

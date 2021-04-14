@@ -199,6 +199,10 @@ __packed struct ReqTrm03
 	byte	fireCountM; 
 	byte	fireCountXY; 
 	u16		hv;
+	u16		fireFreqM;
+	u16		fireFreqXY;
+	u16		fireDutyM;
+	u16		fireDutyXY;
 	word 	crc;  
 };
 

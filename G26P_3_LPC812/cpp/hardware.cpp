@@ -28,14 +28,21 @@
 
 
 u16 curHV = 0;
-u16 reqHV = 900;
-u16 mt = 100;
+//u16 reqHV = 900;
+u16 p_M = 100;
+u16 p_XY = 100;
+u16 t_M = 100;
+u16 t_XY = 100;
 
-const u16 dstHV = 900;
+static u16 dstHV = 900;
 
 //byte reqFireCount = 1;
 byte reqFireCountM = 1;
 byte reqFireCountXY = 1;
+u16 reqFireFreqM = 16000;
+u16 reqFireFreqXY = 2000;
+u16 reqFireDutyM = 5000; //0.01%
+u16 reqFireDutyXY = 5000; //0.01%
 
 static byte fireCount = 0;
 static u32 fireMaskClr = 0;
@@ -217,13 +224,51 @@ static void UpdateADC()
 
 void SetReqHV(u16 v)
 {
-	reqHV = v;
+	if (v > 950) { v = 950; };
 
-	u16 t = (reqHV > 0) ? (14400/reqHV) : 50;
+	dstHV = v;
 
-	if (t > 100) { t = 100; } else if (t < 16) { t = 16; };
+	//u16 t = (reqHV > 0) ? (14400/reqHV) : 50;
 
-	mt = t;
+	//if (t > 100) { t = 100; } else if (t < 16) { t = 16; };
+
+	//mt = t;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetReqFireFreqM(u16 freq, u16 duty)
+{
+	if (freq < 10000) { freq = 10000; } else if (freq > 30000) { freq = 30000; };
+	
+	if (duty > 6000) { duty = 6000; };
+
+	reqFireFreqM = freq;
+	reqFireDutyM = duty;
+
+	p_M = (MCK+freq/2) / freq;
+
+	u32 t = ((u32)duty * 429497 + 32768) >> 16;
+
+	t_M = (p_M * t + 32768) >> 16; //(u32)p_M * duty / 10000;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetReqFireFreqXY(u16 freq, u16 duty)
+{
+	if (freq < 1000) { freq = 1000; } else if (freq > 10000) { freq = 10000; };
+	
+	if (duty > 6000) { duty = 6000; };
+
+	reqFireFreqXY = freq;
+	reqFireDutyXY = duty;
+
+	p_XY = (MCK+freq/2) / freq;
+
+	u32 t = ((u32)duty * 429497 + 32768) >> 16;
+
+	t_XY = (p_XY * t + 32768) >> 16; //(u32)p_XY * duty / 10000;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -234,17 +279,17 @@ static void InitFireM()
 
 	//u16 t = (((u32)reqHV * 2548) >> 16) + 15;
 
-	u16 t = mt;
+	//u16 t = mt;
 
-	if (t > 100) { t = 100; } else if (t < 16) { t = 16; };
+	//if (t > 100) { t = 100; } else if (t < 16) { t = 16; };
 
 	SCT->CTRL_L = (1<<2); // HALT
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*2;
-	SCT->MATCH_L[2] = 25*(t+2); //335
-	SCT->MATCH_L[3] = 25*(t+4); //345
-	SCT->MATCH_L[4] = 25*t*2;
+	SCT->MATCH_L[2] = t_M+25*2; //335
+	SCT->MATCH_L[3] = t_M+25*4; //345
+	SCT->MATCH_L[4] = p_M;
 
 	SCT->OUTPUT = 2;
 	HW::SWM->CTOUT_0 = PIN_TR1;
@@ -275,9 +320,9 @@ static void InitFireXX()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*2;
-	SCT->MATCH_L[2] = 25*293; //335
-	SCT->MATCH_L[3] = 25*295; //345
-	SCT->MATCH_L[4] = 25*590;
+	SCT->MATCH_L[2] = t_XY+25*2; 
+	SCT->MATCH_L[3] = t_XY+25*4; 
+	SCT->MATCH_L[4] = p_XY;
 
 	SCT->OUTPUT = 0;
 	HW::SWM->CTOUT_0 = PIN_FX1; //17;
@@ -306,9 +351,9 @@ static void InitFireYY()
 
 	SCT->MATCH_L[0] = 0; 
 	SCT->MATCH_L[1] = 25*2;
-	SCT->MATCH_L[2] = 25*293; //335
-	SCT->MATCH_L[3] = 25*295; //345
-	SCT->MATCH_L[4] = 25*590;
+	SCT->MATCH_L[2] = t_XY+25*2; 
+	SCT->MATCH_L[3] = t_XY+25*4; 
+	SCT->MATCH_L[4] = p_XY;
 
 	SCT->OUTPUT = 0;
 	HW::SWM->CTOUT_0 = PIN_FY2; //4;

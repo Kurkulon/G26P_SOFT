@@ -77,14 +77,18 @@ static u16 manReqWord = 0xAA00;
 static u16 manReqMask = 0xFF00;
 
 static u16 numDevice = 0;
-static u16 verDevice = 0x103;
+static const u16 verDevice = 0x104;
 
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
 
-static u16 reqVoltage = 800;
-static byte reqFireCountM = 3;
+static u16 reqVoltage = 900;
+static byte reqFireCountM = 1;
 static byte reqFireCountXY = 2;
+static u16 reqFireFreqM = 16000;
+static u16 reqFireFreqXY = 2000;
+static u16 reqFireDutyM = 5000; //0.01%
+static u16 reqFireDutyXY = 5000; //0.01%
 
 static u16 adcValue = 0;
 static U32u filtrValue;
@@ -115,7 +119,7 @@ static byte savesCount = 0;
 static TWI	twi;
 
 //static DSCTWI dsc;
-static byte framBuf[100];
+static byte framBuf[256];
 
 //static u16 maxOff = 0;
 
@@ -1435,6 +1439,10 @@ static REQ* CreateTrmReq03()
 	req[2].fireCountM	= req[1].fireCountM		= req[0].fireCountM		= reqFireCountM;
 	req[2].fireCountXY	= req[1].fireCountXY	= req[0].fireCountXY	= reqFireCountXY;
 	req[2].hv			= req[1].hv				= req[0].hv				= reqVoltage;
+	req[2].fireFreqM	= req[1].fireFreqM		= req[0].fireFreqM		= reqFireFreqM;
+	req[2].fireFreqXY	= req[1].fireFreqXY		= req[0].fireFreqXY		= reqFireFreqXY;
+	req[2].fireDutyM	= req[1].fireDutyM		= req[0].fireDutyM		= reqFireDutyM;
+	req[2].fireDutyXY	= req[1].fireDutyXY		= req[0].fireDutyXY		= reqFireDutyXY;
 	req[2].crc			= req[1].crc			= req[0].crc			= GetCRC16(&req[0].f, sizeof(req[0])-3);
 
 	return &q;
@@ -1653,16 +1661,14 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 	*(p++) =  reqFireCountM;
 	*(p++) =  reqFireCountXY;
 
-	for (byte i = 0; i < 3; i++)
+	*(p++) =  reqFireFreqM;
+	*(p++) =  reqFireFreqXY;
+	*(p++) =  reqFireDutyM;
+	*(p++) =  reqFireDutyXY;
+
+	for (byte i = 0; i < 2; i++)
 	{
 		*(p++) =  gain[0][i];
-		*(p++) =  gain[1][i];
-		*(p++) =  gain[2][i];
-		*(p++) =  gain[3][i];
-		*(p++) =  gain[4][i];
-		*(p++) =  gain[5][i];
-		*(p++) =  gain[6][i];
-		*(p++) =  gain[7][i];
 		*(p++) =  sampleTime[i];
 		*(p++) =  sampleLen[i];
 		*(p++) =  sampleDelay[i];
@@ -1671,7 +1677,7 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
 
 	mtb->data1 = manTrmData;
-	mtb->len1 = 1+3+11*3;
+	mtb->len1 = p - mtb->data1;// 1+3+4*2;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
@@ -2025,14 +2031,13 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
 
-	byte nf = ((data[1]>>4) & 3);
-	byte nr = data[1] & 0xF;
+	byte nr = data[1];
 	byte st;
 	u16 sl;
 
-	if (nf > 3) return false;
+//	if (nf > 3) return false;
 
-	if (nf == 0)
+	if (nr < 0x10)
 	{
 		switch(nr)
 		{
@@ -2064,42 +2069,100 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 				break;
 
+			case 0x3:
+
+				reqFireFreqM = data[2];
+
+				if (reqFireFreqM < 10000) { reqFireFreqM = 10000; };
+
+				if (reqFireFreqM > 30000) { reqFireFreqM = 30000; };
+
+				break;
+
+			case 0x4:
+
+				reqFireFreqXY = data[2];
+
+				if (reqFireFreqXY < 1000) { reqFireFreqXY = 1000; };
+
+				if (reqFireFreqXY > 10000) { reqFireFreqXY = 10000; };
+
+				break;
+
+			case 0x5:
+
+				reqFireDutyM = data[2];
+
+				if (reqFireDutyM > 6000) { reqFireDutyM = 6000; };
+
+				break;
+
+			case 0x6:
+
+				reqFireDutyXY = data[2];
+
+				if (reqFireDutyXY > 6000) { reqFireDutyXY = 6000; };
+
+				break;
+
 			default:
 
 				return false;
 		};
 	}
-	else if (nr < 8)
-	{
-		gain[nr][nf-1] = data[2]&7;
-		
-		qrcv.Add(CreateRcvReq04(nr+1, gain[nr], 2));
-	}
 	else
 	{
-		nf -= 1;
-
 		switch(nr)
 		{
-			case 0x8:
+			case 0x10:
+
+				for (byte i = 0; i < 8; i++) { gain[0][i] = data[2]&7; };
+				
+				qrcv.Add(CreateRcvReq04(0, gain[0], 2));
+				
+				break;
+
+			case 0x18:
 
 				st = data[2] & 0xFF;
 //				if (st > 0) st -= 1;
-				sampleTime[nf] = st;
+				sampleTime[0] = st;
 
 				break;
 
-			case 0x9:
+			case 0x19:
 
 				sl = data[2];
 				if (sl > 1024) sl = 1024;
-				sampleLen[nf] = sl;
+				sampleLen[0] = sl;
 
 				break;
 
-			case 0xA:
+			case 0x1A:
 
-				sampleDelay[nf] = data[2];
+				sampleDelay[0] = data[2];
+
+				break;
+
+			case 0x28:
+
+				st = data[2] & 0xFF;
+//				if (st > 0) st -= 1;
+				sampleTime[1] = sampleTime[2] = st;
+
+				break;
+
+			case 0x29:
+
+				sl = data[2];
+				if (sl > 1024) sl = 1024;
+				sampleLen[1] = sampleLen[2] = sl;
+
+				break;
+
+			case 0x2A:
+
+				sampleDelay[1] = sampleDelay[2] = data[2];
 
 				break;
 		};
@@ -3073,9 +3136,13 @@ static void LoadVars()
 		p.ReadArrayB(sampleTime, sizeof(sampleTime));
 		p.ReadArrayW(sampleLen, ArraySize(sampleLen));
 		p.ReadArrayW(sampleDelay, ArraySize(sampleDelay));
-		reqVoltage = p.ReadW();
-		reqFireCountM = p.ReadB();
-		reqFireCountXY = p.ReadB();
+		reqVoltage		= p.ReadW();
+		reqFireCountM	= p.ReadB();
+		reqFireCountXY	= p.ReadB();
+		reqFireFreqM	= p.ReadW();
+		reqFireFreqXY	= p.ReadW();
+		reqFireDutyM	= p.ReadW();
+		reqFireDutyXY	= p.ReadW();
 		p.ReadW();
 
 		if (p.CRC.w == 0) { c = true; break; };
@@ -3107,6 +3174,11 @@ static void LoadVars()
 		reqVoltage = 800;
 		reqFireCountM = 1;
 		reqFireCountXY = 2;
+
+		reqFireFreqM = 16000;
+		reqFireFreqXY = 2000;
+		reqFireDutyM = 5000;
+		reqFireDutyXY = 5000;
 
 		savesCount = 2;
 	};
@@ -3144,7 +3216,7 @@ static void UpdateI2C()
 			dsc.IADR = 0;
 			dsc.CWGR = 0x07575; 
 			dsc.data = framBuf;
-			dsc.len = sizeof(framBuf);
+			//dsc.len = sizeof(framBuf);
 
 			for (byte j = 0; j < 2; j++)
 			{
@@ -3157,8 +3229,15 @@ static void UpdateI2C()
 				p.WriteW(reqVoltage);
 				p.WriteB(reqFireCountM);
 				p.WriteB(reqFireCountXY);
+				p.WriteW(reqFireFreqM);
+				p.WriteW(reqFireFreqXY);
+				p.WriteW(reqFireDutyM);
+				p.WriteW(reqFireDutyXY);
+
 				p.WriteW(p.CRC.w);
 			};
+
+			dsc.len = p.b - (byte*)dsc.data;
 
 			i = (twi.Write(&dsc)) ? (i+1) : 0;
 

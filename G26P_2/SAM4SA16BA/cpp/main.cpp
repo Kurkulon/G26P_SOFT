@@ -2116,9 +2116,9 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 		{
 			case 0x10:
 
-				for (byte i = 0; i < 8; i++) { gain[0][i] = data[2]&7; };
+				for (byte i = 0; i < 8; i++) { gain[i][0] = data[2]&7; };
 				
-				qrcv.Add(CreateRcvReq04(0, gain[0], 2));
+				//qrcv.Add(CreateRcvReq04(0, gain[0], 2));
 				
 				break;
 
@@ -2142,6 +2142,14 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 				sampleDelay[0] = data[2];
 
+				break;
+
+			case 0x20:
+
+				for (byte i = 0; i < 8; i++) { gain[i][1] = gain[i][2] = data[2]&7; };
+				
+				//qrcv.Add(CreateRcvReq04(0, gain[0], 2));
+				
 				break;
 
 			case 0x28:

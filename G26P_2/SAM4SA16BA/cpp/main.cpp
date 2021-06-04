@@ -72,12 +72,15 @@ static u16 sampleDelay[3] = { 200, 500, 500};
 u16 manRcvData[10];
 u16 manTrmData[50];
 
+u16 disableFireNoVibration = 0;
+u16 levelNoVibration = 0;
+u16 firePeriod = 1000;
 
 static u16 manReqWord = 0xAA00;
 static u16 manReqMask = 0xFF00;
 
 static u16 numDevice = 0;
-static const u16 verDevice = 0x104;
+static const u16 verDevice = 0x105;
 
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
@@ -136,97 +139,15 @@ inline void SaveParams() { savesCount = 1; }
 
 static SPI spi;
 static SPI::Buffer	bufAccel; 
-static SPI::Buffer	bufGyro;
 
 static i16 ax = 0, ay = 0, az = 0, at = 0;
+static u32 vx = 0, vy = 0, vz = 0;
+static u16 vibration;
 
 //static i32 ang_x = 0, ang_y = 0, ang_z = 0;
 
 static u8 txAccel[25] = { 0 };
 static u8 rxAccel[25];
-
-static u8 txGyro[25] = { 0 };
-static u8 rxGyro[25];
-
-static u8 gyro_WHO_AM_I = 0;
-
-static i32 gx = 0, gy = 0, gz = 0;
-static i32 fgx = 6100000, fgy = -5000000, fgz = 4180000;
-static i32 gYaw = 0, gPitch = 0, gRoll = 0;
-static i16 gt = 0;
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void CallBackAccel(SPI::Buffer *b)
-{
-	//DataPointer p(b->rxp);
-
-	//union { float f; u16 w[2]; } u;
-
-	//p.b += 1;
-
-	//for (byte i = 0; i < 8; i++)
-	//{
-	//	u.f = (u16)(__rev(*p.d) >> 15) * 0.0003814697265625*1.00112267 - 0.00319055 - valueADC1[i];
-
-	//	valueADC1[i] += u.f * (((u.w[1] & 0x7f80) < 0x3c00) ? 0.01 : 0.1);
-	//	p.b += 3;
-	//};
-
-	//UpdatePWM();
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void CallBackGyro(SPI::Buffer *b)
-{
-	//DataPointer p(b->rxp);
-
-	//union { float f; u16 w[2]; } u;
-
-	//p.b += 1;
-
-	//for (byte i = 0; i < 8; i++)
-	//{
-	//	u.f = (u16)(__rev(*p.d) >> 15) * 0.0003814697265625*1.00112267 - 0.00319055 - valueADC2[i];
-
-	//	valueADC2[i] += u.f * (((u.w[1] & 0x7f80) < 0x3c00) ? 0.01 : 0.1);
-	//	p.b += 3;
-	//};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//static void InitADC16()
-//{
-//	using namespace HW;
-//
-//	//PMC->PCER0 = PID::SPI0_M;
-//
-//	//SPI0->CR = 1; 
-//	//SPI0->MR = 0xFF010005;
-//	//SPI0->CSR[0] = 0x00095482;
-//
-//	bufADC1.txp = &txADC1;
-//	bufADC1.rxp = &rxADC1;
-//	bufADC1.count = 25;
-//	bufADC1.CSR = 0x00092302;
-//	bufADC1.DLYBCS = 0x9;
-//	bufADC1.PCS = 1;
-//	bufADC1.pCallBack = CallBackADC1;
-//
-//	bufADC2.txp = &txADC2;
-//	bufADC2.rxp = &rxADC2;
-//	bufADC2.count = 25;
-//	bufADC2.CSR = 0x00092302;
-//	bufADC2.DLYBCS = 0x9;
-//	bufADC2.PCS = 0;
-//	bufADC2.pCallBack = CallBackADC2;
-//
-//	spi.AddRequest(&bufADC1);
-//	spi.AddRequest(&bufADC2);
-//
-//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -244,7 +165,6 @@ static void SendAccelBuf(u16 count)
 	
 	spi.AddRequest(&bufAccel);
 }
-
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -289,64 +209,11 @@ static void AccelWriteReg(byte reg, byte v)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static i32 ArcTan(i16 a, i16 b)
-{
-	const i32 a1 = -1.6003 * 65536;
-	const i32 a2 = -13.147 * 65536;
-	const i32 a3 = 59.883 * 65536;
-
-	i32 tmp;
-
-	i32 y = 0;
-
-	if (b < 0)
-	{
-		b = -b;
-		y += 180 * 65536;
-	};
-
-	if (a < 0)
-	{
-		a = -a;
-		y += 90 * 65536;
-	};
-
-	if (a > b)
-	{
-		tmp = a; a = b; b = tmp;
-		y += 45 * 65536;
-	};
-
-	i32 x = (i32)a * 65536 / b;
-
-
-	//-1,6003 =  - 13,147x2 + 59,883x
-
-	i32 v = a1 * x;
-
-	v /= 65536;
-	v += a2;
-	v *= x;
-	v /= 65536;
-	v += a3;
-	v *= x;
-	v /= 65536;
-
-	y += v;//((a1 * x / 65536 + a2) * x / 65536 + a3) * x / 65536;
-
-	//-1,6003x3 - 13,147x2 + 59,883x
-
-	return y;
-
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 static void UpdateAccel()
 {
 	static byte i = 0; 
 	static i16 x = 0, y = 0, z = 0, t = 0;
-	static i32 fx = 0, fy = 0, fz = 0, ft = 0;
+	static i32 fx = 0, fy = 0, fz = 0, ft = 0, fv = 0;
 
 	static TM32 tm;
 
@@ -422,11 +289,15 @@ static void UpdateAccel()
 			{
 				z |= rxAccel[1];
 
-//				z /= 4;
-
 				fz += (((i32)z * 65536) - fz) / 16;
 
 				az = (i32)fz / 23617;
+
+				i32 t = z - fz/65536;
+
+				if (t < 0) t = -t;
+
+				vz = t;
 
 				AccelReadReg(0x15); // X_MSB
 
@@ -454,11 +325,15 @@ static void UpdateAccel()
 			{
 				x |= rxAccel[1];
 
-				//x /= 4;
-
 				fx += (((i32)x * 65536) - fx) / 16;
 
 				ax = (i32)fx / 23617;
+
+				i32 t = x - fx/65536;
+
+				if (t < 0) t = -t;
+
+				vx = t;
 
 				AccelReadReg(0x1C); // X_MSB
 
@@ -486,13 +361,21 @@ static void UpdateAccel()
 			{
 				y |= rxAccel[1];
 
-				//y /= 4;
-
 				fy += (((i32)y * 65536) - fy) / 16;
 
 				ay = (i32)fy / 23617;
 
-//				ang_y = ArcTan(gx, gz);
+				i32 t = y - fy/65536;
+
+				if (t < 0) t = -t;
+
+				vy = t;
+
+				fv += ((i32)(vx+vy+vz)*1024-fv)/128;
+
+				t = fv/1024;
+
+				vibration = (t < 0xFFFF) ? t : 0xFFFF;
 
 				AccelReadReg(0x4C); // X_MSB
 
@@ -522,318 +405,16 @@ static void UpdateAccel()
 
 				ft += (((i32)t * 65536) - ft) / 32;
 
-//				t /= 16;
-
 				at = (ft - 512 * 65536 * 16) / 33554 + 2300;
 
 				i = 4;
 			};
 
 			break;
-
-
-			//	while ((HW::SPI->SR & 0x202) != 0x202);
-
-			//	HW::PIOA->SODR = 1<<23;
-
-			//	z = HW::SPI->RDR<<8;
-
-			//	AccelReadReg(0x20); // X_MSB
-
-			//	while ((HW::SPI->SR & 0x202) != 0x202);
-
-			//	HW::PIOA->SODR = 1<<23;
-
-			//	z |= HW::SPI->RDR & 0xFF;
-
-
-			//	AccelReadReg(0x15); // X_MSB
-
-			//	while ((HW::SPI->SR & 0x202) != 0x202);
-
-			//	HW::PIOA->SODR = 1<<23;
-
-			//	x = HW::SPI->RDR<<8;
-
-			//	AccelReadReg(0x10); // X_MSB
-
-			//	while ((HW::SPI->SR & 0x202) != 0x202);
-
-			//	HW::PIOA->SODR = 1<<23;
-
-			//	x |= HW::SPI->RDR & 0xFF;
-
-
-			//	AccelReadReg(0x1C); // X_MSB
-
-			//	while ((HW::SPI->SR & 0x202) != 0x202);
-
-			//	HW::PIOA->SODR = 1<<23;
-
-			//	y = HW::SPI->RDR<<8;
-
-			//	AccelReadReg(0x19); // X_MSB
-
-			//	while ((HW::SPI->SR & 0x202) != 0x202);
-
-			//	HW::PIOA->SODR = 1<<23;
-
-			//	y |= HW::SPI->RDR & 0xFF;
-
-			//	x /= 4;
-			//	y /= 4;
-			//	z /= 4;
-
-			//	gx = (i32)x * 1110 / 1000;
-			//	gy = (i32)y * 1110 / 1000;
-			//	gz = (i32)z * 1110 / 1000;
-			//};
-			
-//			i++;
-			
-//			break;
-
-
-	};
-
-
-	//if (bufGyro.ready)
-	//{
-	//	spi.AddRequest(&bufGyro);
-	//};
-
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void SendGyroBuf(u16 count)
-{
-	bufGyro.txp = &txGyro;
-	bufGyro.rxp = &rxGyro;
-	bufGyro.count = count;
-	bufGyro.CSR = 0x00091401;
-	bufGyro.DLYBCS = 0x9;
-	bufGyro.PCS = 0;
-	bufGyro.pCallBack = 0;
-	bufGyro.pio = HW::PIOA;
-	bufGyro.mask = 1<<22;
-	
-	spi.AddRequest(&bufGyro);
-}
-
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void GyroReadReg(byte reg)
-{
-	txGyro[0] = reg;
-
-	SendGyroBuf(2);
-
-	//HW::PMC->PCER0 = HW::PID::SPI_M;
-	//HW::SPI->CR = 1;
- //
-	//HW::SPI->MR = 0x09000011;
-	//HW::SPI->CSR[0] = 0x00091482;
-
-	//HW::PIOA->SODR = 1<<22;
-	//HW::PIOA->CODR = 1<<23;
-
-	//HW::SPI->TDR = reg<<8;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void GyroWriteReg(byte reg, byte v)
-{
-	txGyro[0] = reg;
-	txGyro[1] = v;
-
-	SendGyroBuf(2);
-
-	//HW::PMC->PCER0 = HW::PID::SPI_M;
-	//HW::SPI->CR = 1;
- //
-	//HW::SPI->MR = 0x09000011;
-	//HW::SPI->CSR[0] = 0x0009FF82;
-
-	//HW::PIOA->SODR = 1<<22;
-	//HW::PIOA->CODR = 1<<23;
-
-	//HW::SPI->TDR = reg;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void UpdateGyro()
-{
-	static byte i = 0; 
-	//static i16 x = 0, y = 0, z = 0, t = 0;
-	//static i32 fx = 0, fy = 0, fz = 0, ft = 0;
-
-	static TM32 tm;
-
-	i16 t;
-
-	switch (i)
-	{
-		case 0:
-
-			txGyro[0] = 0x80|0xf; // WHO_AM_I
-
-			SendGyroBuf(2);
-
-			i++;
-
-			break;
-
-		case 1:
-
-			if (bufGyro.ready)
-			{
-				gyro_WHO_AM_I = rxGyro[1];
-
-				txGyro[0] = 0x40|0x20;	// Multiple byte write CTRL_REG1
-				txGyro[1] = 0xF;		// CTRL_REG1 = ODR:100, BW:12.5, PD:1, Zen:1, Yen:1, Xen:1
-				txGyro[2] = 0;			// CTRL_REG2 
-				txGyro[3] = 1<<3;		// CTRL_REG3 = I2_DRDY:1
-				txGyro[4] = 0;			// CTRL_REG4 
-				txGyro[5] = 0;			// CTRL_REG5 
-				txGyro[6] = 0;			// REFERENCE 
-
-				SendGyroBuf(7);
-
-				i++;
-			};
-
-			break;
-
-		case 2:
-
-			if (bufGyro.ready)
-			{
-				txGyro[0] = 0x00|0x2E;	// write FIFO_CTRL_REG
-				txGyro[1] = 0;			// FIFO_CTRL_REG = 0
-
-				SendGyroBuf(2);
-
-				i++;
-			};
-
-			break;
-
-		case 3:
-
-			if (bufGyro.ready)
-			{
-				txGyro[0] = 0xC0|0x26;	// Multiple byte SPI read
-				txGyro[1] = 0;			// OUT_TEMP
-				txGyro[2] = 0;			// STATUS_REG
-				txGyro[3] = 0;			// OUT_X_L
-				txGyro[4] = 0;			// OUT_X_H
-				txGyro[5] = 0;			// OUT_Y_L
-				txGyro[6] = 0;			// OUT_Y_H
-				txGyro[7] = 0;			// OUT_Z_L
-				txGyro[8] = 0;			// OUT_Z_H
-
-				SendGyroBuf(9);
-
-				i++;
-			};
-
-			break;
-
-		case 4:
-
-			if (bufGyro.ready)
-			{
-				gt = (i8)rxGyro[1];
-
-				if (rxGyro[2] & 9) // ZYXDA or XDA
-				{
-					t = (i16)(rxGyro[3]|(rxGyro[4]<<8));
-					fgx += ((i32)t * 65536 - fgx) / 16384;
-					gx += t - (6100000/65536) ;
-
-					gYaw = gx / 11429;
-				};
-
-				if (rxGyro[2] & 0xA) // ZYXDA or YDA
-				{
-					t = (i16)(rxGyro[5]|(rxGyro[6]<<8));
-					fgy += ((i32)t * 65536 - fgy) / 16384;
-					gy += t - (-5000000/65536);
-
-					gPitch = gy / 11429;
-				};
-
-				if (rxGyro[2] & 0xC) // ZYXDA or YDA
-				{
-					t = (i16)(rxGyro[7]|(rxGyro[8]<<8));
-					fgz += ((i32)t * 65536 - fgz) / 16384;
-					gz += t - (4180000/65536);
-
-					gRoll = gz / 11429;
-				};
-
-				// ...
-
-				i++;
-			};
-
-			break;
-
-		case 5:
-
-			if ((HW::PIOA->PDSR & (1<<15)) != 0 && tm.Check(10))
-			{
-				i = 3;
-			};
-
-			break;
-
-		//case 6:
-
-		//	if ((HW::PIOA->PDSR & (1<<15)) != 0)
-		//	{
-		//		i = 3;
-		//	};
-
-		//	break;
 	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void CopyData(void *src, void *dst, u16 len)
-{
-	T_HW::S_USART &u = *HW::USART1;
-
-	u.CR = 0x1A0;	// Disable transmit and receive, reset status
-
-	u.MR = 0x89C0; // LOCAL_LOOPBACK, SYNC, No parity, 
-	u.BRGR = 30;
-	u.PDC.TPR = src;
-	u.PDC.TCR = len;
-	u.PDC.RPR = dst;
-	u.PDC.RCR = len;
-
-	u.PDC.PTCR = 0x101;
-
-	u.CR = 0x150;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-inline bool CheckCopyDataComplete()
-{
-	T_HW::S_USART &u = *HW::USART1;
-
-	return 	u.PDC.TCR == 0 && u.PDC.RCR == 0;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void CallBackRcvReqFire(REQ *q)
 {
@@ -1592,7 +1173,7 @@ static void CreateMemReq02(R02 &r, bool crc)
 
 static void CreateMemReq_20()
 {
-	static u16 manTrmData[13];
+	static u16 manTrmData[14];
 
 	static ComPort::WriteBuffer wb;
 	
@@ -1620,6 +1201,7 @@ static void CreateMemReq_20()
 	manTrmData[9] = -ay;
 	manTrmData[10] = at;
 	manTrmData[11] = temperature;
+	manTrmData[12] = vibration;
 
 	
 	wb.data = manTrmData;
@@ -1674,6 +1256,10 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 		*(p++) =  sampleDelay[i];
 	};
 
+	*(p++) = disableFireNoVibration;
+	*(p++) = levelNoVibration;
+	*(p++) = firePeriod;
+
 	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
 
 	mtb->data1 = manTrmData;
@@ -1690,21 +1276,24 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	manTrmData[0] = manReqWord|0x20;
-	manTrmData[1] = GD(&fireCounter, u16, 0);
-	manTrmData[2] = GD(&fireCounter, u16, 1);
-	manTrmData[3] = voltage;
-	manTrmData[4] = numStations|(((u16)rcvStatus)<<8);
-	manTrmData[5] = resistValue;
-	manTrmData[6] = (cpuTemp+5)/10;
-	manTrmData[7] = -ax;
-	manTrmData[8] = az;
-	manTrmData[9] = -ay;
-	manTrmData[10] = at;
-	manTrmData[11] = temperature;
+	u16* p = manTrmData;
+
+	*(p++) = manReqWord|0x20;
+	*(p++) = GD(&fireCounter, u16, 0);
+	*(p++) = GD(&fireCounter, u16, 1);
+	*(p++) = voltage;
+	*(p++) = numStations|(((u16)rcvStatus)<<8);
+	*(p++) = resistValue;
+	*(p++) = (cpuTemp+5)/10;
+	*(p++) = -ax;
+	*(p++) = az;
+	*(p++) = -ay;
+	*(p++) = at;
+	*(p++) = temperature;
+	*(p++) = vibration;
  
 	mtb->data1 = manTrmData;
-	mtb->len1 = 12;
+	mtb->len1 = p - mtb->data1;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
@@ -2173,6 +1762,30 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 				sampleDelay[1] = sampleDelay[2] = data[2];
 
 				break;
+
+			case 0x30:
+
+				disableFireNoVibration = data[2];
+
+				break;
+
+			case 0x31:
+
+				levelNoVibration = data[2];
+
+				break;
+
+			case 0x32:
+
+				firePeriod = data[2];
+
+				if(firePeriod < 300) firePeriod = 300;
+
+				break;
+
+			default:
+
+				return false;
 		};
 
 		qrcv.Add(CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 2));
@@ -2707,7 +2320,7 @@ static void MainMode()
 	{
 		case 0:
 
-			if (runMainMode)
+			if (runMainMode && (disableFireNoVibration == 0 || vibration > levelNoVibration))
 			{
 				req = CreateRcvReq03(0, sampleTime, sampleLen, sampleDelay, 0);
 
@@ -2857,7 +2470,7 @@ static void MainMode()
 
 		case 8:
 
-			if (rt.Check(MS2RT(50)))
+			if (rt.Check(MS2RT(firePeriod/16)))
 			{
 				fireType = (fireType+1) % 3; 
 
@@ -2879,7 +2492,7 @@ static void MainMode()
 
 		case 9:
 
-			if (/*voltage >= reqVoltage ||*/ rt.Check(MS2RT(200)))
+			if (/*voltage >= reqVoltage ||*/ rt.Check(MS2RT(firePeriod/4)))
 			{
 				mainModeState = 0;
 			};
@@ -2888,7 +2501,7 @@ static void MainMode()
 
 		case 10:
 
-			if (rt2.Check(1000))
+			if (rt2.Check(firePeriod))
 			{
 				mainModeState = 0;
 			};
@@ -3144,13 +2757,17 @@ static void LoadVars()
 		p.ReadArrayB(sampleTime, sizeof(sampleTime));
 		p.ReadArrayW(sampleLen, ArraySize(sampleLen));
 		p.ReadArrayW(sampleDelay, ArraySize(sampleDelay));
-		reqVoltage		= p.ReadW();
-		reqFireCountM	= p.ReadB();
-		reqFireCountXY	= p.ReadB();
-		reqFireFreqM	= p.ReadW();
-		reqFireFreqXY	= p.ReadW();
-		reqFireDutyM	= p.ReadW();
-		reqFireDutyXY	= p.ReadW();
+		reqVoltage				= p.ReadW();
+		reqFireCountM			= p.ReadB();
+		reqFireCountXY			= p.ReadB();
+		reqFireFreqM			= p.ReadW();
+		reqFireFreqXY			= p.ReadW();
+		reqFireDutyM			= p.ReadW();
+		reqFireDutyXY			= p.ReadW();
+		disableFireNoVibration	= p.ReadW();
+		levelNoVibration		= p.ReadW();
+		firePeriod				= p.ReadW();
+
 		p.ReadW();
 
 		if (p.CRC.w == 0) { c = true; break; };
@@ -3187,6 +2804,10 @@ static void LoadVars()
 		reqFireFreqXY = 2000;
 		reqFireDutyM = 5000;
 		reqFireDutyXY = 5000;
+
+		disableFireNoVibration	= 0;
+		levelNoVibration		= 100;
+		firePeriod				= 1000;
 
 		savesCount = 2;
 	};
@@ -3241,6 +2862,10 @@ static void UpdateI2C()
 				p.WriteW(reqFireFreqXY);
 				p.WriteW(reqFireDutyM);
 				p.WriteW(reqFireDutyXY);
+
+				p.WriteW(disableFireNoVibration);
+				p.WriteW(levelNoVibration);
+				p.WriteW(firePeriod);
 
 				p.WriteW(p.CRC.w);
 			};

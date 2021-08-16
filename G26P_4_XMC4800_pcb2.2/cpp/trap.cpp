@@ -800,6 +800,8 @@ static bool UpdateSendVector()
 
 	static FileDsc *si = 0;
 
+	static RTC prevRTC = {0};
+
 	__packed struct TRP { EthUdp eu; TrapVector tv; byte data[IP_MTU - sizeof(UdpHdr) - sizeof(TrapVector)]; };
 	__packed struct FR  { EthIp  ei; byte data[IP_MTU]; };
 
@@ -853,6 +855,9 @@ static bool UpdateSendVector()
 				};
 
 				vecCount = 0;
+
+				prevRTC.date = 0;
+				prevRTC.time = 0;
 
 				i++;
 			}
@@ -908,7 +913,7 @@ static bool UpdateSendVector()
 
 			if (flrb.ready)
 			{
-				if (flrb.len == 0 || flrb.hdr.session != ses)
+				if (flrb.len == 0 || flrb.hdr.session != ses || flrb.hdr.rtc.date < prevRTC.date || flrb.hdr.rtc.time < prevRTC.time)
 				{
 					t->len = 0;
 
@@ -921,6 +926,8 @@ static bool UpdateSendVector()
 				}
 				else // if (flrb.hdr.crc == 0)
 				{
+					prevRTC = flrb.hdr.rtc;
+
 					TRP &et = *((TRP*)&t->eth);
 
 					TrapVector &trap = et.tv;

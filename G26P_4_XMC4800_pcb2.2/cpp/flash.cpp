@@ -1689,7 +1689,8 @@ static bool Read::Update()
 			}
 			else
 			{
-				CmdReadPage(rd.col, rd.block, rd.page);
+				CmdRandomRead(rd.col);
+				//CmdReadPage(rd.col, rd.block, rd.page);
 
 				state = READ_PAGE;
 			};

@@ -1,3 +1,5 @@
+#ifndef WIN32
+
 //#include <string.h>
 
 #include "system_XMC4800.h"
@@ -1035,3 +1037,7 @@ __WEAK uint32_t OSCHP_GetFrequency(void)
 {
   return OSCHP_FREQUENCY;
 }
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#endif // #ifndef WIN32

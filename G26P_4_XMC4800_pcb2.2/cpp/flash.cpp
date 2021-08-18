@@ -1,10 +1,12 @@
+//#ifndef WIN32
+
 //#include <string.h>
 
 //#include "common.h"
+#include "core.h"
 #include "flash.h"
 //#include "fram.h"
 #include "vector.h"
-#include "core.h"
 #include "list.h"
 #include <CRC16.h>
 #include "ComPort.h"
@@ -454,11 +456,25 @@ __packed struct NandID
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifndef WIN32
+
 volatile byte * const FLC = (byte*)0x60000008;	
 volatile byte * const FLA = (byte*)0x60000010;	
 volatile byte * const FLD = (byte*)0x60000000;	
 //volatile u16 * const FLD16 = (u16*)0x60000000;	
 //volatile u32 * const FLD32 = (u32*)0x60000000;	
+
+#else
+
+static byte reg_FLC;
+static byte reg_FLA;
+static byte reg_FLD;
+
+byte * const FLC = &reg_FLC;	
+byte * const FLA = &reg_FLA;	
+byte * const FLD = &reg_FLD;	
+
+#endif
 
 static u32 chipSelect[8] = { 1<<2, 1<<0, 1<<8, 1<<9, 1<<6, 1<<1, 1<<3, 1<<7 };
 static const u32 maskChipSelect = (0xF<<0)|(0xF<<6);
@@ -579,11 +595,15 @@ static NandState GetNandState()
 
 static bool ResetNand()
 {
+#ifndef WIN32
+
 	while(NAND_BUSY());
 	CMD_LATCH(NAND_CMD_RESET);
 	while(NAND_BUSY());
 
 	for (u32 i = 0; i < 1000; i++) { __nop(); };
+
+#endif
 
 	return true;
 }
@@ -653,6 +673,8 @@ static void CmdReadPage(u16 col, u32 bl, u16 pg)
 
 static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	register u32 t __asm("r0");
@@ -668,6 +690,8 @@ static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 	HW::GPDMA1_CH3->CFGH = PROTCTL(1);
 
 	HW::GPDMA1->CHENREG = 0x101<<3;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2975,6 +2999,8 @@ void NAND_Idle()
 
 static void NAND_Init()
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	nandSize.shPg = 0;
@@ -3059,13 +3085,10 @@ static void NAND_Init()
 
 	DisableWriteProtect();
 
+#else
 
-//	PMC->PCER0 = PID::SMC_M;
 
-	//SMC->CSR[0].SETUP = 1;
-	//SMC->CSR[0].PULSE = 0x05050505;
-	//SMC->CSR[0].CYCLE = 0x00090009;
-	//SMC->CSR[0].MODE = 0x00000003;
+#endif
 }
 
 
@@ -4185,3 +4208,5 @@ void FLASH_Update()
 #pragma pop
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//#endif // #ifndef WIN32

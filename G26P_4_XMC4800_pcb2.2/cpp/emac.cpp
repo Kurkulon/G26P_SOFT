@@ -12,6 +12,7 @@
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+
 /* Net_Config.c */
 
 #define OUR_IP_ADDR   	IP32(192, 168, 3, 234)
@@ -58,9 +59,10 @@ u32 trp[4] = {-1};
 
 u16  txIpID = 0;
 
+#ifndef WIN32
 
 /* GMAC local IO buffers descriptors. */
-Receive_Desc Rx_Desc[NUM_RX_BUF] __attribute__((at(0x20020000)));;
+Receive_Desc Rx_Desc[NUM_RX_BUF] __attribute__((at(0x20020000)));
 Transmit_Desc Tx_Desc[NUM_TX_DSC];
 
 /* GMAC local buffers must be 8-byte aligned. */
@@ -211,6 +213,8 @@ static void FreeTxDesc()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#endif
+
 //static void UpdateStatistic()
 //{
 //	using namespace HW;
@@ -247,6 +251,8 @@ u16 IpChkSum(u16 *p, u16 size)
 	register u32 sum = 0;
 	register u32 t;
 
+#ifndef WIN32
+
 loop:
 
 	__asm
@@ -261,6 +267,8 @@ loop:
 		ADD		sum, sum, t
 		ADD		sum, sum, sum, LSR#16 
 	};
+
+#endif
  
 	return ~sum;
 }
@@ -274,9 +282,13 @@ bool TransmitEth(EthBuf *b)
 		return false;
 	};
 
+#ifndef WIN32
+
 	b->eth.src = hwAdr;
 
 	txList.Add(b);
+
+#endif
 
 	return true;
 }
@@ -372,105 +384,7 @@ bool TransmitFragUdp(EthUdpBuf *b, u16 dst)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-/*
-bool EMAC_SendData(void *pData, u16 length)
-{
-	static u16 TxDataID = 0;
-	
-	const u16 BLOK_LEN = 1480;	// Split to max IPlen=1500
-	const u16 MAX_TIME_TO_TRANSMIT_MS = 10;	// ms, do not write zero!
-
-	//if(!emacConnected) return false; 
-	//if(!ComputerFind)  return false;
-	//length += sizeof(AT91S_UDPHdr);
-	//unsigned int blok = 0;
-	//unsigned int sended_len = 0;
-	//unsigned short checksum;
-	//unsigned int i,j;
-	bool ready = true;
- 
-	TxDataID ++;
-
-	//AT91S_EthHdr *OurTxPacketEthHeader;
-	//AT91S_IPheader *OurTxPacketIpHeader;
-	//while(sended_len < length) 
-	//{
- //       	OurTxPacketEthHeader = (AT91S_EthHdr *)((unsigned int)((unsigned int)TxPacket + TxBuffIndex*ETH_TX_BUFFER_SIZE)&0xFFFFFFFC);
-	//	OurTxPacketIpHeader = (AT91S_IPheader *)((unsigned int)OurTxPacketEthHeader + 14);
-	//	// EthHeader
-	//	for(i=0;i<6;i++) 
-	//	{ 
-	//		OurTxPacketEthHeader->et_dest[i] = ComputerEmacAddr[i];
- //      		        OurTxPacketEthHeader->et_src[i] = OurEmacAddr[i];
-	//	}
-	//	OurTxPacketEthHeader->et_protlen = SWAP16(PROT_IP);
-	//	// IpHeader
-	//	for(i=0;i<4;i++) 
-	//	{ 
-	//		OurTxPacketIpHeader->ip_dst[i] = ComputerIpAddr[i];
-	//		OurTxPacketIpHeader->ip_src[i] = OurIpAddr[i];
-	//	}
-	//	OurTxPacketIpHeader->ip_hl_v 	= OurRxPacketIpHeader->ip_hl_v;	// may be fix  = 0x45
-	//	OurTxPacketIpHeader->ip_tos 	= OurRxPacketIpHeader->ip_tos;  // may be fix  = 0x00
-	//	OurTxPacketIpHeader->ip_id 	= SWAP16(TxDataID);
-	//	OurTxPacketIpHeader->ip_ttl	= 128;
-	//	OurTxPacketIpHeader->ip_p	= PROT_UDP;
-	//	unsigned short offset = 0x0000;
-	//	if(length - sended_len > BLOK_LEN) offset |= 0x2000;
-	//	offset |= (sended_len/8)&0x1FFF;
-	//	OurTxPacketIpHeader->ip_off 	= SWAP16(offset);
-	//	// UDP header
-	//	char *data;
- //       	if(blok==0)	
-	//	{
-	//		OurTxPacketIpHeader->udp_src 	= SWAP16(OurUDPPort);
-	//		OurTxPacketIpHeader->udp_dst 	= SWAP16(ComputerUDPPort);
-	//		OurTxPacketIpHeader->udp_len 	= SWAP16(length);
-	//		OurTxPacketIpHeader->udp_xsum	= 0;
-	//		checksum = ~NetChksumAdd(NetChksumAdd(NetChksum((unsigned short *)(&(OurTxPacketIpHeader->udp_src)), sizeof(AT91S_UDPHdr)), 
-	//						   PseudoChksum((unsigned char *)(OurTxPacketIpHeader->ip_src), (unsigned char *)(OurTxPacketIpHeader->ip_dst), SWAP16(OurTxPacketIpHeader->udp_len))),
-	//					NetChksum((unsigned short *)(pData), length-sizeof(AT91S_UDPHdr)));
-	//		OurTxPacketIpHeader->udp_xsum	= checksum;
-	//		sended_len += sizeof(AT91S_UDPHdr);
-	//		data = (char *)(&OurTxPacketIpHeader->udp_xsum) + sizeof(OurTxPacketIpHeader->udp_xsum);
-	//		i = sizeof(AT91S_UDPHdr);
-	//	}
-	//	else
-	//	{
-	//		i = 0;
-	//		data = (char *)(&OurTxPacketIpHeader->udp_src);
-	//	}
-
-	//	i = sended_len + BLOK_LEN - i;
-	//	if (i>=length) i=length;
-	//	while(sended_len < i)
-	//	{
-	//        	*((unsigned short *)data) = (*((unsigned short *)pData));
-	//		data+=2;
-	//		pData+=2;
-	//		sended_len+=2;
-	//	}
-	//	sended_len = i;
-	//	// IP Header
-	//	unsigned short ip_len		= sended_len - blok*BLOK_LEN + (OurTxPacketIpHeader->ip_hl_v&0x0F)*sizeof(unsigned int);
-	//	OurTxPacketIpHeader->ip_len 	= SWAP16(ip_len);
- //               OurTxPacketIpHeader->ip_sum	= 0;
-	//	checksum = SWAP16(IPChksum((unsigned short *)OurTxPacketIpHeader, (OurTxPacketIpHeader->ip_hl_v & 0x0F) * sizeof(unsigned int)/sizeof(unsigned short)));
-	//	OurTxPacketIpHeader->ip_sum 	= checksum;
-	//	// Transmit
-	//	ready = ready & ProcessTxEmacPacket();
-	//	TxtdList[TxBuffIndex].addr = (unsigned int)OurTxPacketEthHeader;
-	//	TxtdList[TxBuffIndex].U_Status.S_Status.Length = SWAP16(OurTxPacketIpHeader->ip_len) + 14;
-	//	TxtdList[TxBuffIndex].U_Status.S_Status.LastBuff = 1;
-	//	if (TxBuffIndex == (NB_TX_BUFFERS - 1))	TxBuffIndex = 0; else TxBuffIndex ++;
-	//	AT91C_BASE_EMAC->EMAC_NCR |= AT91C_EMAC_TSTART;
-	//	blok++;
-	//}
-	//EmacTxCounter++;
-	return ready;
-}*/
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static void RequestARP(EthArp *h, u32 stat)
 {
@@ -883,6 +797,8 @@ static void UpdateTransmit()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#endif // #ifndef WIN32
+
 
 /*--------------------------- init_ethernet ---------------------------------*/
 
@@ -890,6 +806,7 @@ static void UpdateTransmit()
 
 bool InitEMAC()
 {
+#ifndef WIN32
 
 	using namespace HW;
 	
@@ -994,10 +911,15 @@ bool InitEMAC()
 
 	StartLink();
 
+#else
+
+#endif
+
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static bool UpdateLink()
 {
@@ -1159,10 +1081,14 @@ static bool CheckLink() // Если нет связи, то результат false
 	return result;
 }
 
+#endif
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void UpdateEMAC()
 {
+#ifndef WIN32
+
 	static byte i = 0;
 
 	switch(stateEMAC)
@@ -1200,12 +1126,17 @@ void UpdateEMAC()
 
 			break;
 	};
+
+#else
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static void rx_descr_init (void)
 {
@@ -1282,6 +1213,8 @@ static void ReqReadPHY(byte PhyReg)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#endif
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

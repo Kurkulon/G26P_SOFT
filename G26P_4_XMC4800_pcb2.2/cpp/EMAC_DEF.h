@@ -1,7 +1,7 @@
 #ifndef EMAC_DEF_H__13_06_2013__09_47
 #define EMAC_DEF_H__13_06_2013__09_47
 
-#include "core.h"
+//#include "core.h"
 
 
 /* EMAC Memory Buffer configuration. */

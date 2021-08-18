@@ -2,6 +2,13 @@
 #include "COM_DEF.h"
 #include "time.h"
 
+#ifdef WIN32
+#include <windows.h>
+
+static byte fram_I2c_Mem[0x10000];
+
+#endif
+
 //#pragma O3
 //#pragma Otime
 
@@ -90,6 +97,7 @@ u32 twiErr = 0;
 static volatile byte intCount = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static __irq void Handler_TWI()
 {
@@ -211,10 +219,13 @@ static __irq void Handler_TWI()
 	TWI->PSCR = a;
 }
 
+#endif
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool Write_TWI(DSCTWI *d)
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	if (dsc != 0 || d == 0) { return false; };
@@ -255,6 +266,8 @@ bool Write_TWI(DSCTWI *d)
 
 	__enable_irq();
 
+#endif
+
 	return true;
 }
 
@@ -262,6 +275,8 @@ bool Write_TWI(DSCTWI *d)
 
 bool AddRequest_TWI(DSCTWI *d)
 {
+#ifndef WIN32
+
 	d->next = 0;
 	d->ready = false;
 
@@ -284,6 +299,69 @@ bool AddRequest_TWI(DSCTWI *d)
 		__enable_irq();
 	};
 
+#else
+
+	if (d == 0) { return false; };
+	if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
+
+	u16 adr;
+
+	switch (d->adr)
+	{
+		case 0x49: //Temp
+
+			if (d->rlen >= 2)
+			{
+				byte *p = (byte*)d->rdata;
+
+				p[0] = 0;
+				p[1] = 0;
+			};
+				
+			d->readedLen = d->rlen;
+			d->ack = true;
+			d->ready = true;
+
+			break;
+
+		case 0x50: // FRAM
+
+			d->readedLen = 0;
+
+			if (d->wlen == 2)
+			{
+				adr = ReverseWord(*((u16*)d->wdata));
+
+				adr %= sizeof(fram_I2c_Mem);
+
+				if (d->wdata2 != 0 && d->wlen2 != 0)
+				{
+					u16 count = d->wlen2;
+					byte *s = (byte*)d->wdata2;
+					byte *d = fram_I2c_Mem + adr;
+
+					while (count-- != 0) { *(d++) = *(s++); adr++; if (adr >= sizeof(fram_I2c_Mem)) { adr = 0; d = fram_I2c_Mem; }; };
+				}
+				else if (d->rdata != 0 && d->rlen != 0)
+				{
+					d->readedLen = d->rlen;
+					u16 count = d->rlen;
+
+					byte *p = (byte*)(d->rdata);
+					byte *s = fram_I2c_Mem + adr;
+
+					while (count-- != 0) { *(p++) = *(s++); adr++; if (adr >= sizeof(fram_I2c_Mem)) { adr = 0; s = fram_I2c_Mem; }; };
+				};
+			};
+
+			d->ack = true;
+			d->ready = true;
+
+			break;
+	};
+
+#endif
+
 	return true;
 }
 
@@ -301,6 +379,8 @@ static void delay(u32 cycles)
 
 void Init_TWI()
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	//num &= 1;
@@ -355,12 +435,32 @@ void Init_TWI()
 	TWI->PCR_IICMode = __PCR;
 
 	delay(1000);
+
+#else
+
+	HANDLE h;
+
+	h = CreateFile("FRAM_I2C_STORE.BIN", GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
+
+	if (h == INVALID_HANDLE_VALUE)
+	{
+		return;
+	};
+
+	dword bytes;
+
+	ReadFile(h, fram_I2c_Mem, sizeof(fram_I2c_Mem), &bytes, 0);
+	CloseHandle(h);
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void Update_TWI()
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	static TM32 tm;
@@ -458,6 +558,33 @@ void Update_TWI()
 	__enable_irq();
 
 //	HW::P5->BCLR(7);
+
+#endif
 }
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+void Destroy_TWI()
+{
+	HANDLE h;
+
+	h = CreateFile("FRAM_I2C_STORE.BIN", GENERIC_WRITE, 0, 0, OPEN_ALWAYS, 0, 0);
+
+	if (h == INVALID_HANDLE_VALUE)
+	{
+		return;
+	};
+
+	dword bytes;
+
+	if (!WriteFile(h, fram_I2c_Mem, sizeof(fram_I2c_Mem), &bytes, 0))
+	{
+		dword le = GetLastError();
+	};
+
+	CloseHandle(h);
+}
+
+#endif
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

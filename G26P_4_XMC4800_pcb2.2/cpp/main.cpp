@@ -8,7 +8,16 @@
 #include "hardware.h"
 #include "main.h"
 
+#ifdef WIN32
+
+#include <conio.h>
+//#include <stdio.h>
+
+#else
+
 #pragma diag_suppress 546,550,177
+
+#endif
 
 //#pragma O3
 //#pragma Otime
@@ -21,8 +30,8 @@ static ComPort com1;
 u32 fps = 0;
 u32 f = 0;
 
-ComPort::WriteBuffer wb = { .transmited = false, .len = 0, .data = buf };
-ComPort::ReadBuffer rb = { .recieved = false, .len = 0, .maxLen = sizeof(buf), .data = buf };
+//ComPort::WriteBuffer wb = { .transmited = false, .len = 0, .data = buf };
+//ComPort::ReadBuffer rb = { .recieved = false, .len = 0, .maxLen = sizeof(buf), .data = buf };
 
 static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len);
 static void Init_UART_DMA();
@@ -602,16 +611,32 @@ int main()
 			fps = f; f = 0; 
 
 			HW::WDT->Update();
-
-			//mtb.data = manbuf;
-			//mtb.len = 3;
-
-			//manbuf[0] = 0xAA00;
-
-			//SendManData(&mtb);
-			//SendMLT3(&mtb);
+#ifdef WIN32
+			Printf(0, 0, 0x80, "FPS=%9i", fps);
+#endif
 		};
+
+#ifdef WIN32
+
+		UpdateDisplay();
+
+		if (_kbhit())
+		{
+			if (_getch() == 27) break;
+		};
+
+#endif
+
 	};
+
+#ifdef WIN32
+
+	Destroy_TWI();
+
+	//_fcloseall();
+
+#endif
+
 
 }
 

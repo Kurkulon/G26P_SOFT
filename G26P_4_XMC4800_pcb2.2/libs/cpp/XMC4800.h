@@ -5,7 +5,9 @@
 //#error  Must #include "core.h"
 #endif 
 
+#ifndef WIN32
 #pragma anon_unions
+#endif
 
 #include "types.h"
 
@@ -26,8 +28,8 @@
 #ifndef WIN32
 #define MK_PTR(n,t,p)  T_HW::t * const n = ((T_HW::t*)(p))
 #else
-extern byte core_sys_array[0x100000]; 
-#define MK_PTR(n,p)  T_HW::n##_Type * const n = ((T_HW::n##_Type*)(core_sys_array-0x40000000+p))
+//extern byte core_sys_array[0x100000]; 
+#define MK_PTR(n,t,p) static T_HW::t hwreg_##n; T_HW::t * const n = &hwreg_##n;
 #endif
 
 
@@ -357,6 +359,8 @@ reg = (uint##size##_t) (VAL2 | VAL4);\
 /* anonymous unions are enabled by default */
 #elif defined(__TASKING__)
   #pragma warning 586
+#elif defined(WIN32)
+/* anonymous unions are enabled by default */
 #else
   #warning Not supported compiler type
 #endif
@@ -3049,6 +3053,8 @@ namespace T_HW
   /* anonymous unions are enabled by default */
 #elif defined(__TASKING__)
   #pragma warning restore
+#elif defined(WIN32)
+/* anonymous unions are enabled by default */
 #else
   #warning Not supported compiler type
 #endif

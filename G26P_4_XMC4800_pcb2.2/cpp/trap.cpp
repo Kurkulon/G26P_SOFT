@@ -5,15 +5,9 @@
 #include "common.h"
 #include "trap.h"
 #include "main.h"
-//#include "power.h"
-//#include "fram.h"
 #include "flash.h"
-//#include "sensors.h"
 #include "emac.h"
-//#include "mode_online.h"
-//#include "mode_ethernet.h"
 #include "bootloader.h"
-
 #include "trap_def.h"
 #include "xtrap.h"
 #include "CRC16.h"
@@ -539,7 +533,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 		{
 			case TRAP_INFO_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-				TrapInfoSet &ts = (TrapInfoSet&)*t;
+				//TrapInfoSet &ts = (TrapInfoSet&)*t;
 
 				switch (t->hdr.cmd)
 				{
@@ -552,8 +546,9 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 					case TRAP_INFO_COMMAND_SET_NUMBER:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
+
+						{ TrapInfoSet &ts = (TrapInfoSet&)*t; SetNumDevice(ts.number); };
 						
-						SetNumDevice(ts.number);
 						SaveParams();
 
 						break;
@@ -589,11 +584,12 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 						break;
 
 					case TRAP_CLOCK_COMMAND_SET:
-
-						TrapClock &tc = (TrapClock&)*t;
+						
+						//TrapClock &tc = (TrapClock&)*t;
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_CLOCK_DEVICE, TrapRxCounter);	
-						SetClock(tc.rtc);
+						
+						{ TrapClock &tc = (TrapClock&)*t; SetClock(tc.rtc); };
 
 						if (__trace) { TRAP_TRACE_PrintString(" TRAP_CLOCK_COMMAND_SET \r\n"); };
 
@@ -634,9 +630,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
 
-						TrapReadVector &tr = (TrapReadVector&)*t;
-
-						StartSendVector(tr.session, tr.last_adress);
+						{ TrapReadVector &tr = (TrapReadVector&)*t; StartSendVector(tr.session, tr.last_adress); };
 
 //						Mode_Ethernet_Flash_Read_Vector_Start(tr.session, tr.last_adress);
 
@@ -796,11 +790,10 @@ static bool UpdateSendVector()
 	static u16 ses = 0;
 	static u64 adr = 0;
 	static u64 size = 0;
+	static u64 flashFullSize = 0x200000000ULL;
 	static bool useadr = false;
 
 	static FileDsc *si = 0;
-
-	static RTC prevRTC = {0};
 
 	__packed struct TRP { EthUdp eu; TrapVector tv; byte data[IP_MTU - sizeof(UdpHdr) - sizeof(TrapVector)]; };
 	__packed struct FR  { EthIp  ei; byte data[IP_MTU]; };
@@ -854,10 +847,14 @@ static bool UpdateSendVector()
 					size = si->size;
 				};
 
-				vecCount = 0;
+				flashFullSize = FLASH_Full_Size_Get();
 
-				prevRTC.date = 0;
-				prevRTC.time = 0;
+				if (size > flashFullSize)
+				{
+					size = flashFullSize;
+				};
+
+				vecCount = 0;
 
 				i++;
 			}
@@ -913,7 +910,7 @@ static bool UpdateSendVector()
 
 			if (flrb.ready)
 			{
-				if (flrb.len == 0 || flrb.hdr.session != ses || flrb.hdr.rtc.date < prevRTC.date || flrb.hdr.rtc.time < prevRTC.time)
+				if (flrb.len == 0 || flrb.hdr.session != ses || vecCount > flashFullSize)
 				{
 					t->len = 0;
 
@@ -926,8 +923,6 @@ static bool UpdateSendVector()
 				}
 				else // if (flrb.hdr.crc == 0)
 				{
-					prevRTC = flrb.hdr.rtc;
-
 					TRP &et = *((TRP*)&t->eth);
 
 					TrapVector &trap = et.tv;

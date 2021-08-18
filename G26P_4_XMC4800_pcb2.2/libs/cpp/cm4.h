@@ -1,7 +1,7 @@
 #ifndef CM3_H__14_11_2012__12_19
 #define CM3_H__14_11_2012__12_19
 
-#include <stdint.h>
+//#include <stdint.h>
 #include "types.h"
 
 namespace CM4_TYPES
@@ -106,7 +106,7 @@ namespace CM4_TYPES
 
 //brief  Structure type to access the System Control Block (SCB).
  
-	typedef struct
+	struct SCB_T
 	{
 		I32 CPUID;				/*!< Offset: 0x000 (R/ )  CPUID Base Register                                   */
 		IO32 ICSR;            	/*!< Offset: 0x004 (R/W)  Interrupt Control and State Register                  */
@@ -129,16 +129,16 @@ namespace CM4_TYPES
 		I32 ISAR[5];         	/*!< Offset: 0x060 (R/ )  Instruction Set Attributes Register                   */
 		u32 RESERVED0[5];
 		IO32 CPACR;				/*!< Offset: 0x088 (R/W)  Coprocessor Access Control Register                   */
-	} SCB_T;
+	} ;
 
 //brief  Structure type to access the System Control and ID Register not in the SCB.
 
-	typedef struct
+	struct SCnSCB_T
 	{
 		u32 RESERVED0[1];
 		I32 ICTR;               /*!< Offset: 0x004 (R/ )  Interrupt Controller Type Register      */
 		IO32 ACTLR;             /*!< Offset: 0x008 (R/W)  Auxiliary Control Register      */
-	} SCnSCB_T;
+	};
 
 //brief  Structure type to access the System Timer (SysTick).
 
@@ -176,8 +176,8 @@ namespace CM4_TYPES
 #ifndef WIN32
 #define MK_PTR(n,p)  CM4_TYPES::n##_T * const n = ((CM4_TYPES::n##_T*)(p))
 #else
-extern byte CM4_sys_array[0x1000]; 
-#define MK_PTR(n,p)  CM4_TYPES::n##_T * const n = ((CM4_TYPES::n##_T*)(CM4_sys_array-0xE000E000+p))
+//extern byte CM4_sys_array[0x1000]; 
+#define MK_PTR(n,p) static byte cm4reg_##n[sizeof(CM4_TYPES::n##_T)]; CM4_TYPES::n##_T * const n = (CM4_TYPES::n##_T*)cm4reg_##n;
 #endif
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

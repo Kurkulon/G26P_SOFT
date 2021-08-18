@@ -2,7 +2,20 @@
 #include "time.h"
 #include "hardware.h"
 #include "twi.h"
+
+#ifndef WIN32
+
 #include "system_XMC4800.h"
+
+#else
+
+#include <windows.h>
+#include <Share.h>
+#include <conio.h>
+#include <stdarg.h>
+#include <stdio.h>
+
+#endif 
 
 //#pragma O3
 //#pragma Otime
@@ -131,6 +144,8 @@ static bool mltBusy = false;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifndef WIN32
+
 static __irq void MLT3_TrmIRQ()
 {
 	static u32 tw = 0;
@@ -239,10 +254,13 @@ static __irq void MLT3_TrmIRQ()
 
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool SendMLT3(MTB *mtb)
 {
+#ifndef WIN32
 	if (mltBusy || mtb == 0 || mtb->data == 0 || mtb->len == 0)
 	{
 		return false;
@@ -271,11 +289,19 @@ bool SendMLT3(MTB *mtb)
 	ManTT->TCSET = CC4_TRBS;
 
 	return mltBusy = true;
+
+#else
+
+	return true;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifndef WIN32
 
 static __irq void ManTrmIRQ()
 {
@@ -392,10 +418,14 @@ static __irq void ManTrmIRQ()
 //	HW::P5->BCLR(7);
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool SendManData(MTB *mtb)
 {
+#ifndef WIN32
+
 	if (trmBusy || rcvBusy || mtb == 0 || mtb->data == 0 || mtb->len == 0)
 	{
 		return false;
@@ -424,6 +454,12 @@ bool SendManData(MTB *mtb)
 	ManTT->TCSET = CC4_TRBS;
 
 	return trmBusy = true;
+
+#else
+
+	return true;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -438,6 +474,8 @@ bool SendManData(MTB *mtb)
 //}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifndef WIN32
 
 static void InitManTransmit()
 {
@@ -472,6 +510,8 @@ static void InitManTransmit()
 	ManDisable();
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void ManRcvEnd(bool ok)
@@ -499,6 +539,8 @@ u16 manRcvTime1 = 0;
 //u32 manRcvTime4 = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifndef WIN32
 
 static __irq void ManRcvIRQ2()
 {
@@ -602,6 +644,8 @@ static __irq void ManRcvIRQ2()
 	HW::P5->BCLR(1);
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void ManRcvUpdate()
@@ -628,13 +672,8 @@ void ManRcvUpdate()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//
-//void ManRcvStop()
-//{
-//	ManRcvEnd(true);
-//}
-//
-////++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifndef WIN32
 
 static void InitManRecieve()
 {
@@ -666,19 +705,16 @@ static void InitManRecieve()
 	ManTmr->TC = CC4_TSSM;
 
 	ManTmr->INTE = 0;//CC4_PME;
-
-
-	//ManRT->TCSET = 1;
-
-	//VectorTableExt[CCU41_2_IRQn] = ManRcvIRQ2;
-	//CM4::NVIC->CLR_PR(CCU41_2_IRQn);
-	//CM4::NVIC->SET_ER(CCU41_2_IRQn);	
 }
+
+#endif
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool RcvManData(MRB *mrb)
 {
+#ifndef WIN32
+
 	if (rcvBusy /*|| trmBusy*/ || mrb == 0 || mrb->data == 0 || mrb->maxLen == 0)
 	{
 		return false;
@@ -717,11 +753,19 @@ bool RcvManData(MRB *mrb)
 	ManRT->INTE = CC4_PME;
 
 	return rcvBusy = true;
+
+#else
+
+	return true;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void Init_ERU()
+#ifndef WIN32
+
+static void Init_ERU()
 {
 	using namespace HW;
 
@@ -737,8 +781,6 @@ void Init_ERU()
 	ERU1->EXICON[1] = 0;
 	ERU1->EXICON[2] = 0;
 	ERU1->EXICON[3] = 0;
-	
-
 
 	// Cross Connect Matrix
 
@@ -748,14 +790,16 @@ void Init_ERU()
 	ERU1->EXOCON[1] = 0;
 	ERU1->EXOCON[2] = 0;
 	ERU1->EXOCON[3] = 0;
-
-
 }
+
+#endif
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void SetClock(const RTC &t)
 {
+#ifndef WIN32
+
 	static DSCTWI dsc;
 
 	static byte reg = 0;
@@ -786,9 +830,12 @@ void SetClock(const RTC &t)
 	{
 		AddRequest_TWI(&dsc);
 	};
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifndef WIN32
 
 static void InitClock()
 {
@@ -824,6 +871,7 @@ static void InitClock()
 	SetTime(t);
 }
 
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void WDT_Init()
@@ -843,13 +891,437 @@ static void WDT_Init()
 	//HW::ResetWDT();
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+//extern dword DI;
+//extern dword DO;
+char pressedKey;
+//extern  dword maskLED[16];
+
+//byte _array1024[0x60000]; 
+
+HWND  hWnd;
+
+HCURSOR arrowCursor;
+HCURSOR handCursor;
+
+HBRUSH	redBrush;
+HBRUSH	yelBrush;
+HBRUSH	grnBrush;
+HBRUSH	gryBrush;
+
+RECT rectLed[10] = { {20, 41, 33, 54}, {20, 66, 33, 79}, {20, 91, 33, 104}, {21, 117, 22, 118}, {20, 141, 33, 154}, {218, 145, 219, 146}, {217, 116, 230, 129}, {217, 91, 230, 104}, {217, 66, 230, 79}, {217, 41, 230, 54}  }; 
+HBRUSH* brushLed[10] = { &yelBrush, &yelBrush, &yelBrush, &gryBrush, &grnBrush, &gryBrush, &redBrush, &redBrush, &redBrush, &redBrush };
+
+int x,y,Depth;
+
+HFONT font1;
+HFONT font2;
+
+HDC memdc;
+HBITMAP membm;
+
+//HANDLE facebitmap;
+
+static const u32 secBufferWidth = 80;
+static const u32 secBufferHeight = 12;
+static const u32 fontWidth = 12;
+static const u32 fontHeight = 16;
+
+
+static char secBuffer[secBufferWidth*secBufferHeight*2];
+
+static u32 pallete[16] = {	0x000000,	0x800000,	0x008000,	0x808000,	0x000080,	0x800080,	0x008080,	0xC0C0C0,
+							0x808080,	0xFF0000,	0x00FF00,	0xFFFF00,	0x0000FF,	0xFF00FF,	0x00FFFF,	0xFFFFFF };
+
+const char lpAPPNAME[] = "8юд73_лдл_соп";
+
+int screenWidth = 0, screenHeight = 0;
+
+LRESULT CALLBACK WindowProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+
+
+static __int64		tickCounter = 0;
+
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+static void InitDisplay()
+{
+	WNDCLASS		    wcl;
+
+	wcl.hInstance		= NULL;
+	wcl.lpszClassName	= lpAPPNAME;
+	wcl.lpfnWndProc		= WindowProc;
+	wcl.style	    	= CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+
+	wcl.hIcon	    	= NULL;
+	wcl.hCursor	    	= NULL;
+	wcl.lpszMenuName	= NULL;
+
+	wcl.cbClsExtra		= 0;
+	wcl.cbWndExtra		= 0;
+	wcl.hbrBackground	= NULL;
+
+	RegisterClass (&wcl);
+
+	int sx = screenWidth = GetSystemMetrics (SM_CXSCREEN);
+	int sy = screenHeight = GetSystemMetrics (SM_CYSCREEN);
+
+	hWnd = CreateWindowEx (0, lpAPPNAME, lpAPPNAME,	WS_DLGFRAME|WS_POPUP, 0, 0,	640, 480, NULL,	NULL, NULL, NULL);
+
+	if(!hWnd) 
+	{
+		cputs("Error creating window\r\n");
+		exit(0);
+	};
+
+	RECT rect;
+
+	if (GetClientRect(hWnd, &rect))
+	{
+		MoveWindow(hWnd, 0, 0, 641 + 768 - rect.right - 2, 481 - rect.bottom - 1 + 287, true);
+	};
+
+	ShowWindow (hWnd, SW_SHOWNORMAL);
+
+	font1 = CreateFont(30, 14, 0, 0, 100, false, false, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH|FF_DONTCARE, "Lucida Console");
+	font2 = CreateFont(fontHeight, fontWidth-2, 0, 0, 100, false, false, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH|FF_DONTCARE, "Lucida Console");
+
+	if (font1 == 0 || font2 == 0)
+	{
+		cputs("Error creating font\r\n");
+		exit(0);
+	};
+
+	GetClientRect(hWnd, &rect);
+	HDC hdc = GetDC(hWnd);
+    memdc = CreateCompatibleDC(hdc);
+	membm = CreateCompatibleBitmap(hdc, rect.right - rect.left + 1, rect.bottom - rect.top + 1 + secBufferHeight*fontHeight);
+    SelectObject(memdc, membm);
+	ReleaseDC(hWnd, hdc);
+
+
+	arrowCursor = LoadCursor(0, IDC_ARROW);
+	handCursor = LoadCursor(0, IDC_HAND);
+
+	if (arrowCursor == 0 || handCursor == 0)
+	{
+		cputs("Error loading cursors\r\n");
+		exit(0);
+	};
+
+	LOGBRUSH lb;
+
+	lb.lbStyle = BS_SOLID;
+	lb.lbColor = RGB(0xFF, 0, 0);
+
+	redBrush = CreateBrushIndirect(&lb);
+
+	lb.lbColor = RGB(0xFF, 0xFF, 0);
+
+	yelBrush = CreateBrushIndirect(&lb);
+
+	lb.lbColor = RGB(0x7F, 0x7F, 0x7F);
+
+	gryBrush = CreateBrushIndirect(&lb);
+
+	lb.lbColor = RGB(0, 0xFF, 0);
+
+	grnBrush = CreateBrushIndirect(&lb);
+
+	for (u32 i = 0; i < sizeof(secBuffer); i+=2)
+	{
+		secBuffer[i] = 0x20;
+		secBuffer[i+1] = 0xF0;
+	};
+}
+
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+void UpdateDisplay()
+{
+	static byte curChar = 0;
+	static byte c = 0, i = 0;
+	//static byte flashMask = 0;
+	static const byte a[4] = { 0x80, 0x80+0x40, 0x80+20, 0x80+0x40+20 };
+
+	MSG msg;
+
+	static dword pt = 0;
+
+	if(PeekMessage (&msg, NULL, 0, 0, PM_NOREMOVE))
+	{
+		GetMessage (&msg, NULL, 0, 0);
+
+		TranslateMessage (&msg);
+
+		DispatchMessage (&msg);
+	};
+
+	static char buf[80];
+	static char buf1[sizeof(secBuffer)];
+
+	u32 t = GetTickCount();
+
+	if ((t-pt) > 10)
+	{
+		pt = t;
+
+		bool rd = true;
+
+		//flashMask += 1;
+
+		//for (u32 i = 0; i < sizeof(buf1); i++)
+		//{
+		//	char t = secBuffer[i];
+
+		//	if (buf1[i] != t) 
+		//	{ 
+		//		buf1[i] = t; rd = true; 
+		//	};
+		//};
+
+		if (rd)
+		{
+			//SelectObject(memdc, font1);
+			//SetBkColor(memdc, 0x074C00);
+			//SetTextColor(memdc, 0x00FF00);
+			//TextOut(memdc, 443, 53, buf, 20);
+			//TextOut(memdc, 443, 30*1+53, buf+20, 20);
+			//TextOut(memdc, 443, 30*2+53, buf+40, 20);
+			//TextOut(memdc, 443, 30*3+53, buf+60, 20);
+
+			SelectObject(memdc, font2);
+
+			for (u32 j = 0; j < secBufferHeight; j++)
+			{
+				for (u32 i = 0; i < secBufferWidth; i++)
+				{
+					u32 n = (j*secBufferWidth+i)*2;
+
+					u8 t = secBuffer[n+1];
+
+					SetBkColor(memdc, pallete[(t>>4)&0xF]);
+					SetTextColor(memdc, pallete[t&0xF]);
+					TextOut(memdc, i*fontWidth, j*fontHeight+287, secBuffer+n, 1);
+				};
+			};
+
+			RedrawWindow(hWnd, 0, 0, RDW_INVALIDATE);
+
+		}; // if (rd)
+
+		//if (!rd) { RedrawWindow(hWnd, 0, 0, RDW_INVALIDATE); };
+
+
+	}; // if ((t-pt) > 10)
+
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+LRESULT CALLBACK WindowProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	int i;
+	HDC hdc;
+	PAINTSTRUCT ps;
+	bool c;
+	static int x, y;
+	int x0, y0, r0;
+	static char key = 0;
+	static char pkey = 0;
+
+	RECT rect;
+
+	static bool move = false;
+	static int movex, movey = 0;
+
+//	char *buf = (char*)screenBuffer;
+
+    switch (message)
+	{
+        case WM_CREATE:
+
+            break;
+
+	    case WM_DESTROY:
+
+		    break;
+
+        case WM_PAINT:
+
+			if (GetUpdateRect(hWnd, &rect, false)) 
+			{
+				hdc = BeginPaint(hWnd, &ps);
+
+				//printf("Update RECT: %li, %li, %li, %li\r\n", ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right, ps.rcPaint.bottom);
+
+				c = BitBlt(hdc, ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right - ps.rcPaint.left + 1, ps.rcPaint.bottom - ps.rcPaint.top + 1, memdc, ps.rcPaint.left, ps.rcPaint.top, SRCCOPY);
+	 
+				EndPaint(hWnd, &ps);
+			};
+
+            break;
+
+        case WM_CHAR:
+
+			pressedKey = wParam;
+
+			if (pressedKey == '`')
+			{
+				GetWindowRect(hWnd, &rect);
+
+				if ((rect.bottom-rect.top) > 340)
+				{
+					MoveWindow(hWnd, rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top-fontHeight*secBufferHeight, true); 
+				}
+				else
+				{
+					MoveWindow(hWnd, rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top+fontHeight*secBufferHeight, true); 
+				};
+			};
+
+            break;
+
+		case WM_MOUSEMOVE:
+
+			x = LOWORD(lParam); y = HIWORD(lParam);
+
+			if (move)
+			{
+				GetWindowRect(hWnd, &rect);
+				SetWindowPos(hWnd, HWND_TOP, rect.left+x-movex, rect.top+y-movey, 0, 0, SWP_NOSIZE); 
+			};
+
+			return 0;
+
+			break;
+
+		case WM_MOVING:
+
+			return TRUE;
+
+			break;
+
+		case WM_SYSCOMMAND:
+
+			return 0;
+
+			break;
+
+		case WM_LBUTTONDOWN:
+
+			move = true;
+			movex = x; movey = y;
+
+			SetCapture(hWnd);
+
+			return 0;
+
+			break;
+
+		case WM_LBUTTONUP:
+
+			move = false;
+
+			ReleaseCapture();
+
+			return 0;
+
+			break;
+
+		case WM_MBUTTONDOWN:
+
+			ShowWindow(hWnd, SW_MINIMIZE);
+
+			return 0;
+
+			break;
+
+		case WM_ACTIVATE:
+
+			if (HIWORD(wParam) != 0 && LOWORD(wParam) != 0)
+			{
+				ShowWindow(hWnd, SW_NORMAL);
+			};
+
+			break;
+
+		case WM_CLOSE:
+
+			//run = false;
+
+			break;
+	};
+    
+	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+#endif		
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+int PutString(u32 x, u32 y, byte c, const char *str)
+{
+	char buf[1024];
+	word attr[1024];
+
+	char *dst = secBuffer+(y*secBufferWidth+x)*2;
+	dword i = secBufferWidth-x;
+
+	while (*str != 0 && i > 0)
+	{
+		*(dst++) = *(str++);
+		*(dst++) = c;
+		i -= 1;
+	};
+
+	return secBufferWidth-x-i;
+}
+
+#endif
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef	WIN32
+
+int Printf(u32 x, u32 y, byte c, const char *format, ... )
+{
+	char buf[1024];
+
+	va_list arglist;
+
+    va_start(arglist, format);
+    vsprintf(buf, format, arglist);
+    va_end(arglist);
+
+	return PutString(x, y, c, buf);
+}
+
+#endif
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void InitHardware()
 {
+
 	Init_time();
 	RTT_Init();
 	Init_TWI();
+
+#ifndef WIN32
+
 	InitClock();
 
 	InitManTransmit();
@@ -858,6 +1330,12 @@ void InitHardware()
 	EnableVCORE();
 
 	WDT_Init();
+
+#else
+
+	InitDisplay();
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -867,3 +1345,4 @@ void UpdateHardware()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+

@@ -1,5 +1,5 @@
 #include "time.h"
-#include "core.h"
+//#include "core.h"
 
 //#include <stdlib.h>
 
@@ -8,10 +8,13 @@
 #include <windows.h>
 #include <time.h>
 
-#endif
+#else
 
 #pragma O3
 #pragma Otime
+
+#endif
+
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -224,23 +227,27 @@ bool SetTime(const RTC &t)
 
 #else
 
-	SYSTEMTIME lt;
+	//SYSTEMTIME lt;
 
-	lt.wMilliseconds	=	t.hsecond*10;
-	lt.wSecond			=	t.second	;
-	lt.wMinute			=	t.minute	;
-	lt.wHour			=	t.hour		;
-	lt.wDay				=	t.day		;
-	lt.wDayOfWeek		=	t.dayofweek;
-	lt.wMonth			=	t.month	;
-	lt.wYear			=	t.year		;
+	//lt.wMilliseconds	=	t.hsecond*10;
+	//lt.wSecond			=	t.second	;
+	//lt.wMinute			=	t.minute	;
+	//lt.wHour			=	t.hour		;
+	//lt.wDay				=	t.day		;
+	//lt.wDayOfWeek		=	t.dayofweek;
+	//lt.wMonth			=	t.month	;
+	//lt.wYear			=	t.year		;
 
-	return SetLocalTime(&lt);
+	//return SetLocalTime(&lt);
+
+	return true;
 
 #endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifndef WIN32
 
 static __irq void Timer_Handler (void)
 {
@@ -309,10 +316,14 @@ static __irq void Timer_Handler (void)
 //	HW::PIOA->ODSR ^= 1<<0;
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void Init_time()
 {
+#ifndef WIN32
+
 	enum { freq = 1000 };
 
 	timeBDC.day = 1;
@@ -328,12 +339,16 @@ void Init_time()
 	//HW::PIOA->PER = 1<<0;
 	//HW::PIOA->OER = 1<<0;
 	//HW::PIOA->OWER = 1<<0;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void RTT_Init()
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	T_HW::CCU4_GLOBAL_Type * const module = HW::CCU43;
@@ -351,6 +366,8 @@ void RTT_Init()
 	module->GCSS = CCU4_GCSS_S3SE_Msk;  
 
 	slice->TCSET = 1;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -1,8 +1,13 @@
 #ifndef TIME_H__04_08_2009__17_35
 #define TIME_H__04_08_2009__17_35
 
-#include "types.h"
+#ifdef WIN32
+#include <windows.h>
+#else
 #include "core.h"
+#endif
+
+#include "types.h"
 
 #define RTC_type RTC
 
@@ -47,26 +52,43 @@ extern void GetTime(RTC *t);
 
 //extern const u32 msec;
 
-inline u32 GetMilliseconds()
+inline i32 GetMilliseconds()
 {
+#ifndef WIN32
 	extern u32 msec;
 	return msec;
+#else
+	return GetTickCount();
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline word GetMillisecondsLow()
+inline u16 GetMillisecondsLow()
 {
+#ifndef WIN32
 	extern u32 msec;
 	return (u16)msec;
+#else
+	return (u16)(GetTickCount());
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifndef WIN32
 #define US2RT(x) (((x)*MCK_MHz+1024)/2048)
 #define MS2RT(x) (((x)*MCK_MHz*1000+1024)/2048)
+#else
+#define US2RT(x) (x)
+#define MS2RT(x) (x)
+#endif
 
+#ifndef WIN32
 inline u16 GetRTT() { return HW::CCU43_CC43->TIMER; }
+#else
+inline u16 GetRTT() { return 0; }
+#endif
 
 struct RTM
 {

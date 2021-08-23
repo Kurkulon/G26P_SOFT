@@ -15,9 +15,36 @@
 #include "twi.h"
 #include "PointerCRC.h"
 
+#ifdef WIN32
+#include <windows.h>
+#include <conio.h>
+#include <stdio.h>
+
+static HANDLE handleNandFile;
+static const char nameNandFile[] = "NAND_FLASH_STORE.BIN";
+
+static byte nandChipSelected = 0;
+
+static u64 curNandFilePos = 0;
+static u64 curNandFileBlockPos = 0;
+static u32 curBlock = 0;
+static u16 curPage = 0;
+static u16 curCol = 0;
+
+static OVERLAPPED	_overlapped;
+static u32			_ovlReadedBytes = 0;
+static u32			_ovlWritenBytes = 0;
+
+static void* nandEraseFillArray;
+static u32 nandEraseFillArraySize = 0;
+static byte nandReadStatus = 0x41;
+static u32 lastError = 0;
+
+#else
 
 #pragma diag_suppress 550,177
 
+#endif
 
 static void NandReadData(void *data, u16 len);
 static bool CheckDataComplete();
@@ -476,7 +503,7 @@ byte * const FLD = &reg_FLD;
 
 #endif
 
-static u32 chipSelect[8] = { 1<<2, 1<<0, 1<<8, 1<<9, 1<<6, 1<<1, 1<<3, 1<<7 };
+static u32 chipSelect[NAND_MAX_CHIP] = { 1<<2, 1<<0, 1<<8, 1<<9, 1<<6, 1<<1, 1<<3, 1<<7 };
 static const u32 maskChipSelect = (0xF<<0)|(0xF<<6);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -527,8 +554,17 @@ static const u32 maskChipSelect = (0xF<<0)|(0xF<<6);
 //
 ////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifndef WIN32
+
 #define NAND_BUSY() (HW::P14->TBCLR(7))
 //#define NAND_BUSY() ((CmdReadStatus() & (1<<6)) == 0)
+
+#else
+
+//#define NAND_BUSY() (false)
+#define NAND_BUSY() (!HasOverlappedIoCompleted(&_overlapped))
+
+#endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -548,8 +584,16 @@ static void DisableWriteProtect()
 
 static byte CmdReadStatus()
 {
+#ifndef WIN32
+
 	CMD_LATCH(NAND_CMD_READ_STATUS);
 	return *FLD;
+
+#else
+
+	return (nandReadStatus & ~0x40) | ((NAND_BUSY()) ? 0 : 0x40);
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -563,18 +607,26 @@ static bool CmdNandBusy()
 
 static void NAND_Chip_Select(byte chip) 
 {    
-	if(chip < 8)                   
+#ifndef WIN32
+	if(chip < NAND_MAX_CHIP)                   
 	{ 				
 		HW::P1->SET(maskChipSelect ^ chipSelect[chip]);
 		HW::P1->CLR(chipSelect[chip]);
 	};
+#else
+	nandChipSelected = chip;
+#endif
 }                                                                              
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void NAND_Chip_Disable() 
 {    
+#ifndef WIN32
 	HW::P1->SET(maskChipSelect);
+#else
+	nandChipSelected = ~0;
+#endif
 }                                                                              
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -638,31 +690,96 @@ static u32 ROW(u32 block, u16 page)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifdef WIN32
+
+static void SetCurAdrNandFile(u16 col, u32 bl, u16 pg)
+{
+	curBlock = bl;
+	curPage = pg;
+	curCol = col;
+
+	//bl = ROW(bl, pg);
+
+	u64 adr = bl;
+	
+	adr = (adr << NAND_CHIP_BITS) + nandChipSelected;
+
+	adr *= (NAND_PAGE_SIZE + NAND_SPARE_SIZE) << NAND_PAGE_BITS;
+
+	adr += (u32)(NAND_PAGE_SIZE + NAND_SPARE_SIZE) * pg;
+
+	adr += col & ((1 << (NAND_COL_BITS+1))-1);
+
+	curNandFilePos = adr;
+
+	//SetFilePointer(handleNandFile, _overlapped.Offset, (i32*)&_overlapped.OffsetHigh, FILE_BEGIN);
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void CmdEraseBlock(u32 bl)
 {
+#ifndef WIN32
+
 	bl = ROW(bl, 0);
 	CMD_LATCH(NAND_CMD_BLOCK_ERASE_1);
 	ADR_LATCH_ROW(bl);
 	CMD_LATCH(NAND_CMD_BLOCK_ERASE_2);
+
+#else
+
+	SetCurAdrNandFile(0, bl, 0);
+
+	*((u32*)nandEraseFillArray) = (bl << NAND_CHIP_BITS) + nandChipSelected;
+
+	_overlapped.Offset = (u32)curNandFilePos;
+	_overlapped.OffsetHigh = (u32)(curNandFilePos>>32);
+	_overlapped.hEvent = 0;
+	_overlapped.Internal = 0;
+	_overlapped.InternalHigh = 0;
+
+	WriteFile(handleNandFile, nandEraseFillArray, (NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS, 0, &_overlapped);
+
+	nandReadStatus = 0;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void CmdRandomRead(u16 col)
 {
+#ifndef WIN32
+
 	CMD_LATCH(NAND_CMD_RANDREAD_1);
 	ADR_LATCH_COL(col);
 	CMD_LATCH(NAND_CMD_RANDREAD_2);
+
+#else
+
+	SetCurAdrNandFile(col, curBlock, curPage);
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void CmdReadPage(u16 col, u32 bl, u16 pg)
 {
+#ifndef WIN32
+
 	bl = ROW(bl, pg);
 	CMD_LATCH(NAND_CMD_READ_1);
 	ADR_LATCH_COL_ROW(col, bl);
 	CMD_LATCH(NAND_CMD_READ_2);
+
+#else
+
+	SetCurAdrNandFile(col, bl, pg);
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -691,26 +808,24 @@ static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 	HW::GPDMA1->CHENREG = 0x101<<3;
 
+#else
+
+	DataPointer s((void*)src);
+	DataPointer d((void*)dst);
+
+	while (len > 3) *d.d++ = *s.d++, len -= 4;
+
+	while (len > 0) *d.b++ = *s.b++, len -= 1;
+
 #endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static void CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
-//{
-//	byte* s = (byte*)src;
-//	byte* d = (byte*)dst;
-//
-//	while (len > 0)
-//	{
-//		*(d++) = *(s++); len--;
-//	};
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 static void NandReadData(void *data, u16 len)
 {
+#ifndef WIN32
+
 	//CopyDataDMA(FLD, data, len);
 
 	using namespace HW;
@@ -727,12 +842,27 @@ static void NandReadData(void *data, u16 len)
 
 	HW::GPDMA1->CHENREG = 0x101<<3;
 
+#else
+
+	_overlapped.Offset = (u32)curNandFilePos;
+	_overlapped.OffsetHigh = (u32)(curNandFilePos>>32);
+	_overlapped.hEvent = 0;
+	_overlapped.Internal = 0;
+	_overlapped.InternalHigh = 0;
+
+	ReadFile(handleNandFile, data, len, 0, &_overlapped);
+
+	curNandFilePos += len;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void NandWriteData(void *data, u16 len)
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	HW::GPDMA1->DMACFGREG = 1;
@@ -746,13 +876,35 @@ static void NandWriteData(void *data, u16 len)
 	HW::GPDMA1_CH3->CFGH = PROTCTL(1);
 
 	HW::GPDMA1->CHENREG = 0x101<<3;
+
+#else
+
+	_overlapped.Offset = (u32)curNandFilePos;
+	_overlapped.OffsetHigh = (u32)(curNandFilePos>>32);
+	_overlapped.hEvent = 0;
+	_overlapped.Internal = 0;
+	_overlapped.InternalHigh = 0;
+
+	WriteFile(handleNandFile, data, len, 0, &_overlapped);
+
+	curNandFilePos += len;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool CheckDataComplete()
 {
+#ifndef WIN32
+
 	return (HW::GPDMA1->CHENREG & (1<<3)) == 0;
+
+#else
+
+	return HasOverlappedIoCompleted(&_overlapped);
+
+#endif
 }
 
 #pragma pop
@@ -761,16 +913,28 @@ static bool CheckDataComplete()
 
 static void CmdWritePage(u16 col, u32 bl, u16 pg)
 {
+#ifndef WIN32
+
 	bl = ROW(bl, pg);
 	CMD_LATCH(NAND_CMD_PAGE_PROGRAM_1);
 	ADR_LATCH_COL_ROW(col, bl);
+
+#else
+
+	SetCurAdrNandFile(col, bl, pg);
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void CmdWritePage2()
 {
+#ifndef WIN32
 	CMD_LATCH(NAND_CMD_PAGE_PROGRAM_2);
+#else
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2905,6 +3069,8 @@ void NAND_Idle()
 				nandState = NAND_STATE_READ_START;
 			};
 
+			if (EmacIsConnected() && tm.Check(500)) { TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_NONE); };
+
 			break;
 
 		case NAND_STATE_WRITE_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2941,6 +3107,8 @@ void NAND_Idle()
 
 			if (!eraseBlock.Update())
 			{
+//				lastError = GetLastError();
+
 				invalidBlocks += eraseBlock.errBlocks;
 
 				t -= eraseBlock.errBlocks;
@@ -3087,36 +3255,36 @@ static void NAND_Init()
 
 #else
 
+	printf("Open file %s ... ", nameNandFile);
+
+	handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, FILE_FLAG_OVERLAPPED , 0);
+	//handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, 0 , 0);
+
+	cputs((handleNandFile == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
+
+	nandSize.pg = 1 << (nandSize.bitCol = NAND_COL_BITS);
+	nandSize.bl = 1 << (nandSize.shBl = NAND_COL_BITS+NAND_PAGE_BITS);
+	nandSize.ch = 1 << (nandSize.shCh = NAND_COL_BITS+NAND_PAGE_BITS+NAND_BLOCK_BITS);
+	
+	nandSize.pagesInBlock = 1 << (nandSize.bitPage = nandSize.shBl - nandSize.shPg);
+
+	nandSize.maskPage = nandSize.pagesInBlock - 1;
+	nandSize.maskBlock = (1 << (nandSize.bitBlock = nandSize.shCh - nandSize.shBl)) - 1;
+			
+	nandSize.fl = nandSize.ch * NAND_MAX_CHIP;
+			
+	nandSize.mask = (1 << NAND_MAX_CHIP) - 1;
+
+	cputs("Alloc nandEraseFillArray ... ");
+
+	nandEraseFillArray = VirtualAlloc(0, nandEraseFillArraySize = nandSize.bl*2, MEM_COMMIT, PAGE_READWRITE);
+
+	cputs((nandEraseFillArray == NULL) ? "!!! ERROR !!!\n" : "OK\n");
+
+	if (nandEraseFillArray != 0) for (u32 i = nandEraseFillArraySize/4, *p = (u32*)nandEraseFillArray; i != 0; i--) *(p++) = ~0;
 
 #endif
 }
-
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//flash_status_type		flash_read_status = FLASH_STATUS_WAIT;          // результат последней операции
-//flash_status_type 		flash_write_status = FLASH_STATUS_WAIT;
-//flash_status_type 		flash_verify_status = FLASH_STATUS_WAIT;
-//
-//i64 	flash_current_adress;
-//
-//u32 	flash_vectors_errors = 0;
-//u32 	flash_vectors_saved = 0;
-//
-//u16 	flash_save_size = 0;
-//byte	flash_save_buffer[FLASH_SAVE_BUFFER_SIZE];
-//byte	flash_save_repeat_counter = 0;
-//
-//flash_save_repeat_type		flash_save_repeat = FLASH_SAVE_REPEAT_NONE;
-//
-//byte	flash_read_buffer[FLASH_READ_BUFFER_SIZE];
-//u64 	flash_read_vector_adress;
-//u16 	*flash_read_vector_size_p;
-//bool	*flash_read_vector_ready_p;
-//byte	*flash_read_vector_p;
-
-
-//flash_status_operation_type 	flash_status_operation = FLASH_STATUS_OPERATION_WAIT;
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3153,98 +3321,6 @@ u32 FLASH_Session_Get()
 {
 	return write.spare.file;
 }
-
-//void inline FLASH_Vectors_Errors_Reset()
-//{
-//	flash_vectors_errors = 0;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//void inline FLASH_Vectors_Saved_Reset()
-//{
-//	flash_vectors_saved = 0;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool inline FLASH_Read_Is_Ready()
-//{
-//	if(flash_read_status == FLASH_STATUS_READY)
-//	{
-//		flash_read_status = FLASH_STATUS_WAIT;
-//		return true;
-//	}	
-//	return false;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool inline FLASH_Read_Is_Error()
-//{
-//	if(flash_read_status == FLASH_STATUS_ERROR)
-//	{
-//		flash_read_status = FLASH_STATUS_WAIT;
-//		return true;
-//	}	
-//	return false;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool inline FLASH_Write_Is_Ready()
-//{
-//	if(flash_write_status == FLASH_STATUS_READY)
-//	{
-//		flash_write_status = FLASH_STATUS_WAIT;
-//		return true;
-//	}	
-//	return false;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool inline FLASH_Write_Is_Error()
-//{
-//	if(flash_write_status == FLASH_STATUS_ERROR)
-//	{
-//		flash_write_status = FLASH_STATUS_WAIT;
-//		return true;
-//	}	
-//	return false;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool inline FLASH_Verify_Is_Ready()
-//{
-//	if(flash_verify_status == FLASH_STATUS_READY)
-//	{
-//		flash_verify_status = FLASH_STATUS_WAIT;
-//		return true;
-//	}	
-//	return false;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool inline FLASH_Verify_Is_Error()
-//{
-//	if(flash_verify_status == FLASH_STATUS_ERROR)
-//	{
-//		flash_verify_status = FLASH_STATUS_WAIT;
-//		return true;
-//	}	
-//	return false;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool /*inline*/ FLASH_Busy()
-//{
-//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return true;
-//	return false;
-//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3309,88 +3385,6 @@ bool FLASH_UnErase_Full()
 	//FRAM_Memory_Start_Adress_Set(-1);
 	return true;
 }
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-// читает по указанному адресу
-//bool FLASH_Read(u64 *adr, byte *data, u16 size)
-//{
-//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return false;
-//	if(!NAND_Read_Data(adr, data, size)) return false;
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool FLASH_Read_Vector(u64 adr, u16 *size, bool *ready, byte **vector)
-//{
-	//if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT)
-	//{
-	//	return false;
-	//}
-	//flash_read_vector_adress = adr;
-	//flash_read_vector_size_p = size;
-	//*flash_read_vector_size_p = 0;
-	//flash_read_vector_ready_p = ready;
-	//*flash_read_vector_ready_p = false;
-	//*vector = flash_read_buffer;
-	//flash_status_operation = FLASH_STATUS_OPERATION_READ_WAIT;
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// проверяет по указанному адресу
-
-//bool FLASH_Verify(u64 *adr, byte *data, u16 size)
-//{
-//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return false;
-//	if(!NAND_Verify_Data(adr, data, size)) return false;
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// пишет по указанному адресу
-
-//bool FLASH_Write(u64 *adr, byte *data, u16 size)
-//{
-//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return false;
-//	if(!NAND_Write_Data(false, adr, data, size)) return false;
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-// пишет по указанному адресу смещаясь на новы блок, возвращает исправленный адрес
-
-//bool FLASH_Write_Next(u64 *adr, byte *data, u16 size)
-//{
-//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return false;
-//	if(!NAND_Write_Data(true, adr, data, size)) return false;
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-// пишет вектор
-
-//bool FLASH_Write_Vector(u16 session, u16 device, RTC_type rtc, byte flags, byte *data, u16 size, flash_save_repeat_type repeat)
-//{
-//	if((flash_status_operation != FLASH_STATUS_OPERATION_WAIT) || (size + sizeof(vector_type) > FLASH_SAVE_BUFFER_SIZE))
-//	{
-//		flash_vectors_errors ++;
-//		return false;
-//	}
-//	flash_save_size = Vector_Make(session, device, rtc, flags, data, flash_save_buffer, size);
-//	if(flash_save_size == 0)
-//	{
-//		flash_vectors_errors ++;
-//		return false;
-//	}
-//	flash_status_operation = FLASH_STATUS_OPERATION_SAVE_WAIT;
-//	flash_save_repeat = repeat;
-//	flash_save_repeat_counter = 0;
-//	return true;
-//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3534,27 +3528,6 @@ static bool CreateRspErrReq(ComPort::WriteBuffer *wb)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static bool RequestFunc01(FLWB *fwb, ComPort::WriteBuffer *wb)
-//{
-//	VecData &vd = fwb->vd;
-//
-//	Req &req = *((Req*)vd.data);
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//	freeFlWrBuf.Add(fwb);
-//
-//	return CreateRsp01(wb);
-//}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
 {
 	VecData &vd = fwb->vd;
@@ -3574,24 +3547,6 @@ static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
 
 	return CreateRsp02(wb);
 }
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//static bool RequestFunc03(FLWB *fwb, ComPort::WriteBuffer *wb)
-//{
-//	VecData &vd = fwb->vd;
-//
-//	Req &req = *((Req*)vd.data);
-//
-//
-//
-//
-//
-//
-//	freeFlWrBuf.Add(fwb);
-//
-//	return CreateRsp03(wb);
-//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3736,7 +3691,7 @@ static void UpdateCom()
 					{
 						FLASH_WriteEnable();
 					}
-					else if (writeFlashEnabled && (nvv.f.size > 5000000000))
+					else if (writeFlashEnabled && (nvv.f.size > 10000000000))
 					{	
 						FLASH_WriteDisable();
 						tm.Reset();
@@ -3746,7 +3701,11 @@ static void UpdateCom()
 				}
 				else
 				{
+#ifndef WIN32
 					state++;
+#else
+					freeFlWrBuf.Add(fwb); fwb = 0;
+#endif
 				};
 			};
 
@@ -3859,14 +3818,10 @@ byte FLASH_Status()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 bool FLASH_Reset()
 {
 	if(!ResetNand()) return false;
-//	if(flash_status_operation != FLASH_STATUS_OPERATION_WAIT) return false;
-	//flash_current_adress = FRAM_Memory_Current_Adress_Get();
-	//SetNandAdr(flash_current_adress);
-	//FRAM_Memory_Current_Adress_Set(GetNandAdr()); // проверка
+
 	return true;
 }
 
@@ -3939,6 +3894,12 @@ static void LoadVars()
 
 		savesCount = 2;
 	};
+
+#ifdef WIN32
+
+	cputs(loadVarsOk ? "Load Vars ... OK\n" : "Load Vars ... ERROR\n");
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -4141,6 +4102,12 @@ static void LoadSessions()
 			};
 		};
 	};
+
+#ifdef WIN32
+
+	cputs(loadSessionsOk ? "Load Sessions ... OK\n" : "Load Sessions ... ERROR\n");
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

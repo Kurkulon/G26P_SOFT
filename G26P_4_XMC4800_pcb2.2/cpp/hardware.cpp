@@ -1277,9 +1277,6 @@ LRESULT CALLBACK WindowProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 
 int PutString(u32 x, u32 y, byte c, const char *str)
 {
-	char buf[1024];
-	word attr[1024];
-
 	char *dst = secBuffer+(y*secBufferWidth+x)*2;
 	dword i = secBufferWidth-x;
 
@@ -1315,7 +1312,6 @@ int Printf(u32 x, u32 y, byte c, const char *format, ... )
 
 void InitHardware()
 {
-
 	Init_time();
 	RTT_Init();
 	Init_TWI();

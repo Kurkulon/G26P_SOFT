@@ -948,9 +948,11 @@ static bool UpdateSendVector()
 					t->iph.off = 0;
 
 					t->len = sizeof(et.eu) + sizeof(et.tv) + flrb.len;
-
+#ifndef WIN32
 					crc = GetCRC16(flrb.data, flrb.len, 0xFFFF, 0);
-
+#else
+					crc = 0;
+#endif
 					if (flrb.hdr.dataLen > flrb.maxLen)
 					{
 						fragOff = t->len - sizeof(EthIp); //flrb.maxLen;
@@ -1025,9 +1027,11 @@ static bool UpdateSendVector()
 				fragOff += flrb.len;
 
 				t->len = sizeof(ef.ei) + flrb.len;
-
+#ifndef WIN32
 				crc = GetCRC16(flrb.data, flrb.len, crc, 0);
-
+#else
+				crc = 0;
+#endif
 				if (fragLen > 0)
 				{ 
 					t->iph.off |= 0x2000; 
@@ -1044,7 +1048,6 @@ static bool UpdateSendVector()
 
 					vecReadOK += 1;
 				};
-
 
 				SendFragTrap(t);
 

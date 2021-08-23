@@ -5,7 +5,16 @@
 #include "flash.h"
 #include "vector.h"
 
+#ifdef WIN32
+
+#include <conio.h>
+#include <stdio.h>
+
+#else
+
 #pragma diag_suppress 550,177
+
+#endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -89,6 +98,12 @@ static bool ComputerFind = false;
 
 void RequestTrap(EthUdp *h, u32 stat)
 {
+#ifdef WIN32
+
+	printf("Recv TRAP, srcip %08lX, dstip %08lX, len:%i\n", ReverseDword(h->iph.src), ReverseDword(h->iph.dst), (i32)ReverseWord(h->iph.len));
+
+#endif
+
 	if ((h->udp.len = ReverseWord(h->udp.len)) < 19) return;
 
 	u16 len = h->udp.len - sizeof(h->udp);

@@ -1,8 +1,26 @@
+#ifdef WIN32
+
+#include <winsock2.h>
+#include <WS2TCPIP.H>
+#include <conio.h>
+#include <stdio.h>
+
+static SOCKET	lstnSocket;
+
+#else
+
 #include "core.h"
-#include "emac.h"
 #include "EMAC_DEF.h"
+
+#endif
+
+#include "emac.h"
 #include "xtrap.h"
 #include "list.h"
+
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 //#pragma diag_suppress 546,550,177
 
@@ -65,6 +83,8 @@ u16  txIpID = 0;
 Receive_Desc Rx_Desc[NUM_RX_BUF] __attribute__((at(0x20020000)));
 Transmit_Desc Tx_Desc[NUM_TX_DSC];
 
+#endif
+
 /* GMAC local buffers must be 8-byte aligned. */
 byte rx_buf[NUM_RX_BUF][ETH_RX_BUF_SIZE];
 //byte tx_buf[NUM_TX_BUF][ETH_TX_BUF_SIZE];
@@ -86,56 +106,8 @@ static byte			indSysTx = 0;
 static List<EthBuf> txList;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
-//struct GSTAT
-//{
-//	u32		FR;			
-//	u32		BCFR;		
-//	u32		MFR;		
-//	u32		PFR;		
-//	u32		BFR64;		
-//	u32		TBFR127;	
-//	u32		TBFR255;	
-//	u32		TBFR511;	
-//	u32		TBFR1023;	
-//	u32		TBFR1518;	
-//	u32		TMXBFR;		
-//	u32		UFR;		
-//	u32		OFR;		
-//	u32		JR;			
-//	u32		FCSE;		
-//	u32		LFFE;		
-//	u32		RSE;		
-//	u32		AE;			
-//	u32		RRE;		
-//	u32		ROE;		
-//	u32		IHCE;		
-//	u32		TCE;		
-//	u32		UCE;		
-//};
-//
-//GSTAT stat = {0};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-/*----------------------------------------------------------------------------
- *      GMAC Ethernet Driver Functions
- *----------------------------------------------------------------------------
- *  Required functions for Ethernet driver module:
- *  a. Polling mode: - void init_ethernet ()
- *                   - void send_frame (OS_FRAME *frame)
- *                   - void poll_ethernet (void)
- *  b. Interrupt mode: - void init_ethernet ()
- *                     - void send_frame (OS_FRAME *frame)
- *                     - void int_enable_eth ()
- *                     - void int_disable_eth ()
- *                     - interrupt function 
- *---------------------------------------------------------------------------*/
-
-/* Local Function Prototypes */
-
-//static void interrupt_ethernet (void) __irq;
-//static void fetch_packet (void);
 static void rx_descr_init (void);
 static void tx_descr_init (void);
 static void WritePHY(byte PhyReg, u16 Value);
@@ -151,6 +123,7 @@ inline u16 ResultPHY() { return HW::ETH0->GMII_DATA; }
 
 inline void StartLink() { linkState = 0; }
 
+#endif
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static SysEthBuf* GetSysTxBuffer()
@@ -169,6 +142,7 @@ static SysEthBuf* GetSysTxBuffer()
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static Transmit_Desc* GetTxDesc()
 {
@@ -287,6 +261,42 @@ bool TransmitEth(EthBuf *b)
 	b->eth.src = hwAdr;
 
 	txList.Add(b);
+
+#else
+
+	EthPtr ep;
+
+	ep.eth = &b->eth;
+
+	sockaddr_in srvc;
+
+	srvc.sin_family = AF_INET;
+	srvc.sin_addr.s_addr = ep.eudp->iph.dst;
+	srvc.sin_port = ep.eudp->udp.dst;
+
+	in_addr srcip;
+	in_addr dstip;
+
+	srcip.S_un.S_addr = ep.eip->iph.src;
+	dstip.S_un.S_addr = ep.eip->iph.dst;
+
+	int len = sendto(lstnSocket, (char*)&ep.eip->iph, b->len - sizeof(b->eth), 0, (SOCKADDR*)&srvc, sizeof(srvc)); 
+
+	//printf("Send prot: %hi, srcip %08lX, dstip %08lX, len:%i ... ", ep.eip->iph.p, ReverseDword(ep.eip->iph.src), ReverseDword(ep.eip->iph.dst), b->len - sizeof(b->eth));
+
+	//int error;
+
+	//if (len == SOCKET_ERROR)
+	//{
+	//	error = WSAGetLastError(); //WSAEOPNOTSUPP
+	//	cputs("!!! ERROR\n");
+	//}
+	//else
+	//{
+	//	cputs("OK\n");
+	//};
+
+	b->len = 0;
 
 #endif
 
@@ -428,6 +438,8 @@ static void RequestARP(EthArp *h, u32 stat)
 	}			
 }
 
+#endif
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void RequestICMP(EthIcmp *h, u32 stat)
@@ -497,6 +509,12 @@ static void RequestICMP(EthIcmp *h, u32 stat)
 
 static void RequestDHCP(EthDhcp *h, u32 stat)
 {
+#ifdef WIN32
+
+	//printf("Recv DHCP, srcip %08lX, dstip %08lX, len:%i\n", ReverseDword(h->iph.src), ReverseDword(h->iph.dst), (i32)ReverseWord(h->iph.len));
+
+#endif
+
 	if (h->dhcp.op != 1) return;
 
 	i32 optLen = (i32)ReverseWord(h->iph.len) - sizeof(h->iph) - sizeof(h->udp) - 240;
@@ -649,7 +667,6 @@ static void RequestUDP(EthUdp *h, u32 stat)
 	};
 
 	reqUdpCount++;
-
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -674,6 +691,8 @@ static void RequestIP(EthIp *h, u32 stat)
 
 static void RecieveFrame()
 {
+#ifndef WIN32
+
 	Receive_Desc &buf = Rx_Desc[RxBufIndex];
 
 //	register u32 t = HW::GMAC->RSR;
@@ -726,12 +745,46 @@ static void RecieveFrame()
 		//Instruct the DMA to poll the receive descriptor list
 		HW::ETH0->RECEIVE_POLL_DEMAND = 0;
 	};
+#else
+
+	sockaddr_in srvc;
+
+	srvc.sin_family = AF_INET;
+	srvc.sin_addr.s_addr = htonl(INADDR_ANY);
+	srvc.sin_port = udpInPort;
+
+	EthPtr ep;
+
+	ep.eth = (EthHdr*)rx_buf[0];
+
+	int len = recv(lstnSocket, (char*)&ep.eip->iph, sizeof(rx_buf[0]), 0); 
+
+	if (len != SOCKET_ERROR/* && len >= sizeof(ep.eip->iph)*/)
+	{
+		//in_addr srcip;
+		//in_addr dstip;
+
+		//srcip.S_un.S_addr = ep.eip->iph.src;
+		//dstip.S_un.S_addr = ep.eip->iph.dst;
+
+		//printf("Recv prot: %hi, srcip %08lX, dstip %08lX, len:%i\n", ep.eip->iph.p, ReverseDword(ep.eip->iph.src), ReverseDword(ep.eip->iph.dst), len);
+
+		RequestIP(ep.eip, 0);
+	}
+	else
+	{
+		//int	error = WSAGetLastError(); //WSAEOPNOTSUPP
+	};
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void UpdateTransmit()
 {
+#ifndef WIN32
+
 	static byte i = 0;
 
 	static EthBuf *buf = 0;
@@ -793,11 +846,12 @@ static void UpdateTransmit()
 
 			break;
 	};
+#else
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#endif // #ifndef WIN32
 
 
 /*--------------------------- init_ethernet ---------------------------------*/
@@ -912,6 +966,113 @@ bool InitEMAC()
 	StartLink();
 
 #else
+
+//	accptSocket = SOCKET_ERROR;
+
+	int error = 0;
+
+	WSADATA wsaData;
+	
+	if (WSAStartup( MAKEWORD(2,2), &wsaData) != NO_ERROR)
+	{
+		cputs("Error at WSAStartup()\n");
+		return false;
+	}
+	else
+	{
+		cputs("WSAStartup() ... OK\n");
+	};
+
+	cputs("Creating socket ... ");
+
+	lstnSocket = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+	
+	if (lstnSocket == INVALID_SOCKET)
+	{
+		cputs("ERROR!!!\n");
+	    WSACleanup();
+		return false;
+	}
+	else
+	{
+		cputs("OK\n");
+	};
+
+
+	int iMode = 1;
+
+	if (ioctlsocket(lstnSocket, FIONBIO, (u_long FAR*) &iMode) != 0)
+	{
+		cputs("Set socket to nonblocking mode FAILED!!!\n");
+	};
+
+	BOOL bOptVal = TRUE;
+	int bOptLen = sizeof(BOOL);
+
+	if(setsockopt(lstnSocket, IPPROTO_IP, IP_HDRINCL, (char*)&bOptVal, bOptLen) != SOCKET_ERROR)
+	{
+		cputs("Socket IP_HDRINCL enabled\n");
+	};
+
+	if(setsockopt(lstnSocket, SOL_SOCKET, SO_BROADCAST, (char*)&bOptVal, bOptLen) != SOCKET_ERROR)
+	{
+		cputs("Socket SO_BROADCAST enabled\n");
+	};
+
+	sockaddr_in srvc;
+
+	srvc.sin_family = AF_INET;
+	srvc.sin_addr.s_addr = htonl(INADDR_ANY);
+	srvc.sin_port = udpInPort;
+
+	if (bind(lstnSocket, (SOCKADDR*)&srvc, sizeof(srvc)) == SOCKET_ERROR )
+	{
+		cputs("bind() socket failed\n" );
+		closesocket(lstnSocket);
+	    WSACleanup();
+		return false;
+	}
+
+	//if (listen(lstnSocket, 1 ) == SOCKET_ERROR )
+	//{
+	//	error = WSAGetLastError();WSAEOPNOTSUPP
+	//	cputs("Error listening on socket.\n");
+	//	closesocket(lstnSocket);
+	//    WSACleanup();
+	//	return false;
+	//};
+
+	//cputs("Creating send socket ... ");
+
+	//sendSocket = socket(AF_INET, SOCK_RAW, IPPROTO_IP);
+	//
+	//if (sendSocket == INVALID_SOCKET)
+	//{
+	//	cputs("ERROR!!!\n");
+	//    WSACleanup();
+	//	return false;
+	//}
+	//else
+	//{
+	//	cputs("OK\n");
+	//};
+
+	//iMode = 1;
+
+	//if (ioctlsocket(sendSocket, FIONBIO, (u_long FAR*) &iMode) != 0)
+	//{
+	//	cputs("Set send socket to nonblocking mode FAILED!!!\n");
+	//};
+
+	//bOptVal = TRUE;
+	//bOptLen = sizeof(BOOL);
+
+	//if(setsockopt(sendSocket, IPPROTO_IP, IP_HDRINCL, (char*)&bOptVal, bOptLen) != SOCKET_ERROR)
+	//{
+	//	cputs("Send socket IP_HDRINCL enabled\n");
+	//};
+
+	emacConnected = true;
 
 #endif
 
@@ -1087,9 +1248,9 @@ static bool CheckLink() // Если нет связи, то результат false
 
 void UpdateEMAC()
 {
-#ifndef WIN32
-
 	static byte i = 0;
+
+#ifndef WIN32
 
 	switch(stateEMAC)
 	{
@@ -1128,6 +1289,15 @@ void UpdateEMAC()
 	};
 
 #else
+
+	switch(i++)
+	{
+		case 0:	RecieveFrame();		break;
+		case 1: UpdateTransmit();	break;
+	};
+
+	i &= 1;
+
 
 #endif
 }

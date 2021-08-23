@@ -87,7 +87,7 @@ inline u16 GetMillisecondsLow()
 #ifndef WIN32
 inline u16 GetRTT() { return HW::CCU43_CC43->TIMER; }
 #else
-inline u16 GetRTT() { return 0; }
+inline u16 GetRTT() { return (u16)(GetTickCount()); }
 #endif
 
 struct RTM

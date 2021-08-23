@@ -4,8 +4,14 @@
 #include "types.h"
 #include "core.h"
 
+#ifndef WIN32
 #ifdef CPU_XMC48
 	#include "COM_DEF.h"
+#endif
+#else
+#ifndef BUSY
+#define BUSY 0
+#endif
 #endif
 
 #define COM_RS232 0

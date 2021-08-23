@@ -612,7 +612,7 @@ int main()
 
 			HW::WDT->Update();
 #ifdef WIN32
-			Printf(0, 0, 0x80, "FPS=%9i", fps);
+			Printf(0, 0, 0xFC, "FPS=%9i", fps);
 #endif
 		};
 
@@ -620,9 +620,28 @@ int main()
 
 		UpdateDisplay();
 
-		if (_kbhit())
+		static TM32 tm;
+
+		byte key = 0;
+
+		if (tm.Check(50))
 		{
-			if (_getch() == 27) break;
+			if (_kbhit())
+			{
+				key = _getch();
+
+				if (key == 27) break;
+			};
+
+			if (key == 'w')
+			{
+				FLASH_WriteEnable();
+			};
+
+			if (key == 'e')
+			{
+				FLASH_WriteDisable();
+			};
 		};
 
 #endif

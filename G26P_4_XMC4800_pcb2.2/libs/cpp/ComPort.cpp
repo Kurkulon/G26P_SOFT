@@ -1,6 +1,9 @@
 #pragma O3
 #pragma Otime
 
+#ifdef WIN32
+#include "COM_DEF.h"
+#endif
 //#include <stdio.h>
 //#include <conio.h>
 

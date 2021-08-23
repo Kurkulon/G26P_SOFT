@@ -157,12 +157,30 @@ void GetTime(RTC *t)
 {
 	if (t == 0) return;
 
+#ifndef WIN32
+
 	__disable_irq();
 
 	t->date = timeBDC.date;
 	t->time = timeBDC.time;
 
 	__enable_irq();
+
+#else
+
+	SYSTEMTIME lt;
+
+	GetLocalTime(&lt);
+
+	t->msec =  lt.wMilliseconds;
+	t->sec	=  lt.wSecond;
+	t->min 	=  lt.wMinute;
+	t->hour =  lt.wHour;
+	t->day 	=  lt.wDay;
+	t->mon 	=  lt.wMonth;
+	t->year =  lt.wYear;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -227,18 +245,17 @@ bool SetTime(const RTC &t)
 
 #else
 
-	//SYSTEMTIME lt;
+	SYSTEMTIME lt;
 
-	//lt.wMilliseconds	=	t.hsecond*10;
-	//lt.wSecond			=	t.second	;
-	//lt.wMinute			=	t.minute	;
-	//lt.wHour			=	t.hour		;
-	//lt.wDay				=	t.day		;
-	//lt.wDayOfWeek		=	t.dayofweek;
-	//lt.wMonth			=	t.month	;
-	//lt.wYear			=	t.year		;
+	lt.wMilliseconds	=	t.msec;
+	lt.wSecond			=	t.sec;
+	lt.wMinute			=	t.min;
+	lt.wHour			=	t.hour;
+	lt.wDay				=	t.day;
+	lt.wMonth			=	t.mon;
+	lt.wYear			=	t.year;
 
-	//return SetLocalTime(&lt);
+	return SetLocalTime(&lt);
 
 	return true;
 

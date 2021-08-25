@@ -319,9 +319,9 @@ static void InitFireXX()
 	SCT->CTRL_L = (1<<2); // HALT
 
 	SCT->MATCH_L[0] = 0; 
-	SCT->MATCH_L[1] = 25*2;
-	SCT->MATCH_L[2] = t_XY+25*2; 
-	SCT->MATCH_L[3] = t_XY+25*4; 
+	SCT->MATCH_L[1] = 25*20;
+	SCT->MATCH_L[2] = t_XY+25*20; 
+	SCT->MATCH_L[3] = t_XY+25*40; 
 	SCT->MATCH_L[4] = p_XY;
 
 	SCT->OUTPUT = 0;
@@ -350,9 +350,9 @@ static void InitFireYY()
 	SCT->CTRL_L = (1<<2); // HALT
 
 	SCT->MATCH_L[0] = 0; 
-	SCT->MATCH_L[1] = 25*2;
-	SCT->MATCH_L[2] = t_XY+25*2; 
-	SCT->MATCH_L[3] = t_XY+25*4; 
+	SCT->MATCH_L[1] = 25*20;
+	SCT->MATCH_L[2] = t_XY+25*20; 
+	SCT->MATCH_L[3] = t_XY+25*40; 
 	SCT->MATCH_L[4] = p_XY;
 
 	SCT->OUTPUT = 0;

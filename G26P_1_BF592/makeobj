@@ -7,13 +7,13 @@ version = Release
 
 ####################################################################################################################################################################################################
 
-ADI_DSP = "C:\Program Files (x86)\Analog Devices\VisualDSP 5.1"
+#ADI_DSP = "C:\Program Files (x86)\Analog Devices\VisualDSP 5.1"
 
 curdir = $+ $(%cdrive):$(%cwd) $-
-hdir = cpp
-libdir = $(curdir)\libs
-bindir = $(ADI_DSP)
-incdir = $(ADI_DSP)\Blackfin\include
+#hdir = cpp
+#libdir = $(curdir)\libs
+#bindir = $(ADI_DSP)
+#incdir = $(ADI_DSP)\Blackfin\include
 
 !ifeq version Debug
 
@@ -73,7 +73,7 @@ asm_options = -proc ADSP-BF592-A -g -si-revision 0.2
 ####################################################################################################################################################################################################
 #-MDUSE_FILEIO
 
-link_options = -e -proc ADSP-BF592-A -si-revision 0.2 -MDNO_UTILITY_ROM -MD__cplusplus
+link_options = -e -proc ADSP-BF592-A -si-revision 0.2 -MDNO_UTILITY_ROM -MD__cplusplus -MDUSE_SCRATCHPAD_STACK -MDUSE_SCRATCHPAD_HEAP -MDSTACK_SIZE=1K -MDHEAP_SIZE=0 -MDSTACKHEAP_SIZE=1K
   
 ####################################################################################################################################################################################################
 
@@ -100,15 +100,15 @@ $(objdir)\bootloader.ldr : bootloader.dxe initcode.dxe
 
 ####################################################################################################################################################################################################
 
-g26p.dxe : g26p_basiccrt.doj at25df021.doj ComPort.doj CRC16.doj hardware.doj heaptab.doj main.doj  
+g26p.dxe :  at25df021.doj ComPort.doj CRC16.doj hardware.doj heaptab.doj main.doj  #g26p_basiccrt.doj
 	@echo Linking $^@ ...
-	@linker	$(link_options) -Map "$(objdir)\$^&.xml" -MDUSER_CRT="$(objdir)\g26p_basiccrt.doj" -o "$(objdir)\$^." $< 
+	@linker	$(link_options) -Map "$(objdir)\$^&.xml"  -o "$(objdir)\$^." $<  #-MDUSER_CRT="$(objdir)\g26p_basiccrt.doj"
 	
 ####################################################################################################################################################################################################
 
-bootloader.dxe : g26p_basiccrt.doj at25df021.doj bootloader.doj ComPort.doj CRC16.doj heaptab.doj 
+bootloader.dxe :  at25df021.doj bootloader.doj ComPort.doj CRC16.doj heaptab.doj #g26p_basiccrt.doj
 	@echo Linking $^@ ...
-	@linker	$(link_options) -Map "$(objdir)\$^&.xml" -MDUSER_CRT="$(objdir)\g26p_basiccrt.doj" -o "$(objdir)\$^." $<
+	@linker	$(link_options) -Map "$(objdir)\$^&.xml"  -o "$(objdir)\$^." $<  #-MDUSER_CRT="$(objdir)\g26p_basiccrt.doj"
 	
 ####################################################################################################################################################################################################
 
@@ -118,7 +118,7 @@ initcode.dxe : initcode.doj
 	
 ####################################################################################################################################################################################################
 
-g26p_basiccrt.doj : g26p_basiccrt.s
+#g26p_basiccrt.doj : g26p_basiccrt.s
 
 ####################################################################################################################################################################################################
 

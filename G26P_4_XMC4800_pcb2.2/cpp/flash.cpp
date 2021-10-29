@@ -109,10 +109,6 @@ static u32 pagesRead = 0;
 static u32 pagesReadOK = 0;
 static u32 pagesReadErr = 0;
 
-static u64 adrLastVector = -1;
-static u32 lastSessionBlock = -1;
-static u32 lastSessionPage = -1;
-
 static bool cmdCreateNextFile = false;
 static bool cmdFullErase = false;
 static bool cmdSendSession = false;
@@ -228,7 +224,8 @@ enum NandState
 	NAND_STATE_FULL_ERASE_START,
 	NAND_STATE_FULL_ERASE_0,
 	NAND_STATE_CREATE_FILE,
-	NAND_STATE_SEND_SESSION
+	NAND_STATE_SEND_SESSION,
+	NAND_STATE_SEND_BLACKBOX_SESSION
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2452,7 +2449,12 @@ static void InitSessions()
 		}
 		else
 		{
-			if (f.lastPage < f.startPage)
+			if (f.size >= FLASH_Full_Size_Get())
+			{
+				bl = true;
+				ls = 0;
+			}
+			else if (f.lastPage < f.startPage)
 			{
 				bl = true;
 				ls = f.startPage;
@@ -2594,231 +2596,269 @@ static void InitSessions()
 //
 ////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void BlackBoxSessionsInit()
+static bool UpdateBlackBoxSendSessions()
 {
-	FLADR rd(0, 0, 0, 0);
+	enum {	WAIT = 0, FIND_LAST_USED_BLOCK, READ_START, READ_1, READ_2, READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,FIND_2,FIND_3,FIND_4, READ_END};
 
-	u32 bs;
-	u32 be;
-	u32 bm;
-	u32 endBlock;
+	static byte state = WAIT;
 
-	SpareArea spare;
+	static FLADR rd(0, 0, 0, 0);
 
-	byte state;
+	static u32 bs;
+	static u32 be;
+	static u32 bm;
 
-	FileDsc curf;
-	FileDsc prf;
-	FileDsc lastf;
+	static u32 ps;
+	static u32 pe;
+	static u32 pm;
 
-	//rd.block = 1 << (nandSize.bitBlock-1);
-	//rd.page = 0;
-	//rd.chip = 0;
+	static SpareArea spare;
 
-//	__breakpoint(0);
+	static ReadSpare readSpare;
 
-	rd.SetRawBlock(~0);
-//	rd.SetRawPage(0xC0000);
-//	endBlock = rd.GetRawBlock();
+	static u32 sessionFirstPage = -1;
+	static u32 sessionLastBlock = -1;
+	static u32 sessionLastPage = -1;
+	static u64 sessionFirsVector = -1;
+	static u64 sessionLastVector = -1;
 
-	bs = 0;
-	be = rd.GetRawBlock();
-	bm = (be+bs)/2;
+	static u32 lastValidBlock = ~0;
+	static u32 lastFileNum = ~0;
+	static u32 lastFileStartPage = ~0;
 
-	rd.SetRawBlock(bm);
+	//static FileDsc curf;
+	//static FileDsc prf;
+	//static FileDsc lastf;
 
-	while (be > bs)// && bm < be && bm > bs)
+	static u32 initFileNum = 0;
+	static u32 initFileStartPage = 0;
+
+	bool result = true;
+
+	switch (state)
 	{
-		ReadSpareNow(&spare, &rd, false);
+		//case WAIT:
 
-		if (spare.validBlock != 0xFFFF)
-		{
-			rd.NextBlock();
-			bm = rd.GetRawBlock();
-		}
-		else if (spare.validPage != 0xFFFF)
-		{
-			rd.NextPage();
-			bm = rd.GetRawBlock();
-		}
-		else
-		{
-			if (spare.start == ~0 || spare.fpn == ~0  || spare.rawPage == ~0 )
-			{
-				be = bm-1;
-			}
-			else
-			{
-				bs = bm;
-			};
+		//	rd.SetRawBlock(~0);
 
-			bm = (bs + be) / 2;
+		//	bs = 0;
+		//	be = rd.GetRawBlock();
+		//	bm = 0;
+
+		//	rd.SetRawBlock(0);
+
+		//	readSpare.Start(&spare, &rd);
+
+		//	state++;
+
+		//	break;
+
+		//case 1: // Найти первый не битый блок
+
+		//	if (!readSpare.Update())
+		//	{
+		//		if (spare.crc == 0)
+		//		{
+		//			if (bm == 0 || be <= bs)
+		//			{
+		//				initFileNum = spare.file;
+		//				initFileStartPage = spare.start;
+
+		//				if (spare.prev == ~0)
+		//				{
+		//					state++;
+		//				}
+		//				else
+		//				{
+		//					sessionFirstPage = spare.prev;
+		//					sessionLastBlock = rd.GetRawBlock();
+
+		//					state = 4;
+		//				};
+
+		//				break;
+		//			}
+		//			else
+		//			{
+		//				bm = rd.GetRawBlock();
+
+		//				be = bm-1;
+
+		//				rd.SetRawBlock(bm = (bs + be + 1) / 2);
+		//			};
+		//		}
+		//		else if (spare.start == ~0 || spare.fpn == ~0  || spare.rawPage == ~0 )
+		//		{
+		//			if (be <= bs) // Флэшка пуста
+		//			{
+		//				state = WAIT;
+		//				result = false;
+		//				break;
+		//			};
+
+		//			if (bm != 0)
+		//			{
+		//				bs = bm = rd.GetRawBlock();
+		//			};
+
+		//			rd.SetRawBlock(bm = (bs + be + 1) / 2);
+		//		}
+		//		else
+		//		{
+		//			rd.NextPage(); 
+		//		};
+
+		//		readSpare.Start(&spare, &rd);
+		//	};
+
+		//	break;
+
+		case 0: // Найти последний не битый блок с векторами
+
+			rd.SetRawBlock(~0);
+
+			bs = 0;
+			be = rd.GetRawBlock();
+			bm = (be+bs)/2;
 
 			rd.SetRawBlock(bm);
-		};
-	};
 
-	rd.SetRawBlock(bs);
+			readSpare.Start(&spare, &rd);
 
-	ReadSpareNow(&spare, &rd, true);
+			state++;
 
+			break;
 
-	// Найти последнюю записанную страницу в блоке
+		case 1:
 
-	lastSessionBlock = bs;
-
-	bs = rd.GetRawPage();
-	be = bs + (1<<NAND_PAGE_BITS) - 1;
-
-	bm = (be+bs)/2;
-
-	rd.SetRawPage(bm);
-
-	while (be > bs)
-	{
-		ReadSpareNow(&spare, &rd, false);
-
-		if (spare.validPage != 0xFFFF)
-		{
-			rd.NextPage();
-			bm = rd.GetRawPage();
-		}
-		else
-		{
-			if (/*spare.lpn == -1 ||*/ spare.start == -1 || spare.fpn == -1 )
+			if (!readSpare.Update())
 			{
-				be = bm-1;
-			}
-			else
-			{
-				bs = bm;
+				bm = rd.GetRawBlock();
+
+				if (bm < bs || bm > be)
+				{
+					state += 1;
+				}
+				else if (be > bs)
+				{
+					if (spare.crc == 0) { lastValidBlock = bm; lastFileNum = spare.file; lastFileStartPage = spare.start; };
+
+					if (spare.start == ~0 || spare.fpn == ~0  || spare.rawPage == ~0 )
+					{
+						be = bm-1;
+					}
+					else
+					{
+						bs = bm;
+					};
+
+					bm = (bs + be + 1) / 2;
+
+					rd.SetRawBlock(bm);
+
+					readSpare.Start(&spare, &rd);
+				}
+				else if (spare.crc == 0)
+				{
+					lastValidBlock = bm;
+					lastFileNum = spare.file; 
+					lastFileStartPage = spare.start;
+
+					state += 1;
+				}
+				else
+				{
+					rd.NextPage(); readSpare.Start(&spare, &rd);
+				};
 			};
 
-			bm = (bs + be + 1) / 2;
+			break;
 
-			rd.SetRawPage(bm);
-		};
+		case 2: // Поиск последнего вектора в последнем блоке сессии
+
+			rd.SetRawPage(lastFileStartPage);
+
+			readSpare.Start(&spare, &rd);
+
+			state++;
+
+			break;
+
+		case 3:
+
+			if (!readSpare.Update())
+			{
+				pm = rd.GetRawPage();
+
+				if (spare.crc == 0 )
+				{
+					if (spare.file == lastFileNum)
+					{
+
+					};
+				}
+				else
+				{
+					rd.NextPage(); 
+				};
+
+				readSpare.Start(&spare, &rd);
+			};
+
+			break;
+
+
+
 	};
 
-	lastSessionPage = bs;
-
-	rd.SetRawPage(bs);
-
-	ReadSpareNow(&spare, &rd, true);
-
-	while (spare.vecLstOff == 0xFFFF || spare.crc != 0)
-	{
-		rd.PrevPage();
-		
-		ReadSpareNow(&spare, &rd, true);
-	}
-
-	lastSessionPage = rd.GetRawPage();
-
-	adrLastVector = rd.GetRawAdr() + spare.vecLstOff;
-
-
-
-	//static VecData::Hdr hdr;
-
-	//rd.raw = adrLastVector;
-
-	//ReadSpareNow(&spare, &rd, true);
-
-	//lastSessionInfo.size = (u64)lastSessionPage << NAND_COL_BITS;
-
-	//lastSessionInfo.last_adress = adrLastVector;
-
-	//ReadVecHdrNow(&hdr, &rd);
-
-	//if (hdr.crc == 0)
-	//{
-	//	lastSessionInfo.stop_rtc = hdr.rtc;
-	//}
-	//else
-	//{
-
-	//};
-
-	//rd.SetRawPage(0);
-
-	//ReadSpareNow(&spare, &rd, true);
-
-	//while (spare.validPage != 0xFFFF || spare.validBlock != 0xFFFF)
-	//{
-	//	if (spare.validBlock != 0xFFFF)
-	//	{
-	//		rd.NextBlock();
-	//		ReadSpareNow(&spare, &rd, true);
-	//	}
-	//	else if (spare.validPage != 0xFFFF)
-	//	{
-	//		rd.NextPage();
-	//		ReadSpareNow(&spare, &rd, true);
-	//	};
-	//};
-
-	//lastSessionInfo.session = spare.file;
-	//lastSessionInfo.flags = 0;
-
-	//ReadVecHdrNow(&hdr, &rd);
-
-	//if (hdr.crc == 0)
-	//{
-	//	lastSessionInfo.start_rtc = hdr.rtc;
-	//}
-	//else
-	//{
-
-	//};
-
+	return result;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool GetSessionNow(SessionInfo *si)
-{
-	static SpareArea spare;
-
-	static VecData::Hdr hdr;
-
-	FLADR rd(0,0,0,0);
-
-	rd.raw = adrLastVector;
-
-	ReadSpareNow(&spare, &rd, true);
-
-	si->size = (u64)spare.fpn << NAND_COL_BITS;
-
-	si->last_adress = adrLastVector;
-	si->session = spare.file;
-
-	ReadVecHdrNow(&hdr, &rd);
-
-	if (hdr.crc == 0)
-	{
-		si->stop_rtc = hdr.rtc;
-	}
-	else
-	{
-
-	};
-
-	rd.SetRawPage(spare.start);
-
-	ReadVecHdrNow(&hdr, &rd);
-
-	if (hdr.crc == 0)
-	{
-		si->start_rtc = hdr.rtc;
-	}
-	else
-	{
-
-	};
-
-	return true;
-}
+//bool GetSessionNow(SessionInfo *si)
+//{
+//	static SpareArea spare;
+//
+//	static VecData::Hdr hdr;
+//
+//	FLADR rd(0,0,0,0);
+//
+//	rd.raw = adrLastVector;
+//
+//	ReadSpareNow(&spare, &rd, true);
+//
+//	si->size = (u64)spare.fpn << NAND_COL_BITS;
+//
+//	si->last_adress = adrLastVector;
+//	si->session = spare.file;
+//
+//	ReadVecHdrNow(&hdr, &rd);
+//
+//	if (hdr.crc == 0)
+//	{
+//		si->stop_rtc = hdr.rtc;
+//	}
+//	else
+//	{
+//
+//	};
+//
+//	rd.SetRawPage(spare.start);
+//
+//	ReadVecHdrNow(&hdr, &rd);
+//
+//	if (hdr.crc == 0)
+//	{
+//		si->start_rtc = hdr.rtc;
+//	}
+//	else
+//	{
+//
+//	};
+//
+//	return true;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2831,9 +2871,9 @@ void StartSendSession()
 
 static bool UpdateSendSession()
 {
-	enum {	WAIT = 0, READ_START, READ_1, READ_2, READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,FIND_2,FIND_3,FIND_4, READ_END};
+//	enum {	WAIT = 0, READ_START, READ_1, READ_2, READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,FIND_2,FIND_3,FIND_4, READ_END};
 
-	static byte i = WAIT;
+	static byte i = 0;
 	
 	static u16 ind = 0;
 	static u32 prgrss = 0;
@@ -3031,6 +3071,8 @@ void NAND_Idle()
 	static FLADR er(0);
 	static EraseBlock eraseBlock;
 
+	UpdateBlackBoxSendSessions();
+
 	switch (nandState)
 	{
 		case NAND_STATE_WAIT: 
@@ -3130,7 +3172,7 @@ void NAND_Idle()
 
 					write.Init(0, 1, -1);
 
-					adrLastVector = -1;
+//					adrLastVector = -1;
 
 					TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_ERASE);
 					nandState = NAND_STATE_WAIT;
@@ -3157,6 +3199,15 @@ void NAND_Idle()
 				{
 					nandState = NAND_STATE_WAIT;
 				};
+			};
+
+			break;
+
+		case NAND_STATE_SEND_BLACKBOX_SESSION:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (!UpdateBlackBoxSendSessions())
+			{
+				nandState = NAND_STATE_WAIT;
 			};
 
 			break;

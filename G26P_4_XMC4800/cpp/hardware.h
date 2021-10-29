@@ -51,5 +51,27 @@ extern void ManRcvStop();
 extern bool SendMLT3(MTB *mtb);
 extern void SetClock(const RTC &t);
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct DSCSPI
+{
+	DSCSPI*			next;
+	void*			wdata;
+	void*			rdata;
+	u32				adr;
+	u16				alen;
+	u16				wlen;
+	u16				rlen;
+	volatile bool	ready;
+	byte			csnum;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+extern bool SPI_AddRequest(DSCSPI *d);
+extern bool SPI_Update();
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 #endif // HARDWARE_H__15_05_2009__14_35

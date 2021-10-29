@@ -75,7 +75,7 @@ compiler_options6 = $(debug_compiler_options) --gnu -save-temps --interleave -g 
 
 ##################################################################################################
 
-asm_options = --cpu CORTEX-M4.fp.sp -g --apcs /interwork --xref --diag_style=ide --pd "__MICROLIB SETA 1" --pd "__PROGNAME__ SETS \"KAPCAP G26P.4.1(8AD73_MDM_UPR)-2.2\"" --cpreproc
+asm_options = --cpu CORTEX-M4.fp.sp -g --apcs /interwork --xref --diag_style=ide --pd "__MICROLIB SETA 1" --pd "__PROGNAME__ SETS \"KAPCAP G26P.4.1(8AD73_MDM_UPR)-2.3\"" --cpreproc
 
 ##################################################################################################
 

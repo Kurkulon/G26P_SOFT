@@ -3,6 +3,7 @@
 #include "hardware.h"
 #include "twi.h"
 #include "system_XMC4800.h"
+#include "COM_DEF.h"
 
 //#pragma O3
 //#pragma Otime
@@ -843,7 +844,530 @@ static void WDT_Init()
 	//HW::ResetWDT();
 }
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define MSLSEN    	(0x1UL)         	/*!< USIC_CH PCR_SSCMode: MSLSEN (Bitfield-Mask: 0x01)           */
+#define SELCTR    	(0x2UL)         	/*!< USIC_CH PCR_SSCMode: SELCTR (Bitfield-Mask: 0x01)           */
+#define SELINV    	(0x4UL)         	/*!< USIC_CH PCR_SSCMode: SELINV (Bitfield-Mask: 0x01)           */
+#define FEM       	(0x8UL)         	/*!< USIC_CH PCR_SSCMode: FEM (Bitfield-Mask: 0x01)              */
+#define CTQSEL1(v)	(((v)&3)<<4)		/*!< USIC_CH PCR_SSCMode: CTQSEL1 (Bitfield-Mask: 0x03)          */
+#define PCTQ1(v)	(((v)&3)<<6)    	/*!< USIC_CH PCR_SSCMode: PCTQ1 (Bitfield-Mask: 0x03)            */
+#define DCTQ1(v)	(((v)&0x1F)<<8)		/*!< USIC_CH PCR_SSCMode: DCTQ1 (Bitfield-Mask: 0x1f)            */
+#define PARIEN    	(0x2000UL)      	/*!< USIC_CH PCR_SSCMode: PARIEN (Bitfield-Mask: 0x01)           */
+#define MSLSIEN   	(0x4000UL)      	/*!< USIC_CH PCR_SSCMode: MSLSIEN (Bitfield-Mask: 0x01)          */
+#define DX2TIEN   	(0x8000UL)      	/*!< USIC_CH PCR_SSCMode: DX2TIEN (Bitfield-Mask: 0x01)          */
+#define SELO(v)		(((v)&0xFF)<<16)	/*!< USIC_CH PCR_SSCMode: SELO (Bitfield-Mask: 0xff)             */
+#define TIWEN     	(0x1000000UL)   	/*!< USIC_CH PCR_SSCMode: TIWEN (Bitfield-Mask: 0x01)            */
+#define SLPHSEL   	(0x2000000UL)   	/*!< USIC_CH PCR_SSCMode: SLPHSEL (Bitfield-Mask: 0x01)          */
+#define MCLK      	(0x80000000UL)  	/*!< USIC_CH PCR_SSCMode: MCLK (Bitfield-Mask: 0x01)             */
+
+#define MSLS      	(0x1UL)           	/*!< USIC_CH PSR_SSCMode: MSLS (Bitfield-Mask: 0x01)             */
+#define DX2S      	(0x2UL)           	/*!< USIC_CH PSR_SSCMode: DX2S (Bitfield-Mask: 0x01)             */
+#define MSLSEV    	(0x4UL)           	/*!< USIC_CH PSR_SSCMode: MSLSEV (Bitfield-Mask: 0x01)           */
+#define DX2TEV    	(0x8UL)           	/*!< USIC_CH PSR_SSCMode: DX2TEV (Bitfield-Mask: 0x01)           */
+#define PARERR    	(0x10UL)          	/*!< USIC_CH PSR_SSCMode: PARERR (Bitfield-Mask: 0x01)           */
+#define RSIF      	(0x400UL)         	/*!< USIC_CH PSR_SSCMode: RSIF (Bitfield-Mask: 0x01)             */
+#define DLIF      	(0x800UL)         	/*!< USIC_CH PSR_SSCMode: DLIF (Bitfield-Mask: 0x01)             */
+#define TSIF      	(0x1000UL)        	/*!< USIC_CH PSR_SSCMode: TSIF (Bitfield-Mask: 0x01)             */
+#define TBIF      	(0x2000UL)        	/*!< USIC_CH PSR_SSCMode: TBIF (Bitfield-Mask: 0x01)             */
+#define RIF       	(0x4000UL)        	/*!< USIC_CH PSR_SSCMode: RIF (Bitfield-Mask: 0x01)              */
+#define AIF       	(0x8000UL)        	/*!< USIC_CH PSR_SSCMode: AIF (Bitfield-Mask: 0x01)              */
+#define BRGIF     	(0x10000UL)       	/*!< USIC_CH PSR_SSCMode: BRGIF (Bitfield-Mask: 0x01)            */
+
+#define SPI__SCTR (SDIR(1) | TRM(1) | FLE(0x3F) | WLE(7))
+
+#define SPI__CCR (MODE(1))
+
+#define SPI__BRG (SCLKCFG(2)|CTQSEL(0)|DCTQ(1)|PCTQ(3)|CLKSEL(0))
+
+#define SPI__DX0CR (DSEL(2) | INSW(1) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
+#define SPI__DX1CR (DSEL(0) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
+#define SPI__DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+#define SPI__DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+
+#define SPI__PCR (MSLSEN | SELINV |  TIWEN | MCLK | CTQSEL1(0) | PCTQ1(0) | DCTQ1(0))
+
+#define SPI__BAUD (4000000)
+
+#define SPI__FDR ((1024 - ((MCK + SPI__BAUD/2) / SPI__BAUD + 1) / 2) | DM(1))
+
+#define SPI__BAUD2FDR(v) ((1024 - ((MCK + (v)/2) / (v) + 1) / 2) | DM(1))
+
+#define SPI__TCSR (TDEN(1)|HPCMD(0))
+
+static void delay(u32 cycles) { for(volatile u32 i = 0UL; i < cycles ;++i) { __nop(); }}
+
+#define SPI				HW::USIC1_CH0
+#define	SPI_INPR		(0)
+#define PIO_SPCK		HW::P5
+#define PIO_MOSI		HW::P2
+#define PIO_MISO		HW::P2
+#define PIO_CS			HW::P5
+
+#define Pin_SPI_IRQ_Set()		HW::P2->BSET(12);
+#define Pin_SPI_IRQ_Clr()		HW::P2->BCLR(12);
+
+#define PIN_SPCK		8 
+#define PIN_MOSI		14 
+#define PIN_MISO		15 
+#define PIN_CS0			9 
+#define PIN_CS1			11
+
+#define SPCK			(1<<PIN_SPCK) 
+#define MOSI			(1<<PIN_MOSI) 
+#define MISO			(1<<PIN_MISO) 
+#define CS0				(1<<PIN_CS0) 
+#define CS1				(1<<PIN_CS1) 
+
+#define SPI_IRQ			USIC1_5_IRQn
+#define SPI_PID			PID_USIC1
+
+#define	SPI_DMA			HW::GPDMA0
+#define	SPI_DMACH		HW::GPDMA0_CH5
+#define	SPI_DMA_CHEN	(0x101<<5)
+#define	SPI_DMA_CHDIS	(0x100<<5)
+#define	SPI_DMA_CHST	(1<<5)
+#define	SPI_DLR			(1)
+#define	SPI_DLR_LNEN	(1<<SPI_DLR)
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static byte *spi_wrPtr = 0;
+static byte *spi_rdPtr = 0;
+static u16 spi_wrCount = 0;
+static u16 spi_count = 0;
+static u16 spi_rdCount = 0;
+static byte *spi_wrPtr2 = 0;
+static u16 spi_wrCount2 = 0;
+static u32 spi_adr = 0;
+static DSCSPI* spi_dsc = 0;
+static DSCSPI* spi_lastDsc = 0;
+static u32 SPI_CS_MASK[2] = { CS0, CS1 };
+static u32 spi_timestamp = 0;
+
+//static bool SPI_Write(DSCSPI *d);
+//static bool SPI_Read(DSCSPI *d);
+static bool SPI_WriteRead(DSCSPI *d);
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void SPI_Handler_Write()
+{
+	using namespace HW;
+
+	Pin_SPI_IRQ_Set();
+
+	volatile u32 a = SPI->PSR_SSCMode;
+	
+	a &= (SPI->CCR & (RIF|AIF))|MSLSEV;
+
+	if(a & (RIF|AIF))
+	{
+		SPI->PSCR = RIF|DLIF|TSIF|MSLSEV;
+
+		SPI->PCR_SSCMode |= MSLSIEN;
+		SPI->CCR = SPI__CCR|TBIEN;
+	}
+	else if(a & MSLSEV)
+	{
+		SPI->PSCR = RIF|DLIF|TSIF|MSLSEV;
+
+		SPI_DMA->CHENREG = SPI_DMA_CHDIS;
+
+		SPI->TRBSCR = TRBSCR_FLUSHTB;
+
+		SPI->PCR_SSCMode = SPI__PCR;
+
+		SPI->TCSR = SPI__TCSR|TDSSM(1);
+
+		SPI->CCR = SPI__CCR;
+
+		SPI->PSCR = DLIF;
+
+		DLR->LNEN &= ~SPI_DLR_LNEN;
+
+		DSCSPI *ndsc = spi_dsc->next;
+			
+		spi_dsc->next = 0;
+
+		spi_dsc->ready = true;
+
+		PIO_CS->SET(CS0|CS1);
+		
+		spi_dsc = 0;
+
+		if (ndsc != 0)
+		{
+			SPI_WriteRead(ndsc);
+		}
+		else
+		{
+			spi_lastDsc = 0;
+		};
+	};
+
+
+	Pin_SPI_IRQ_Clr();
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static __irq void SPI_Handler_Read()
+{
+	using namespace HW;
+
+	Pin_SPI_IRQ_Set();
+
+	volatile u32 a = SPI->PSR_SSCMode & SPI->CCR;
+
+	if(a & TBIF)
+	{
+		SPI->PSCR = TBIF|TSIF;
+
+		if (spi_count == 0)
+		{
+			a = SPI->RBUF;
+			a = SPI->RBUF;
+
+			SPI->PSCR = RIF|DLIF;
+			SPI->CCR = SPI__CCR|RIEN|DLIEN;
+			SPI->TBUF[0] = 0;
+			SPI->TCSR = SPI__TCSR|TDSSM(0);
+		}
+		else
+		{
+			a = SPI->RBUF;
+			a = SPI->RBUF;
+
+			if (spi_wrCount > 0)
+			{ 
+				SPI->TBUF[0] = *(spi_wrPtr++); 
+				spi_wrCount--;
+			}
+			else
+			{
+				SPI->TBUF[0] = 0;
+			};
+
+			spi_count--;
+		};
+	}
+	else if(a & DLIF)
+	{
+		SPI_DMA->CHENREG = SPI_DMA_CHDIS;
+
+		SPI->PCR_SSCMode = SPI__PCR;
+
+		SPI->TCSR = SPI__TCSR|TDSSM(1);
+
+		SPI->CCR = SPI__CCR;
+
+		SPI->PSCR = ~0;
+
+		DLR->LNEN &= ~SPI_DLR_LNEN;
+
+		DSCSPI *ndsc = spi_dsc->next;
+			
+		spi_dsc->next = 0;
+
+		spi_dsc->ready = true;
+
+		PIO_CS->SET(CS0|CS1);
+		
+		spi_dsc = 0;
+
+		if (ndsc != 0)
+		{
+			SPI_WriteRead(ndsc);
+		}
+		else
+		{
+			spi_lastDsc = 0;
+		};
+	};
+
+	Pin_SPI_IRQ_Clr();
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool SPI_WriteRead(DSCSPI *d)
+{
+	using namespace HW;
+
+	if (spi_dsc != 0 || d == 0) { return false; };
+
+	spi_dsc = d;
+
+	spi_dsc->ready = false;
+
+	u32 alen = (spi_dsc->alen > 4) ? 4 : spi_dsc->alen; 
+
+	spi_wrPtr = (byte*)&spi_dsc->adr;	
+	spi_wrCount = spi_count = alen;
+
+	spi_wrPtr2 = (byte*)spi_dsc->wdata;	
+	spi_wrCount2 = spi_dsc->wlen;
+
+	spi_rdPtr = (byte*)spi_dsc->rdata;	
+	spi_rdCount = spi_dsc->rlen;
+
+	spi_timestamp = GetMilliseconds();
+
+	u32 adr = spi_dsc->adr;
+
+	__disable_irq();
+
+	PIO_CS->CLR(SPI_CS_MASK[spi_dsc->csnum]);
+
+
+	HW::DLR->LNEN &= ~SPI_DLR_LNEN;
+
+	SPI_DMA->CHENREG = SPI_DMA_CHDIS;
+	SPI_DMA->DMACFGREG = 1;
+
+	if (spi_wrCount2 != 0)
+	{
+		SPI_DMACH->CTLL = DINC(2)|SINC(0)|TT_FC(1)|DEST_MSIZE(0)|SRC_MSIZE(0);
+		SPI_DMACH->CTLH = BLOCK_TS(spi_dsc->wlen);
+
+		SPI_DMACH->SAR = (u32)spi_dsc->wdata;
+		SPI_DMACH->DAR = (u32)&SPI->IN[4];
+		SPI_DMACH->CFGL = HS_SEL_SRC;
+		SPI_DMACH->CFGH = PROTCTL(1)|DEST_PER(SPI_DLR&7);
+
+		SPI->TRBSCR = TRBSCR_FLUSHTB;
+		SPI->TBCTR = TBCTR_SIZE8|TBCTR_LIMIT(0);
+
+		SPI->TCSR = SPI__TCSR|TDSSM(1);
+
+		//SPI->FDR = SPI__BAUD2FDR(spi_dsc->baud);
+		SPI->CCR = SPI__CCR;
+		SPI->PCR_SSCMode = SPI__PCR|SELO(1<<spi_dsc->csnum);
+
+		VectorTableExt[SPI_IRQ] = SPI_Handler_Write;
+		//CM4::NVIC->CLR_PR(SPI_IRQ);
+		//CM4::NVIC->SET_ER(SPI_IRQ);
+		
+		SPI->PSCR = ~0;
+
+		while(SPI->PSR_SSCMode & TBIF)
+		{
+			SPI->PSCR = ~0;
+		};
+
+		while(alen > 0)
+		{
+			SPI->IN[4] = (byte)adr;
+			adr >>= 8;
+			alen--;
+		};
+
+		HW::DLR->LNEN |= SPI_DLR_LNEN;
+		SPI_DMA->CHENREG = SPI_DMA_CHEN;
+
+		SPI->PSCR = ~0;
+		SPI->CCR = SPI__CCR|TBIEN|RIEN;
+		SPI->INPR = TBINP(SPI_INPR)|RINP(5)|PINP(5);
+	}
+	else if (spi_rdCount != 0)
+	{
+		volatile u32 t;
+
+		SPI_DMACH->CTLL = DINC(0)|SINC(2)|TT_FC(2)|DEST_MSIZE(0)|SRC_MSIZE(0);
+		SPI_DMACH->CTLH = BLOCK_TS(spi_dsc->rlen);
+
+		SPI_DMACH->SAR = (u32)&SPI->RBUF;
+		SPI_DMACH->DAR = (u32)spi_dsc->rdata;
+		SPI_DMACH->CFGL = HS_SEL_DST;
+		SPI_DMACH->CFGH = PROTCTL(1)|SRC_PER(SPI_DLR&7);
+
+		SPI->RBCTR = 0;
+		SPI->TBCTR = 0;
+
+		SPI->TCSR = SPI__TCSR|TDSSM(1);
+
+		SPI->CCR = SPI__CCR;
+		SPI->PCR_SSCMode = SPI__PCR|SELO(1<<spi_dsc->csnum);
+
+		SPI_DMA->CHENREG = SPI_DMA_CHEN;
+
+		t = SPI->RBUF;
+		t = SPI->RBUF;
+
+//		SPI->PSCR = ~0;
+
+		VectorTableExt[SPI_IRQ] = SPI_Handler_Read;
+		//CM4::NVIC->CLR_PR(SPI_IRQ);
+		//CM4::NVIC->SET_ER(SPI_IRQ);
+
+		HW::DLR->LNEN |= SPI_DLR_LNEN;
+
+		SPI->INPR = RINP(0)|PINP(5)|TBINP(5);
+
+		SPI->PSCR = ~0;
+		
+		while(SPI->PSR_SSCMode & TBIF)
+		{
+			SPI->PSCR = ~0;
+		};
+
+		SPI->CCR = SPI__CCR | TBIEN;
+	
+		SPI->TBUF[0] = *(spi_wrPtr++);
+		spi_wrCount--;
+	}
+	else
+	{
+		SPI->TRBSCR = TRBSCR_FLUSHTB;
+		SPI->TBCTR = TBCTR_SIZE8|TBCTR_LIMIT(0);
+
+		SPI->TCSR = SPI__TCSR|TDSSM(1);
+
+		SPI->CCR = SPI__CCR;
+		SPI->PCR_SSCMode = SPI__PCR|SELO(1<<spi_dsc->csnum);
+
+		VectorTableExt[SPI_IRQ] = SPI_Handler_Write;
+		//CM4::NVIC->CLR_PR(SPI_IRQ);
+		//CM4::NVIC->SET_ER(SPI_IRQ);
+		
+		SPI->PSCR = ~0;
+
+		while(SPI->PSR_SSCMode & TBIF)
+		{
+			SPI->PSCR = ~0;
+		};
+
+		SPI->PSCR = ~0;
+		SPI->CCR = SPI__CCR|RIEN|AIEN;
+		SPI->INPR = TBINP(SPI_INPR)|AINP(5)|RINP(5)|PINP(5);
+
+		while(alen > 0)
+		{
+			SPI->IN[4] = (byte)adr;
+			adr >>= 8;
+			alen--;
+		};
+	};
+
+	__enable_irq();
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool SPI_AddRequest(DSCSPI *d)
+{
+	if (d == 0) { return false; };
+	//if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
+
+	d->next = 0;
+	d->ready = false;
+
+	__disable_irq();
+
+	if (spi_lastDsc == 0)
+	{
+		spi_lastDsc = d;
+
+		__enable_irq();
+
+		return SPI_WriteRead(d);
+	}
+	else
+	{
+		spi_lastDsc->next = d;
+		spi_lastDsc = d;
+
+		__enable_irq();
+	};
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void SPI_Init();
+
+bool SPI_Update()
+{
+	bool result = false;
+
+	using namespace HW;
+
+	static TM32 tm;
+
+	__disable_irq();
+
+	if (spi_dsc != 0)
+	{
+		if (!spi_dsc->ready && (GetMilliseconds() - spi_timestamp) > 100)
+		{
+			result = true;
+
+			HW::Peripheral_Disable(SPI_PID);
+
+			DSCSPI *dsc = spi_dsc;
+
+			spi_dsc = 0;
+
+			SPI_Init();
+
+			SPI_WriteRead(dsc);
+		};
+	};
+	
+	__enable_irq();
+
+	return result;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void SPI_Init()
+{
+	using namespace HW;
+
+	HW::Peripheral_Enable(SPI_PID);
+
+	SPI->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+
+	SPI->CCR = 0;
+
+	SPI->FDR = SPI__FDR;
+	SPI->BRG = SPI__BRG;
+    
+	SPI->SCTR = SPI__SCTR;
+	SPI->TCSR = SPI__TCSR;
+
+	SPI->PCR_SSCMode = SPI__PCR;
+
+	SPI->PSCR = ~0;
+
+	SPI->CCR = 0;
+
+	SPI->DX0CR = SPI__DX0CR;
+	SPI->DX1CR = SPI__DX1CR;
+
+	SPI->TBCTR = 0;// TBCTR_SIZE8|TBCTR_LIMIT(0);
+	SPI->RBCTR = 0;//RBCTR_SIZE8|RBCTR_LIMIT(0);
+
+	SPI->CCR = SPI__CCR;
+
+	PIO_SPCK->ModePin(PIN_SPCK, A2PP);
+	PIO_MOSI->ModePin(PIN_MOSI, A2PP);
+ 	PIO_MISO->ModePin(PIN_MISO, I0DNP);
+	PIO_CS->ModePin(PIN_CS0, G_PP);
+	PIO_CS->ModePin(PIN_CS1, G_PP);
+	PIO_CS->SET(CS0|CS1);
+
+	VectorTableExt[SPI_IRQ] = SPI_Handler_Read;
+	CM4::NVIC->CLR_PR(SPI_IRQ);
+	CM4::NVIC->SET_ER(SPI_IRQ);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void InitHardware()
 {
@@ -856,6 +1380,8 @@ void InitHardware()
 	InitManRecieve();
 	
 	EnableVCORE();
+
+	SPI_Init();
 
 	WDT_Init();
 }

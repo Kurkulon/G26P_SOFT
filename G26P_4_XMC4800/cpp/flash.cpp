@@ -460,7 +460,7 @@ volatile byte * const FLD = (byte*)0x60000000;
 //volatile u16 * const FLD16 = (u16*)0x60000000;	
 //volatile u32 * const FLD32 = (u32*)0x60000000;	
 
-static u32 chipSelect[8] = { 1<<2, 1<<0, 1<<8, 1<<9, 1<<6, 1<<1, 1<<3, 1<<7 };
+static u32 chipSelect[8] = { 1<<2, 1<<0, 1<<8, 1<<9, 1<<6, 1<<11, 1<<3, 1<<7 };
 static const u32 maskChipSelect = (0xF<<0)|(0xF<<6);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

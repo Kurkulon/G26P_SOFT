@@ -3161,8 +3161,6 @@ void NAND_Idle()
 	static FLADR er(0);
 	static EraseBlock eraseBlock;
 
-	UpdateBlackBoxSendSessions();
-
 	switch (nandState)
 	{
 		case NAND_STATE_WAIT: 

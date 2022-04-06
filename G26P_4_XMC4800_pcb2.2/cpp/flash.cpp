@@ -482,6 +482,58 @@ __packed struct NandID
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+byte	FLADR::chipValidNext[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ следующий хороший чип
+byte	FLADR::chipValidPrev[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ предыдущий хороший чип
+u32		FLADR::chipOffsetNext[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ смещение адреса на следующий хороший чип
+u32		FLADR::chipOffsetPrev[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ смещение адреса на предыдущий хороший чип
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void FLADR::InitVaildTables(u16 mask)
+{
+	u32 blocksize = 1UL << (NAND_COL_BITS + NAND_PAGE_BITS);;
+
+	for(byte chip = 0; chip < NAND_MAX_CHIP; chip++)
+	{
+		chipValidNext[chip] = 0;
+		chipValidPrev[chip] = 0;
+
+		u32 offset = 0;
+
+		for (byte i = 0; i < NAND_MAX_CHIP; i++)
+		{
+			byte cn = chip+i; if (cn >= NAND_MAX_CHIP) cn = 0;
+
+			if (mask & (1<<cn))
+			{
+				chipValidNext[chip] = cn;
+				chipOffsetNext[chip] = offset;
+				break;
+			};
+
+			offset += blocksize;
+		};
+
+		offset = 0;
+
+		for (byte i = 0; i < NAND_MAX_CHIP; i++)
+		{
+			byte cp = chip-i; if (cp >= NAND_MAX_CHIP) cp = NAND_MAX_CHIP - 1;
+
+			if (mask & (1<<cp))
+			{
+				chipValidPrev[chip] = cp;
+				chipOffsetPrev[chip] = offset;
+				break;
+			};
+			
+			offset += blocksize;
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #ifndef WIN32
 
 volatile byte * const FLC = (byte*)0x60000008;	
@@ -1804,6 +1856,7 @@ namespace Read
 	static FLADR rd(0, 0, 0, 0);
 	static byte*	rd_data = 0;
 	static u16		rd_count = 0;
+	static u16		findTryCount;
 
 	static u32 		sparePage = -1;
 
@@ -1949,6 +2002,8 @@ static bool Read::Update()
 						{
 							// »скать вектор
 
+							findTryCount = 1024;
+
 							state = FIND_START;
 						};
 					}
@@ -1973,13 +2028,15 @@ static bool Read::Update()
 
 			if (spare.start == -1 || spare.fpn == -1)
 			{
-				if (rd.page == 0)
+				if (findTryCount == 0)
 				{
 					// ¬ектора кончились
 					state = FIND_3;
 				}
 				else
 				{
+					findTryCount -= 1;
+
 					rd.NextPage();
 
 					readSpare.Start(&spare, &rd);
@@ -3387,6 +3444,8 @@ static void NAND_Init()
 			nandSize.mask |= (1 << chip);
 		};
 	};
+
+	FLADR::InitVaildTables(nandSize.mask);
 
 	NAND_Chip_Disable();
 

@@ -76,11 +76,19 @@ struct FLADR
 
 //	const NandMemSize& sz;
 
+	static byte	chipValidNext[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ следующий хороший чип
+	static byte	chipValidPrev[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ предыдущий хороший чип
+
+	static u32	chipOffsetNext[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ смещение адреса на следующий хороший чип
+	static u32	chipOffsetPrev[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ смещение адреса на предыдущий хороший чип
+
 	inline void operator=(const FLADR &a) { raw = a.raw; }
 
 	FLADR() : raw(0) {}
 	FLADR(u32 bl, u16 pg, u16 cl, byte ch) : block(bl), page(pg), col(cl), chip(ch) {}
 	FLADR(u32 pg) : col(0) { SetRawPage(pg); }
+
+	static void	InitVaildTables(u16 mask);
 
 	u32		GetRawPage() { return (raw & NAND_RAWADR_MASK) >> NAND_COL_BITS; }
 
@@ -93,10 +101,19 @@ struct FLADR
 	u64		GetRawAdr()	{ return raw & NAND_RAWADR_MASK; };
 	void	SetRawAdr(u64 a) { raw  = a & NAND_RAWADR_MASK; };
 
-	void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; }
-	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS);}
-	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS;col = 0;	}
-	void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0;}
+	//void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; }
+	//void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS);}
+	//void	PrevPage()	{ raw -= 1 << NAND_COL_BITS;col = 0;	}
+	//void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0;}
+
+	void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; raw += chipOffsetNext[chip]; }
+	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS); raw += chipOffsetNext[chip];}
+	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS; col = 0; raw -= chipOffsetPrev[chip]; }
+	void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0; raw -= chipOffsetPrev[chip];}
+
+	void	AddRaw(u32 v) { raw += v; raw += chipOffsetNext[chip]; }
+	void	SubRaw(u32 v) { raw -= v; raw -= chipOffsetPrev[chip]; }
+
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

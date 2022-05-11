@@ -846,6 +846,20 @@ static void InitClock()
 	
 	RTC t;
 
+	buf[0] = 0x0F;
+	buf[1] = 0x88;
+	dsc.adr = 0x68;
+	dsc.wdata = buf;
+	dsc.wlen = 2;
+	dsc.rdata = 0;
+	dsc.rlen = 0;
+	dsc.wdata2 = 0;
+	dsc.wlen2 = 0;
+
+	AddRequest_TWI(&dsc);
+
+	while (!dsc.ready) Update_TWI();
+
 	dsc.adr = 0x68;
 	dsc.wdata = &reg;
 	dsc.wlen = 1;
@@ -856,10 +870,7 @@ static void InitClock()
 
 	AddRequest_TWI(&dsc);
 
-	while (!dsc.ready)
-	{ 
-		Update_TWI();
-	};
+	while (!dsc.ready) Update_TWI();
 
 	t.sec	= (buf[0]&0xF) + ((buf[0]>>4)*10);
 	t.min	= (buf[1]&0xF) + ((buf[1]>>4)*10);

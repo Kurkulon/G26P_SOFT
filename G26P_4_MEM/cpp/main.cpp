@@ -58,6 +58,14 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
 
 static i16 temperature = 0;
 
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+u16 GetVersionDevice()
+{
+	return VERSION;
+}
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
@@ -66,7 +74,7 @@ static bool ReqMan00(u16 *buf, u16 len, MTB* mtb)
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0;
 	manTrmData[1] = GetNumDevice();
-	manTrmData[2] = VERSION;
+	manTrmData[2] = GetVersionDevice();
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 3;
@@ -618,7 +626,7 @@ int main()
 
 	InitEMAC();
 
-	InitTraps();
+	//InitTraps();
 
 	FLASH_Init();
 

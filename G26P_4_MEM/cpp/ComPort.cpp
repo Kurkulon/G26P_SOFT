@@ -19,10 +19,10 @@ extern dword millisecondsCount;
 
 #ifdef CPU_SAME53	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	ComPort::ComBase	ComPort::_bases[3] = { 
+	ComPort::ComBase	ComPort::_bases[2] = { 
 		{false, HW::USART7,	 HW::PIOC, 1<<21, 1, DMCH_TRIGSRC_SERCOM7_TX, DMCH_TRIGSRC_SERCOM7_RX }, 
-		{false, HW::USART6,	 HW::PIOC, 1<<5,  2, DMCH_TRIGSRC_SERCOM6_TX, DMCH_TRIGSRC_SERCOM6_RX },
-		{false, HW::USART5,	 HW::PIOC, 1<<11, 3, DMCH_TRIGSRC_SERCOM5_TX, DMCH_TRIGSRC_SERCOM5_RX }
+		{false, HW::USART6,	 HW::PIOC, 1<<5,  2, DMCH_TRIGSRC_SERCOM6_TX, DMCH_TRIGSRC_SERCOM6_RX }
+		//{false, HW::USART5,	 HW::PIOC, 1<<11, 3, DMCH_TRIGSRC_SERCOM5_TX, DMCH_TRIGSRC_SERCOM5_RX }
 	};
 
 	//#define READ_PIN_SET()	HW::PIOC->BSET(27)

@@ -49,6 +49,9 @@ static u32 lastError = 0;
 static void NandReadData(void *data, u16 len);
 static bool CheckDataComplete();
 
+void SaveMainParams() { SaveParams(); }
+
+
 /**************************************************/
 /*
 
@@ -322,6 +325,40 @@ extern u16 GetNumDevice()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+static byte lastFlashStatus = FLASH_STATUS_NONE;
+static u32 lastFlashProgress = -1;
+static u32 lastFlashTime = 0;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool FLASH_SendStatus(u32 progress, byte status)
+{
+	lastFlashProgress = progress;
+	lastFlashStatus = status;
+	lastFlashTime = GetMilliseconds();
+	
+	return TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void FLASH_UpdateStatus()
+{
+	u32 t = GetMilliseconds();
+	u32 dt = t - lastFlashTime;
+
+	if (dt >= 500)
+	{
+		TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
+
+		lastFlashProgress = ~0;
+		lastFlashStatus = FLASH_STATUS_NONE;
+		lastFlashTime = t;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

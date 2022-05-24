@@ -2,7 +2,7 @@
 
 //#include <string.h>
 
-#include "system_XMC4800.h"
+//#include "system_XMC4800.h"
 #include "types.h"
 #include "core.h"
 #include "hw_conf.h"
@@ -43,20 +43,20 @@ static void MyCoreClockSetup(void);
 static void SystemCoreClockSetup(void);
 //static void SystemCoreClockUpdate(void);
 
-extern uint32_t __Vectors;
+//extern uint32_t __Vectors;
 
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
-static void delay(uint32_t cycles)
-{
-  volatile uint32_t i;
-
-  for(i = 0UL; i < cycles ;++i)
-  {
-    __nop();
-  }
-}
+//static void delay(uint32_t cycles)
+//{
+//  volatile uint32_t i;
+//
+//  for(i = 0UL; i < cycles ;++i)
+//  {
+//    __nop();
+//  }
+//}
 
 /*******************************************************************************
  * API IMPLEMENTATION
@@ -68,7 +68,7 @@ static void delay(uint32_t cycles)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SystemInit(void)
+extern "C" void SystemInit(void)
 {
 	//u32 i;
 	using namespace CM4;

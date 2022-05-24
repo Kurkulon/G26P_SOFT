@@ -152,15 +152,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\trap.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\twi.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\xtrap.cpp"
 				>
 			</File>
 		</Filter>
@@ -175,14 +167,6 @@
 			</File>
 			<File
 				RelativePath=".\cpp\ComPort.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\emac.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\EMAC_DEF.h"
 				>
 			</File>
 			<File
@@ -214,27 +198,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\system_XMC4800.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\trap.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\trap_def.h"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\twi.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\vector.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\xtrap.h"
 				>
 			</File>
 		</Filter>

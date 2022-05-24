@@ -5,10 +5,11 @@
 #include "hw_conf.h"
 #include "hw_rtm.h"
 #include "SEGGER_RTT.h"
+#include "CRC16.h"
 
 #ifndef WIN32
 
-#include "system_XMC4800.h"
+//#include "system_XMC4800.h"
 
 #else
 
@@ -41,6 +42,10 @@
 
 inline void EnableVCORE() { PIO_ENVCORE->CLR(ENVCORE); }
 inline void DisableVCORE() { PIO_ENVCORE->SET(ENVCORE); }
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init) { return GetCRC16(data, len, init, 0); }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

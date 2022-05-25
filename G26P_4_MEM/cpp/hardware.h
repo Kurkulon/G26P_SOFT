@@ -4,6 +4,10 @@
 #include "types.h"
 //#include "core.h"
 #include "time.h"
+#include "i2c.h"
+#include "spi.h"
+#include "hw_nand.h"
+#include "hw_rtm.h"
 
 extern void InitHardware();
 extern void UpdateHardware();

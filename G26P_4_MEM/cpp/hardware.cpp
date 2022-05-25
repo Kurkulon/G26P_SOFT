@@ -1,7 +1,6 @@
 #include "core.h"
 #include "time.h"
 #include "hardware.h"
-#include "twi.h"
 #include "hw_conf.h"
 #include "hw_rtm.h"
 #include "SEGGER_RTT.h"
@@ -152,7 +151,7 @@ inline u32 Encode_4B5B(u16 v) { return tbl_4B5B[v&15]|(tbl_4B5B[(v>>4)&15]<<5)|(
 // L2 H2 H1 L1
 // Z - 1111, P - 1100, Z - 1111, N - 0011
 
-u16 mltArr[4] = { 0, L2|H2, 0, L1|H1 };
+u32 mltArr[4] = { 0, L2|H2, 0, L1|H1 };
 byte mltSeq = 0;
 
 #define MltTmr HW::CCU40_CC40
@@ -1597,7 +1596,7 @@ void SetClock(const RTC &t)
 {
 #ifndef WIN32
 
-	static DSCTWI dsc;
+	static DSCI2C dsc;
 
 	static byte reg = 0;
 	static u16 rbuf = 0;
@@ -1625,7 +1624,7 @@ void SetClock(const RTC &t)
 
 	if (SetTime(t))
 	{
-		AddRequest_TWI(&dsc);
+		I2C_AddRequest(&dsc);
 	};
 #endif
 }
@@ -1636,7 +1635,7 @@ void SetClock(const RTC &t)
 
 static void InitClock()
 {
-	DSCTWI dsc;
+	DSCI2C dsc;
 
 	byte reg = 0;
 	byte buf[10];
@@ -1653,9 +1652,9 @@ static void InitClock()
 	dsc.wdata2 = 0;
 	dsc.wlen2 = 0;
 
-	AddRequest_TWI(&dsc);
+	I2C_AddRequest(&dsc);
 
-	while (!dsc.ready) Update_TWI();
+	while (!dsc.ready) I2C_Update();
 
 	dsc.adr = 0x68;
 	dsc.wdata = &reg;
@@ -1665,9 +1664,9 @@ static void InitClock()
 	dsc.wdata2 = 0;
 	dsc.wlen2 = 0;
 
-	AddRequest_TWI(&dsc);
+	I2C_AddRequest(&dsc);
 
-	while (!dsc.ready) Update_TWI();
+	while (!dsc.ready) I2C_Update();
 
 	t.sec	= (buf[0]&0xF) + ((buf[0]>>4)*10);
 	t.min	= (buf[1]&0xF) + ((buf[1]>>4)*10);
@@ -2122,7 +2121,8 @@ void InitHardware()
 {
 	Init_time(MCK);
 	RTT_Init();
-	Init_TWI();
+	I2C_Init();
+	//SPI_Init();
 
 #ifndef WIN32
 
@@ -2146,6 +2146,24 @@ void InitHardware()
 
 void UpdateHardware()
 {
+#ifndef WIN32
+
+	static byte i = 0;
+
+	static Deb db(false, 20);
+
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( I2C_Update();		);
+		CALL( SPI_Update();		);
+	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

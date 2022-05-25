@@ -261,19 +261,20 @@
 	#define PIO_USART1		HW::PIOB 
 	#define PIO_USART2		HW::PIOC 
 
-	#define PIN_UTXD0		21 
-	#define PIN_URXD0		20 
-	#define PIN_UTXD1		16
-	#define PIN_URXD1		17
-	#define PIN_UTXD2		7 
-	#define PIN_URXD2		6 
+	#define PIO_URXD0		HW::P1
+	#define PIO_UTXD0		HW::P1
+	#define PIO_RTS0		HW::P0
 
-	#define UTXD0			(1<<PIN_UTXD0) 
-	#define URXD0			(1<<PIN_URXD0) 
-	#define UTXD1			(1<<PIN_UTXD1) 
-	#define URXD1			(1<<PIN_URXD1) 
-	#define UTXD2			(1<<PIN_UTXD2) 
-	#define URXD2			(1<<PIN_URXD2) 
+	#define PIO_URXD1		HW::PIOC
+	#define PIO_UTXD1		HW::PIOC
+	#define PIO_RTS1		HW::PIOC
+
+	#define PIN_URXD0		4 
+	#define PIN_UTXD0		5 
+	#define PIN_RTS0		11 
+	#define PIN_URXD1		14 
+	#define PIN_UTXD1		14
+	#define PIN_RTS1		12 
 
 
 #elif defined(CPU_XMC48) //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -476,6 +477,31 @@
 	#define SPI_PID					PID_USIC1
 
 	#define CLOCK_IRQ				SCU_0_IRQn
+
+	#define PIO_URXD0				HW::P1
+	#define PIO_UTXD0				HW::P1
+	#define PIO_RTS0				HW::P0
+
+	#define PIO_URXD1				HW::P2
+	#define PIO_UTXD1				HW::P2
+	#define PIO_RTS1				HW::P0
+
+	#define PIN_URXD0				4 
+	#define PIN_UTXD0				5 
+	#define PIN_RTS0				11 
+	#define PIN_URXD1				14 
+	#define PIN_UTXD1				14
+	#define PIN_RTS1				12 
+
+	#define URXD0					(1<<PIN_URXD0) 
+	#define UTXD0					(1<<PIN_UTXD0) 
+	#define RTS0					(1<<PIN_RTS0) 
+	#define URXD1					(1<<PIN_URXD1) 
+	#define UTXD1					(1<<PIN_UTXD1) 
+	#define RTS1					(1<<PIN_RTS1) 
+
+
+
 
 	/*******************************************************************************
 	 * MACROS

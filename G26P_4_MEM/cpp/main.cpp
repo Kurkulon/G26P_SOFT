@@ -4,9 +4,10 @@
 #include "flash.h"
 #include "time.h"
 #include "ComPort.h"
-#include "twi.h"
 #include "hardware.h"
 #include "main.h"
+#include "SEGGER_RTT.h"
+#include "PointerCRC.h"
 
 #ifdef WIN32
 
@@ -58,6 +59,41 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
 
 static i16 temperature = 0;
 
+static byte svCount = 0;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct MainVars // NonVolatileVars  
+{
+	u32 timeStamp;
+
+	u16 numDevice;
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static MainVars mv;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SaveMainParams()
+{
+	svCount = 1;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetNumDevice(u16 num)
+{
+	mv.numDevice = num;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+u16 GetNumDevice()
+{
+	return mv.numDevice;
+}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -254,7 +290,7 @@ static bool ReqManF0(u16 *buf, u16 len, MTB* mtb)
 {
 	if (buf == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	SaveParams();
+	SaveMainParams();
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0xF0;
 
@@ -404,7 +440,7 @@ static void UpdateTemp()
 {
 	static byte i = 0;
 
-	static DSCTWI dsc, dsc2;
+	static DSCI2C dsc, dsc2;
 	static byte reg = 0;
 	static u16 rbuf = 0;
 	static byte buf[10];
@@ -504,7 +540,7 @@ static void UpdateTemp()
 				dsc.wdata2 = 0;
 				dsc.wlen2 = 0;
 
-				if (AddRequest_TWI(&dsc))
+				if (I2C_AddRequest(&dsc)) 
 				{
 					i++;
 				};
@@ -549,6 +585,231 @@ static void UpdateTemp()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void InitMainVars()
+{
+	mv.numDevice		= 0;
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_CYAN "Init Main Vars Vars ... OK\n");
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void LoadVars()
+{
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE "Load Vars ... ");
+
+	static DSCI2C dsc;
+	static DSCSPI spi;
+	static u16 romAdr = 0;
+	
+	byte buf[sizeof(mv)*2+4];
+
+	MainVars mv1, mv2;
+
+	bool c1 = false, c2 = false;
+
+	//spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|0x9F;
+	//spi.alen = 1;
+	//spi.csnum = 1;
+	//spi.wdata = 0;
+	//spi.wlen = 0;
+	//spi.rdata = buf;
+	//spi.rlen = 9;
+
+	//if (SPI_AddRequest(&spi))
+	//{
+	//	while (!spi.ready);
+	//};
+
+	bool loadVarsOk = false;
+
+	spi.adr = (ReverseDword(FRAM_SPI_MAINVARS_ADR) & ~0xFF) | 3;
+	spi.alen = 4;
+	spi.csnum = 1;
+	spi.wdata = 0;
+	spi.wlen = 0;
+	spi.rdata = buf;
+	spi.rlen = sizeof(buf);
+
+	if (SPI_AddRequest(&spi))
+	{
+		while (!spi.ready) { SPI_Update(); };
+	};
+
+	PointerCRC p(buf);
+
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(&mv1, sizeof(mv1));
+		p.ReadW();
+
+		if (p.CRC.w == 0) { c1 = true; break; };
+	};
+
+	romAdr = ReverseWord(FRAM_I2C_MAINVARS_ADR);
+
+	dsc.wdata = &romAdr;
+	dsc.wlen = sizeof(romAdr);
+	dsc.wdata2 = 0;
+	dsc.wlen2 = 0;
+	dsc.rdata = buf;
+	dsc.rlen = sizeof(buf);
+	dsc.adr = 0x50;
+
+
+	if (I2C_AddRequest(&dsc))
+	{
+		while (!dsc.ready) { I2C_Update(); };
+	};
+
+//	bool c = false;
+
+	p.b = buf;
+
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(&mv2, sizeof(mv2));
+		p.ReadW();
+
+		if (p.CRC.w == 0) { c2 = true; break; };
+	};
+
+	SEGGER_RTT_WriteString(0, "FRAM SPI - "); SEGGER_RTT_WriteString(0, (c1) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK") : (RTT_CTRL_TEXT_BRIGHT_RED "ERROR"));
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE " ... FRAM I2C - "); SEGGER_RTT_WriteString(0, (c2) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n") : (RTT_CTRL_TEXT_BRIGHT_RED "ERROR\n"));
+
+	if (c1 && c2)
+	{
+		if (mv1.timeStamp > mv2.timeStamp)
+		{
+			c2 = false;
+		}
+		else if (mv1.timeStamp < mv2.timeStamp)
+		{
+			c1 = false;
+		};
+	};
+
+	if (c1)	{ mv = mv1; } else if (c2) { mv = mv2; };
+
+	loadVarsOk = c1 || c2;
+
+	if (!c1 || !c2)
+	{
+		if (!loadVarsOk) InitMainVars();
+
+		svCount = 2;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void SaveVars()
+{
+	static DSCI2C dsc;
+	static DSCSPI spi,spi2;
+	static u16 romAdr = 0;
+	static byte buf[sizeof(mv) * 2 + 8];
+
+	static byte i = 0;
+	static TM32 tm;
+
+	PointerCRC p(buf);
+
+	switch (i)
+	{
+		case 0:
+
+			if (svCount > 0)
+			{
+				svCount--;
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			mv.timeStamp = GetMilliseconds();
+
+			for (byte j = 0; j < 2; j++)
+			{
+				p.CRC.w = 0xFFFF;
+				p.WriteArrayB(&mv, sizeof(mv));
+				p.WriteW(p.CRC.w);
+			};
+
+			spi.adr = (ReverseDword(FRAM_SPI_MAINVARS_ADR) & ~0xFF) | 2;
+			spi.alen = 4;
+			spi.csnum = 1;
+			spi.wdata = buf;
+			spi.wlen = p.b-buf;
+			spi.rdata = 0;
+			spi.rlen = 0;
+
+			romAdr = ReverseWord(FRAM_I2C_MAINVARS_ADR);
+
+			dsc.wdata = &romAdr;
+			dsc.wlen = sizeof(romAdr);
+			dsc.wdata2 = buf;
+			dsc.wlen2 = p.b-buf;
+			dsc.rdata = 0;
+			dsc.rlen = 0;
+			dsc.adr = 0x50;
+
+			spi2.adr = 6;
+			spi2.alen = 1;
+			spi2.csnum = 1;
+			spi2.wdata = 0;
+			spi2.wlen = 0;
+			spi2.rdata = 0;
+			spi2.rlen = 0;
+
+			tm.Reset();
+
+			SPI_AddRequest(&spi2);
+
+			i++;
+
+			break;
+
+		case 2:
+
+			if (spi2.ready || tm.Check(200))
+			{
+				SPI_AddRequest(&spi);
+
+				i++;
+			};
+
+			break;
+
+		case 3:
+
+			if (spi.ready || tm.Check(200))
+			{
+				I2C_AddRequest(&dsc);
+				
+				i++;
+			};
+
+			break;
+
+		case 4:
+
+			if (dsc.ready || tm.Check(100))
+			{
+				i = 0;
+			};
+
+			break;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateIdle()
 {
 	static byte i = 0;
@@ -561,8 +822,8 @@ static void UpdateIdle()
 		CALL( UpdateMan();		);
 		CALL( UpdateTemp();		);
 		CALL( FLASH_Update();	);
-		CALL( Update_TWI();		);
 		CALL( UpdateTraps();	);
+		CALL( UpdateHardware();	);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;

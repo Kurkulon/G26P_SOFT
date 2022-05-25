@@ -140,7 +140,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\hw_i2c.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\hw_rtm.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\hw_spi.cpp"
 				>
 			</File>
 			<File
@@ -149,10 +157,6 @@
 			</File>
 			<File
 				RelativePath=".\cpp\system_XMC4800.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\twi.cpp"
 				>
 			</File>
 		</Filter>
@@ -170,15 +174,15 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\flash.h"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\hardware.h"
 				>
 			</File>
 			<File
 				RelativePath=".\cpp\hw_conf.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\hw_nand.h"
 				>
 			</File>
 			<File
@@ -191,14 +195,6 @@
 			</File>
 			<File
 				RelativePath=".\cpp\main.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\rtc.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\twi.h"
 				>
 			</File>
 		</Filter>

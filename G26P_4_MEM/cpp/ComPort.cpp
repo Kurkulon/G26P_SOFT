@@ -144,8 +144,6 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 				break;
 		};
 
-		InitHW();
-
 	#elif defined(CPU_XMC48)
 
 		_dma = cb.dma;
@@ -155,7 +153,6 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 		_inpr_sr = cb.inpr_sr;
 
 		_ModeRegister = __CCR | ((parity < 3) ? parityMask[parity] : parityMask[0]);
-
 
 		switch (ct)
 		{
@@ -185,9 +182,9 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 
 		};
 
-		InitHW();
-
 	#endif
+
+	InitHW();
 
 	_status485 = READ_END;
 

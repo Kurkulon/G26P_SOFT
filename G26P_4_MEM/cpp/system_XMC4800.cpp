@@ -325,13 +325,13 @@ extern "C" void SystemInit(void)
 		HW::Peripheral_Enable(PID_DMA0);
 		HW::Peripheral_Enable(PID_DMA1);
 
-		//HW::DLR->SRSEL0 = SRSEL0(10,11,0,0,0,0,0,0);
-		//HW::DLR->SRSEL1 = SRSEL1(0,0,0,0);
+		HW::DLR->SRSEL0 = SRSEL0(DRL_RS0,	DRL_RS1,	DRL_RS2,	DRL_RS3,	DRL_RS4,	DRL_RS5,	DRL_RS6,	DRL_RS7);
+		HW::DLR->SRSEL1 = SRSEL1(DRL_RS8,	DRL_RS9,	DRL_RS10,	DRL_RS11);
 
-		HW::DLR->DRL0 = DRL0_USIC0_SR0;
-		HW::DLR->DRL1 = DRL1_USIC1_SR0;
+		//HW::DLR->DRL0 = DRL_RS0; //DRL0_USIC0_SR0;
+		//HW::DLR->DRL1 = DRL_RS1; //DRL1_USIC1_SR0;
 
-		HW::DLR->LNEN |= 3;
+		//HW::DLR->LNEN |= 3;
 
 	#endif
 

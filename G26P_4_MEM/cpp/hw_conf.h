@@ -313,18 +313,55 @@
 	// 138	- P0.12
 
 
-	#define	NAND_DMA				HW::GPDMA0
+	// GPDMA0 DLR_SRSEL0
+	#define DRL_RS0					DRL0_USIC0_SR0	// SPI
+	#define DRL_RS1					DRL1_USIC1_SR0	// UART0
+	#define DRL_RS2					15					
+	#define DRL_RS3					15					
+	#define DRL_RS4					15					
+	#define DRL_RS5					15					
+	#define DRL_RS6					15					
+	#define DRL_RS7					15
+
+	// GPDMA1 DLR_SRSEL1
+	#define DRL_RS8					DRL8_USIC2_SR0	// I2C					
+	#define DRL_RS9					15					
+	#define DRL_RS10				15				
+	#define DRL_RS11				15					
+
+	#define SPI						HW::USIC0_CH0
+	//#define 						HW::USIC0_CH1
+	#define UART0					HW::USIC1_CH0
+	//#define 						HW::USIC1_CH1
+	#define I2C						HW::USIC2_CH0
+	//#define 						HW::USIC2_CH1
+
+	//#define 						HW::GPDMA0_CH0
+	//#define 						HW::GPDMA0_CH1
+	#define	SPI_DMACH				HW::GPDMA0_CH2
+	//#define 						HW::GPDMA0_CH2
+	//#define 						HW::GPDMA0_CH3
+	//#define 						HW::GPDMA0_CH4
+	//#define 						HW::GPDMA0_CH5
+	#define	DSP_DMACH				HW::GPDMA0_CH6
 	#define	NAND_DMACH				HW::GPDMA0_CH7
+
+	#define I2C_DMACH				HW::GPDMA1_CH0
+	//#define 						HW::GPDMA1_CH1
+	//#define 						HW::GPDMA1_CH2
+	//#define 						HW::GPDMA1_CH3
+
+
+
+	#define	NAND_DMA				HW::GPDMA0
 	#define	NAND_DMA_CHEN			(0x101<<7)
 	#define	NAND_DMA_CHST			(1<<7)
 
 	#define	DSP_DMA					HW::GPDMA0
-	#define	DSP_DMACH				HW::GPDMA0_CH6
 	#define	DSP_DMA_CHEN			(0x101<<6)
 	#define	DSP_DMA_CHST			(1<<6)
 
 	#define	SPI_DMA					HW::GPDMA0
-	#define	SPI_DMACH				HW::GPDMA0_CH5
 	#define	SPI_DMA_CHEN			(0x101<<5)
 	#define	SPI_DMA_CHDIS			(0x100<<5)
 	#define	SPI_DMA_CHST			(1<<5)
@@ -341,7 +378,6 @@
 	#define	CRC_DMA_CHEN			(0x101<<2)
 	#define	CRC_FCE					HW::FCE_KE3
 
-	#define I2C						HW::USIC2_CH0
 	#define PIO_I2C					HW::P5
 	#define PIN_SDA					0 
 	#define PIN_SCL					2 
@@ -351,14 +387,14 @@
 	#define I2C_PID					PID_USIC2
 
 	#define MAN_TRANSMIT_V2
-	#define MAN_RECIEVE_V1
+	#define MAN_RECIEVE_V2
 	#define ManRT					HW::CCU41_CC42		//HW::CCU41_CC42
 	#define ManTT					HW::CCU41_CC40
 	#define ManCCU					HW::CCU41
 	#define ManCCU_PID				PID_CCU41
 	#define ManTmr					HW::CCU41_CC41
 	#define ManRT_PSC				3
-	#define MT(v)					((u16)((SYSCLK_MHz*(v)+(1<<ManRT_PSC)/2)/(1<<ManRT_PSC)))
+	#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+(1<<ManRT_PSC)/2)>>ManRT_PSC))
 	#define BAUD2CLK(x)				((u32)((SYSCLK*1.0/(1<<ManRT_PSC))/x+0.5))
 
 	#define MANT_IRQ				CCU41_0_IRQn
@@ -386,8 +422,8 @@
 	#define ManT_CCU8_GIDLC			(CCU8_CS0I | CCU8_CS1I | CCU8_CS2I | CCU8_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
 	#define ManT_CCU8_GIDLS			(CCU8_SS0I | CCU8_SS1I | CCU8_SS2I | CCU8_CPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
 	#define ManT_CCU8_GCSS			(CCU8_S0SE | CCU8_S1SE | CCU8_S2SE)				// (CCU4_S1SE | CCU4_S2SE)
-	#define ManT_PSC				3					// 0.04us
-	#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+((1<<(ManT_PSC))/2))/(1<<(ManT_PSC))))
+//	#define ManT_PSC				3					// 0.04us
+//	#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+((1<<(ManT_PSC))/2))/(1<<(ManT_PSC))))
 	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
 	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
 	#define ManT_SHADOW_SYNC()		{ ManT_CCU8->GCSS = ManT_CCU8_GCSS; }	
@@ -451,7 +487,6 @@
 	#define PIN_ENVCORE				11 
 	#define ENVCORE					(1<<PIN_ENVCORE) 
 	
-	#define SPI						HW::USIC1_CH0
 	#define	SPI_INPR				(0)
 	#define PIO_SPCK				HW::P5
 	#define PIO_MOSI				HW::P2

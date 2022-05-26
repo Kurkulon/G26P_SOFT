@@ -802,9 +802,9 @@ bool SendManData(MTB* mtb)
 	ManT_SET_PR(US2MT(50)-1); //trmHalfPeriod - 1;
 	ManT1->CR2S = (~0); ManT2->CR1S = (0); ManT2->CR2S = (0); ManT3->CR1S = (~0);
 
-	ManT1->PSC = ManT_PSC; //0.08us
-	ManT2->PSC = ManT_PSC; //0.08us
-	ManT3->PSC = ManT_PSC; //0.08us
+	ManT1->PSC = ManRT_PSC; //0.08us
+	ManT2->PSC = ManRT_PSC; //0.08us
+	ManT3->PSC = ManRT_PSC; //0.08us
 
 	//ManT1->PSL = ManT1_PSL;
 	//ManT2->PSL = ManT2_PSL;
@@ -1204,7 +1204,7 @@ static void ManRcvEnd(bool ok)
 
 	rcvManLen12 = (rcvManCount12 != 0) ? (rcvManSum12 / rcvManCount12) : 0;
 
-	rcvManQuality = (rcvManLen12 > MT(12)) ? 0 : (((MT(12) - rcvManLen12) * 100 + MT(6))/MT(12));
+	rcvManQuality = (rcvManLen12 > US2MT(12)) ? 0 : (((US2MT(12) - rcvManLen12) * 100 + US2MT(6))/US2MT(12));
 
 	rcvBusy = false;
 }
@@ -1248,17 +1248,17 @@ static __irq void ManRcvIRQ2()
 
 	_state = !_state;
 
-	if (len <= MT(60))
+	if (len <= US2MT(60))
 	{
 		i16 dl;
 
-		if (len <= MT(36))
+		if (len <= US2MT(36))
 		{
-			_length += 1; dl = len - MT(24); 
+			_length += 1; dl = len - US2MT(24); 
 		}
 		else
 		{
-			_length += 2; dl = len - MT(48);
+			_length += 2; dl = len - US2MT(48);
 		};
 
 		if (dl < 0) dl = -dl; rcvManSum12 += dl; rcvManCount12++;
@@ -1270,7 +1270,7 @@ static __irq void ManRcvIRQ2()
 	}
 	else
 	{
-		if(len > MT(108))
+		if(len > US2MT(108))
 		{
 			_sync = false;
 		}
@@ -1286,13 +1286,13 @@ static __irq void ManRcvIRQ2()
 
 			i16 dl;
 
-			if (len <= MT(84))
+			if (len <= US2MT(84))
 			{
-				_length = 1; dl = len - MT(72); 
+				_length = 1; dl = len - US2MT(72); 
 			}
 			else
 			{
-				_length = 2; dl = len - MT(96); 
+				_length = 2; dl = len - US2MT(96); 
 			};
 
 			if (dl < 0) dl = -dl; rcvManSum12 += dl; rcvManCount12++;
@@ -1473,11 +1473,11 @@ void InitManRecieve()
 
 	ManCCU->GIDLC = ManCCU_GIDLC;//CCU4_CS1I|CCU4_CS2I|CCU4_SPRB;
 
-	ManRT->PRS = MT(12) - 1;
-	ManRT->CRS = MT(12) - 1;
+	ManRT->PRS = US2MT(12) - 1;
+	ManRT->CRS = US2MT(12) - 1;
 	ManRT->PSC = ManRT_PSC; //1.28us
 
-	ManTmr->PRS = MT(250);
+	ManTmr->PRS = US2MT(250);
 	ManTmr->PSC = ManRT_PSC; //1.28us
 
 	ManCCU->GCSS = ManCCU_GCSS;//CCU4_S1SE|CCU4_S2SE;  

@@ -227,7 +227,7 @@ enum NandState
 	NAND_STATE_FULL_ERASE_0,
 	NAND_STATE_CREATE_FILE,
 	NAND_STATE_SEND_SESSION,
-	NAND_STATE_SEND_BLACKBOX_SESSION
+	NAND_STATE_SEND_BAD_BLOCKS
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -363,7 +363,7 @@ void FreeFlashReadBuffer(FLRB* b)
 
 bool RequestFlashRead(FLRB* b)
 {
-	if ((b != 0) && (b->data != 0) && (b->maxLen > 0))
+	if ((b != 0)/* && (b->data != 0) && (b->maxLen > 0)*/)
 	{
 		b->ready = false;
 		b->len = 0;
@@ -2745,11 +2745,11 @@ static void InitSessionsNew()
 
 static bool UpdateBlackBoxSendSessions()
 {
-	enum {	WAIT = 0, FIND_LAST_USED_BLOCK, READ_START, READ_1, READ_2, READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,FIND_2,FIND_3,FIND_4, READ_END};
+	//enum {	WAIT = 0, FIND_LAST_USED_BLOCK, READ_START, READ_1, READ_2, READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,FIND_2,FIND_3,FIND_4, READ_END};
 
-	static byte state = WAIT;
+	static byte state = 0;
 
-	static FLADR rd(0, 0, 0, 0);
+	static FLADR rd;
 
 	static u32 bs;
 	static u32 be;
@@ -2762,6 +2762,8 @@ static bool UpdateBlackBoxSendSessions()
 	static SpareArea spare;
 
 	static ReadSpare readSpare;
+
+	static FLRB flrb;
 
 	//static u32 sessionFirstPage = -1;
 	//static u32 sessionLastBlock = -1;
@@ -2781,17 +2783,23 @@ static bool UpdateBlackBoxSendSessions()
 	static u64	firstSessionLastAdr = 0;
 	static bool firstSessionSended = false;
 
-	static u32	curFileFirstBlock = ~0;
-	static u32	curFileLastBlock = ~0;
+	//static u32	curFileFirstBlock = ~0;
+//	static u32	curFileLastBlock = ~0;
 	static u16	curFileNum = ~0;
-	static u64	curFileStartAdr = 0;
-	static u64	curFileEndAdr = 0;
+	static u64	curFileStartAdr = ~0;
+	static u64	curFileEndAdr = ~0;
+	//static u32	curFileFPN = ~0;
 	static bool	sendedFileRes = false;
 	static u16	sendedFileNum = 0;
 
 	static u32	lastSessionBlock = ~0;
-	static u16	lastSessionNum = ~0;
+	//static u16	lastSessionNum = ~0;
 	//static bool lastSessionValid = false;
+
+	static u32	findFileLastBlock = ~0;
+	static u64	findFileStartAdr = 0;
+	static u64	findFileEndAdr = 0;
+	static u16	findFileNum = ~0;
 
 	//static u32 initFileNum = 0;
 	//static u32 initFileStartPage = 0;
@@ -2803,6 +2811,8 @@ static bool UpdateBlackBoxSendSessions()
 	static TM32 tm;
 
 	static u32 count = 0;
+
+	static bool findVector = false;
 
 	bool result = true;
 
@@ -2823,7 +2833,8 @@ static bool UpdateBlackBoxSendSessions()
 
 			break;
 
-		case 1:
+		case 1: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 			rd.SetRawBlock(0);
 
@@ -2837,24 +2848,27 @@ static bool UpdateBlackBoxSendSessions()
 			firstSessionLastAdr = 0;
 			firstSessionSended = false;
 
-			curFileFirstBlock = ~0;
-			curFileLastBlock = ~0;
+//			curFileFirstBlock = ~0;
+//			curFileLastBlock = ~0;
 			curFileNum = ~0;
-			curFileStartAdr = 0;
-			curFileEndAdr = 0;
+			curFileStartAdr = ~0;
+			curFileEndAdr = ~0;
+//			curFileFPN = ~0;
 			sendedFileRes = false;
 			sendedFileNum = 0;
 
 			lastSessionBlock = ~0;
-			lastSessionNum = ~0;
+			//lastSessionNum = ~0;
 
-			count = NAND_RAWBLOCK_MASK+1;
+			findVector = false;
+
+			count = (NAND_RAWBLOCK_MASK+1)*2;
 
 			state++;
 
 			break;
 
-		case 2:
+		case 2: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			if (!readSpare.Update())
 			{
@@ -2873,31 +2887,27 @@ static bool UpdateBlackBoxSendSessions()
 							firstSessionLastBlock = lastSessionBlock;
 							firstSessionValid = true;
 							firstSessionLastAdr = curFileStartAdr = rd.GetRawAdr();
+//							curFileFPN = spare.fpn;
 						};
 					}
 					else
 					{
 						if (curFileNum != spare.file)
 						{
-							u64 size = (rd.GetRawAdr() - curFileStartAdr) & NAND_RAWADR_MASK;
+							findVector = true;
 
-							sendedFileRes = TRAP_MEMORY_SendSession(sendedFileNum = curFileNum, size, curFileStartAdr, start_rtc, stop_rtc, 0);
-
-							if (spare.file == firstSessionNum)
-							{
-								firstSessionStartAdr = rd.GetRawAdr();
-
-								size = (firstSessionLastAdr - firstSessionStartAdr) & NAND_RAWADR_MASK;
-
-								firstSessionSended = TRAP_MEMORY_SendSession(firstSessionNum, size, firstSessionStartAdr, start_rtc, stop_rtc, 0);
-							};
+							findFileNum = curFileNum;
+							findFileStartAdr = curFileStartAdr;
+							findFileEndAdr = rd.GetRawAdr();
+							findFileLastBlock = lastSessionBlock;
 
 							curFileStartAdr	= rd.GetRawAdr();
+//							curFileFPN = spare.fpn;
 						};
 					};
 
-					curFileFirstBlock	= lastSessionBlock	= rd.GetRawBlock();
-					curFileNum			= lastSessionNum	= spare.file;
+					lastSessionBlock	= rd.GetRawBlock();
+					curFileNum			= spare.file;
 					curFileEndAdr		= rd.GetRawAdr();
 
 					rd.NextBlock();
@@ -2911,22 +2921,104 @@ static bool UpdateBlackBoxSendSessions()
 					rd.NextPage(); count++;
 				};
 
+				if (findVector)
+				{
+					state++;
+				}
+				else if (count == 0 || rd.overflow)
+				{
+					state = 9;
+				}
+				else 
+				{
+					readSpare.Start(&spare, &rd);
+
+					count--;
+				};
+			};
+
+			break;
+
+		case 3: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			findVector = false;
+
+			flrb.data = 0;
+			flrb.maxLen = 0;
+			flrb.vecStart = true;
+			flrb.useAdr = true;
+			flrb.adr = findFileStartAdr;
+
+			RequestFlashRead(&flrb);
+
+			state++;
+
+			break;
+
+		case 4: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (Read::Start())
+			{
+				state++;
+			};
+				
+			break;
+
+		case 5: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (!Read::Update())
+			{
+				if (flrb.ready && flrb.hdr.session == findFileNum && flrb.hdr.crc == 0)
+				{
+					start_rtc = flrb.hdr.rtc;
+				};
+
+				FLADR adr;
+
+				adr.SetRawBlock(findFileLastBlock);
+
+				flrb.data = 0;
+				flrb.maxLen = 0;
+				flrb.vecStart = true;
+				flrb.useAdr = true;
+				flrb.adr = adr.GetRawAdr();
+
+				RequestFlashRead(&flrb);
+
+				state++;
+			};
+				
+			break;
+
+		case 6: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (Read::Start())
+			{
+				state++;
+			};
+				
+			break;
+
+		case 7: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (!Read::Update())
+			{
+				if (flrb.ready && flrb.hdr.session == findFileNum && flrb.hdr.crc == 0)
+				{
+					stop_rtc = flrb.hdr.rtc;
+				};
+
+				state++;
+			};
+				
+			break;
+
+		case 8: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (TRAP_MEMORY_SendSession(sendedFileNum = findFileNum, (findFileEndAdr - findFileStartAdr) & NAND_RAWADR_MASK, findFileStartAdr, start_rtc, stop_rtc, 0))
+			{
 				if (count == 0 || rd.overflow)
 				{
-					if (!firstSessionSended)
-					{
-						u64 size = (firstSessionLastAdr - firstSessionStartAdr) & NAND_RAWADR_MASK;
-
-						TRAP_MEMORY_SendSession(firstSessionNum, size, firstSessionStartAdr, start_rtc, stop_rtc, 0);
-					};
-
-					if (curFileNum != sendedFileNum)
-					{
-						u64 size = (curFileEndAdr - curFileStartAdr) & NAND_RAWADR_MASK;
-
-						TRAP_MEMORY_SendSession(curFileNum, size, curFileStartAdr, start_rtc, stop_rtc, 0);
-					};
-
 					state++;
 				}
 				else
@@ -2934,19 +3026,48 @@ static bool UpdateBlackBoxSendSessions()
 					readSpare.Start(&spare, &rd);
 
 					count--;
+					
+					state = 2;
 				};
+			};
+				
+			break;
 
-				if (tm.Check(100))
+		case 9: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (!firstSessionSended)
+			{
+				if (curFileNum == firstSessionNum)
 				{
-					prgrss = rd.GetRawBlock() * (0x100000000/(NAND_RAWBLOCK_MASK+1));
-
-					TRAP_MEMORY_SendStatus(prgrss, FLASH_STATUS_READ_SESSION_IDLE);
+					firstSessionStartAdr = curFileStartAdr;
 				};
+
+				findFileNum = firstSessionNum;
+				findFileStartAdr = firstSessionStartAdr;
+				findFileEndAdr = firstSessionLastAdr;
+				findFileLastBlock = firstSessionLastBlock;
+
+				firstSessionSended = true;
+
+				state = 3;
+			}
+			else if (curFileNum != sendedFileNum)
+			{
+				findFileNum = curFileNum;
+				findFileStartAdr = curFileStartAdr;
+				findFileEndAdr = rd.GetRawAdr();
+				findFileLastBlock = lastSessionBlock;
+				
+				state = 3;
+			}
+			else
+			{
+				state++;
 			};
 
 			break;
 
-		case 3: 
+		case 10: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			if (TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY))
 			{
@@ -2956,56 +3077,18 @@ static bool UpdateBlackBoxSendSessions()
 			};
 
 			break;
+
+	};
+
+	if (tm.Check(100))
+	{
+		prgrss = rd.GetRawBlock() * (0x100000000/(NAND_RAWBLOCK_MASK+1));
+
+		TRAP_MEMORY_SendStatus(prgrss, FLASH_STATUS_READ_SESSION_IDLE);
 	};
 
 	return result;
 }
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//bool GetSessionNow(SessionInfo *si)
-//{
-//	static SpareArea spare;
-//
-//	static VecData::Hdr hdr;
-//
-//	FLADR rd(0,0,0,0);
-//
-//	rd.raw = adrLastVector;
-//
-//	ReadSpareNow(&spare, &rd, true);
-//
-//	si->size = (u64)spare.fpn << NAND_COL_BITS;
-//
-//	si->last_adress = adrLastVector;
-//	si->session = spare.file;
-//
-//	ReadVecHdrNow(&hdr, &rd);
-//
-//	if (hdr.crc == 0)
-//	{
-//		si->stop_rtc = hdr.rtc;
-//	}
-//	else
-//	{
-//
-//	};
-//
-//	rd.SetRawPage(spare.start);
-//
-//	ReadVecHdrNow(&hdr, &rd);
-//
-//	if (hdr.crc == 0)
-//	{
-//		si->start_rtc = hdr.rtc;
-//	}
-//	else
-//	{
-//
-//	};
-//
-//	return true;
-//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3217,6 +3300,7 @@ void NAND_Idle()
 	static TM32 tm;
 	static FLADR er(0);
 	static EraseBlock eraseBlock;
+	static bool blackBox = false;
 
 	switch (nandState)
 	{
@@ -3242,7 +3326,7 @@ void NAND_Idle()
 
 			if (cmdSendSession)
 			{
-				nandState = NAND_STATE_SEND_BLACKBOX_SESSION;
+				nandState = NAND_STATE_SEND_SESSION;
 
 				break;
 			};
@@ -3337,26 +3421,35 @@ void NAND_Idle()
 
 		case NAND_STATE_SEND_SESSION:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-			if (!UpdateSendSession())
+			if (blackBox)
 			{
-				if (TRAP_TRACE_PrintString("NAND chip mask: 0x%02hX; Bad Blocks: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", 
-					nandSize.mask, nvv.badBlocks[0], nvv.badBlocks[1], nvv.badBlocks[2], nvv.badBlocks[3], nvv.badBlocks[4], nvv.badBlocks[5], nvv.badBlocks[6], nvv.badBlocks[7]))
+				if (!UpdateBlackBoxSendSessions())
 				{
-					nandState = NAND_STATE_WAIT;
+					blackBox = !blackBox;
+
+					nandState = NAND_STATE_SEND_BAD_BLOCKS;
+				};
+			}
+			else
+			{
+				if (!UpdateSendSession())
+				{
+					blackBox = !blackBox;
+
+					nandState = NAND_STATE_SEND_BAD_BLOCKS;
 				};
 			};
+	
+			//if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
 
 			break;
 
-		case NAND_STATE_SEND_BLACKBOX_SESSION:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		case NAND_STATE_SEND_BAD_BLOCKS:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-			if (!UpdateBlackBoxSendSessions())
-			{
-				if (TRAP_TRACE_PrintString("NAND chip mask: 0x%02hX; Bad Blocks: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", 
+			if (TRAP_TRACE_PrintString("NAND chip mask: 0x%02hX; Bad Blocks: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", 
 					nandSize.mask, nvv.badBlocks[0], nvv.badBlocks[1], nvv.badBlocks[2], nvv.badBlocks[3], nvv.badBlocks[4], nvv.badBlocks[5], nvv.badBlocks[6], nvv.badBlocks[7]))
-				{
+			{
 					nandState = NAND_STATE_WAIT;
-				};
 			};
 
 			break;

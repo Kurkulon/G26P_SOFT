@@ -3111,6 +3111,7 @@ static bool UpdateSendSession()
 	static u32 lp = 0;
 	static u32 sum = 0;
 	static FLADR a(0);
+	static TM32 tm;
 
 	FileDsc &s = nvsi[ind].f;
 
@@ -3163,6 +3164,8 @@ static bool UpdateSendSession()
 				}
 				else
 				{
+					tm.Reset(); count = 3;
+
 					i++;
 				};
 			};
@@ -3171,11 +3174,22 @@ static bool UpdateSendSession()
 
 		case 3:
 
-			if (TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY))
+			if (tm.Check(50))
 			{
-				cmdSendSession = false;
+				TRAP_MEMORY_SendStatus(~0, FLASH_STATUS_READ_SESSION_IDLE);
 
-				i = 0;
+				if (count > 0) count--; else count = 3, i++;
+			};
+
+			break;
+
+		case 4:
+
+			if (tm.Check(50))
+			{
+				TRAP_MEMORY_SendStatus(~0, FLASH_STATUS_READ_SESSION_READY);
+
+				if (count > 0) count--; else cmdSendSession = false, i = 0;
 			};
 
 			break;

@@ -119,7 +119,7 @@ static bool flashEmpty = false;
 
 static bool testWriteFlash = false;	
 
-static const bool verifyWritePage = false; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+static const bool verifyWritePage = true; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
 
 
 //__packed struct SI
@@ -470,6 +470,14 @@ void NAND_NextSession()
 #define NAND_CMD_READ_STATUS	0x70
 #define NAND_CMD_BLOCK_ERASE_1	0x60
 #define NAND_CMD_BLOCK_ERASE_2	0xD0
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define NAND_SR_FAIL				0x01	// 0 = Pass, 1 = Fail
+#define NAND_SR_FAILC				0x02	// 0 = Pass, 1 = Fail
+#define NAND_SR_ARDY				0x20	// 0 = Busy, 1 = Ready
+#define NAND_SR_RDY					0x40	// 0 = Busy, 1 = Ready
+#define NAND_SR_WP					0x80	// 0 = Protected, 1 = Not Protected
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1105,13 +1113,13 @@ bool EraseBlock::Update()
 																																
 			if(!NAND_BUSY()/* && ((t = CmdReadStatus()) & (1<<6))*/)																									
 			{																													
-				if (check && (CmdReadStatus() & 1) != 0) // erase error																	
+				byte status = CmdReadStatus();
+
+				if ((status & (NAND_SR_FAIL|NAND_SR_RDY)) != NAND_SR_RDY && check) // erase error																	
 				{																												
 					errBlocks += 1;	
 					nvv.badBlocks[er.chip] += 1;
 
-//					__breakpoint(0);																							
-																																
 					CmdWritePage(er.pg, er.block, 0);																			
 																																
 					*FLD = 0; *FLD = 0; *FLD = 0; *FLD = 0;	// spareErase.validPage = 0; spareErase.validBlock = 0;																
@@ -1174,7 +1182,7 @@ struct Write
 
 	SpareArea spare;
 
-//	SpareArea rspare;
+	SpareArea rspare;
 
 	byte state;
 
@@ -1183,7 +1191,7 @@ struct Write
 	EraseBlock eraseBlock;
 
 	u32	wrBuf[2048/4];
-	u32	rdBuf[2112/4];
+	//u32	rdBuf[2112/4];
 
 
 	bool Start();
@@ -1458,7 +1466,7 @@ bool Write::Update()
 			{
 				wr_pg_error = 0;
 
-				eraseBlock.Start(wr, false, true);
+				eraseBlock.Start(wr, true, true);
 
 	            state = ERASE;
 
@@ -1511,17 +1519,10 @@ bool Write::Update()
 
 			if(!NAND_BUSY())
 			{
-				byte t = CmdReadStatus();
+				byte status = CmdReadStatus();
 
-				//if ((t & (1<<6)) == 0)
-				//{
-				//	__breakpoint(0);
-				//}
-
-				if ((t & 1) != 0) // program error
+				if ((status & (NAND_SR_FAIL|NAND_SR_RDY)) != NAND_SR_RDY) // program error
 				{
-//					__breakpoint(0);
-
 					spare.fbp += 1;
 
 					CmdWritePage(wr.pg, wr.block, wr.page);
@@ -1534,7 +1535,7 @@ bool Write::Update()
 				}
 				else if (verifyWritePage)
 				{
-					CmdReadPage(0, wr.block, wr.page);
+					CmdReadPage(wr.pg, wr.block, wr.page);
 					
 					state = WRITE_PAGE_6;
 				}
@@ -1585,7 +1586,7 @@ bool Write::Update()
 
 			if(!NAND_BUSY())
 			{
-				NandReadData(&rdBuf, sizeof(rdBuf));
+				NandReadData(&rspare, sizeof(rspare));
 
 				state = WRITE_PAGE_7;
 			};
@@ -1596,10 +1597,8 @@ bool Write::Update()
 
 			if (CheckDataComplete())
 			{
-				if (!__memcmp(wr_ptr, rdBuf, wr.pg) || !__memcmp(&spare, rdBuf+wr.pg/4, sizeof(spare)))
+				if (!__memcmp(&spare, &rspare, sizeof(spare)))
 				{
-//					__breakpoint(0);
-
 					spare.fbp += 1;
 
 					CmdWritePage(wr.pg, wr.block, wr.page);
@@ -1612,27 +1611,6 @@ bool Write::Update()
 				}
 				else
 				{
-					//if (wr_count == 0)
-					//{
-					//	Finish();
-
-					//	state = (createFile) ? WRITE_CREATE_FILE_1 : WAIT;
-					//}
-					//else
-					//{
-					//	state = WRITE_START;
-					//};
-
-					//wr.NextPage();
-
-					//spare.fpn += 1;
-
-					//spare.vecFstOff = -1;
-					//spare.vecFstLen = 0;
-
-					//spare.vecLstOff = -1;
-					//spare.vecLstLen = 0;
-
 					state = WRITE_PAGE_8;
 				};
 			};
@@ -2750,6 +2728,7 @@ static bool UpdateBlackBoxSendSessions()
 	static byte state = 0;
 
 	static FLADR rd;
+	static FLADR adr;
 
 	static u32 bs;
 	static u32 be;
@@ -2811,6 +2790,7 @@ static bool UpdateBlackBoxSendSessions()
 	static TM32 tm;
 
 	static u32 count = 0;
+	static u32 countFindVec = 0;
 
 	static bool findVector = false;
 
@@ -2898,7 +2878,7 @@ static bool UpdateBlackBoxSendSessions()
 
 							findFileNum = curFileNum;
 							findFileStartAdr = curFileStartAdr;
-							findFileEndAdr = rd.GetRawAdr();
+							//findFileEndAdr = rd.GetRawAdr();
 							findFileLastBlock = lastSessionBlock;
 
 							curFileStartAdr	= rd.GetRawAdr();
@@ -2973,7 +2953,9 @@ static bool UpdateBlackBoxSendSessions()
 					start_rtc = flrb.hdr.rtc;
 				};
 
-				FLADR adr;
+				adr.SetRawBlock(findFileLastBlock+1);
+
+				findFileEndAdr = adr.GetRawAdr();
 
 				adr.SetRawBlock(findFileLastBlock);
 
@@ -2984,6 +2966,8 @@ static bool UpdateBlackBoxSendSessions()
 				flrb.adr = adr.GetRawAdr();
 
 				RequestFlashRead(&flrb);
+
+				countFindVec = 10;
 
 				state++;
 			};
@@ -3006,9 +2990,29 @@ static bool UpdateBlackBoxSendSessions()
 				if (flrb.ready && flrb.hdr.session == findFileNum && flrb.hdr.crc == 0)
 				{
 					stop_rtc = flrb.hdr.rtc;
-				};
 
-				state++;
+					state++;
+				}
+				else if (countFindVec > 0)
+				{
+					countFindVec--;
+	
+					adr.PrevBlock(); 
+
+					flrb.data = 0;
+					flrb.maxLen = 0;
+					flrb.vecStart = true;
+					flrb.useAdr = true;
+					flrb.adr = adr.GetRawAdr();
+					
+					RequestFlashRead(&flrb);
+
+					state--;
+				}
+				else
+				{
+					state++;
+				};
 			};
 				
 			break;
@@ -4241,6 +4245,11 @@ static void SaveVars()
 					{
 						nvsi[n].f.size = 0;
 						nvsi[n].crc = 0;
+					};
+
+					for (u16 n = 0; n < ArraySize(nvv.badBlocks); n++)
+					{
+						nvv.badBlocks[n] = 0;
 					};
 
 					nvv.f.session += 1;

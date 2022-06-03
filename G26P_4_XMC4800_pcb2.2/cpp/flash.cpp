@@ -226,8 +226,7 @@ enum NandState
 	NAND_STATE_FULL_ERASE_START,
 	NAND_STATE_FULL_ERASE_0,
 	NAND_STATE_CREATE_FILE,
-	NAND_STATE_SEND_SESSION,
-	NAND_STATE_SEND_BAD_BLOCKS
+	NAND_STATE_SEND_SESSION
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1731,12 +1730,15 @@ struct ReadSpare
 	SpareArea	*spare;
 	FLADR		*rd;
 
+	u32			badBlocks[8];
+
 	byte state;
 
 	ReadSpare() : spare(0), rd(0) {}
 
 	bool Start(SpareArea *sp, FLADR *frd);
 	bool Update();
+	void ClearBadBlocks() { for (u32 i = 0; i < ArraySize(badBlocks); i++) badBlocks[i] = 0; }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2794,6 +2796,8 @@ static bool UpdateBlackBoxSendSessions()
 
 	static bool findVector = false;
 
+	const u32 * const bb = readSpare.badBlocks;
+
 	bool result = true;
 
 	switch (state)
@@ -2817,6 +2821,8 @@ static bool UpdateBlackBoxSendSessions()
 
 
 			rd.SetRawBlock(0);
+
+			readSpare.ClearBadBlocks();
 
 			readSpare.Start(&spare, &rd);
 
@@ -3075,13 +3081,21 @@ static bool UpdateBlackBoxSendSessions()
 
 			if (TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY))
 			{
+				state++;
+			};
+
+			break;
+
+		case 11: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (TRAP_TRACE_PrintString("NAND chip mask: 0x%02hX; Bad Blocks: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", nandSize.mask, bb[0], bb[1], bb[2], bb[3], bb[4], bb[5], bb[6], bb[7]))
+			{
 				cmdSendSession = false;
 
 				state = 0;
 			};
 
 			break;
-
 	};
 
 	if (tm.Check(100))
@@ -3118,10 +3132,10 @@ static bool UpdateSendSession()
 	static TM32 tm;
 
 	FileDsc &s = nvsi[ind].f;
-
+	
 	switch (i)
 	{
-		case 0:
+		case 0:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			if (cmdSendSession)
 			{
@@ -3138,7 +3152,7 @@ static bool UpdateSendSession()
 
 			break;
 
-		case 1:
+		case 1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			if (s.size > 0)
 			{
@@ -3158,7 +3172,7 @@ static bool UpdateSendSession()
 
 			break;
 
-		case 2:
+		case 2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			if (TRAP_MEMORY_SendStatus(prgrss, FLASH_STATUS_READ_SESSION_IDLE))
 			{
@@ -3176,7 +3190,7 @@ static bool UpdateSendSession()
 
 			break;
 
-		case 3:
+		case 3:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			if (tm.Check(50))
 			{
@@ -3187,13 +3201,13 @@ static bool UpdateSendSession()
 
 			break;
 
-		case 4:
+		case 4:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			if (tm.Check(50))
 			{
 				TRAP_MEMORY_SendStatus(~0, FLASH_STATUS_READ_SESSION_READY);
 
-				if (count > 0) count--; else cmdSendSession = false, i = 0;
+				if (count > 0) count--; else  cmdSendSession = false, i = 0;
 			};
 
 			break;
@@ -3445,7 +3459,7 @@ void NAND_Idle()
 				{
 					blackBox = !blackBox;
 
-					nandState = NAND_STATE_SEND_BAD_BLOCKS;
+					nandState = NAND_STATE_WAIT;
 				};
 			}
 			else
@@ -3454,21 +3468,11 @@ void NAND_Idle()
 				{
 					blackBox = !blackBox;
 
-					nandState = NAND_STATE_SEND_BAD_BLOCKS;
+					nandState = NAND_STATE_WAIT;
 				};
 			};
 	
 			//if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
-
-			break;
-
-		case NAND_STATE_SEND_BAD_BLOCKS:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-			if (TRAP_TRACE_PrintString("NAND chip mask: 0x%02hX; Bad Blocks: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", 
-					nandSize.mask, nvv.badBlocks[0], nvv.badBlocks[1], nvv.badBlocks[2], nvv.badBlocks[3], nvv.badBlocks[4], nvv.badBlocks[5], nvv.badBlocks[6], nvv.badBlocks[7]))
-			{
-					nandState = NAND_STATE_WAIT;
-			};
 
 			break;
 	};

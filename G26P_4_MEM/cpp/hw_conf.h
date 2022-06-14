@@ -353,13 +353,10 @@
 
 
 
-	#define	NAND_DMA				HW::GPDMA0
-	#define	NAND_DMA_CHEN			(0x101<<7)
-	#define	NAND_DMA_CHST			(1<<7)
-
-	#define	DSP_DMA					HW::GPDMA0
-	#define	DSP_DMA_CHEN			(0x101<<6)
-	#define	DSP_DMA_CHST			(1<<6)
+	#define	NAND_DMA				DMA_CH6
+	//#define	DSP_DMA					HW::GPDMA0
+	//#define	DSP_DMA_CHEN			(0x101<<6)
+	//#define	DSP_DMA_CHST			(1<<6)
 
 	#define	SPI_DMA					HW::GPDMA0
 	#define	SPI_DMA_CHEN			(0x101<<5)
@@ -368,14 +365,14 @@
 	#define	SPI_DLR					(1)
 	#define	SPI_DLR_LNEN			(1<<SPI_DLR)
 
-	#define	NAND_MEMCOPY_DMA		HW::GPDMA0
-	#define	NAND_MEMCOPY_DMACH		HW::GPDMA0_CH4
-	#define	NAND_MEMCOPY_DMA_CHEN	(0x101<<4)
-	#define	NAND_MEMCOPY_DMA_CHST	(1<<4)
+	#define	NAND_MEMCOPY_DMA		DMA_CH4
+	//#define	NAND_MEMCOPY_DMACH		HW::GPDMA0_CH4
+	//#define	NAND_MEMCOPY_DMA_CHEN	(0x101<<4)
+	//#define	NAND_MEMCOPY_DMA_CHST	(1<<4)
 
-	#define	CRC_DMA					HW::GPDMA1
-	#define	CRC_DMACH				HW::GPDMA1_CH2
-	#define	CRC_DMA_CHEN			(0x101<<2)
+	#define	CRC_DMA					DMA_CH10
+	//#define	CRC_DMACH				HW::GPDMA1_CH2
+	//#define	CRC_DMA_CHEN			(0x101<<2)
 	#define	CRC_FCE					HW::FCE_KE3
 
 	#define PIO_I2C					HW::P5

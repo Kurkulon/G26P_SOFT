@@ -8,6 +8,8 @@
 #include "main.h"
 #include "SEGGER_RTT.h"
 #include "PointerCRC.h"
+#include "DMA.h"
+#include "manch.h"
 
 #ifdef WIN32
 
@@ -54,6 +56,7 @@ u32 readsFlash = 0;
 static const u16 manReqWord = 0x3B00;
 static const u16 manReqMask = 0xFF00;
 
+static u16 manTrmBaud = 0;
 
 static bool RequestMan(u16 *buf, u16 len, MTB* mtb);
 
@@ -261,7 +264,7 @@ static bool ReqMan80(u16 *buf, u16 len, MTB* mtb)
 	switch (buf[1])
 	{
 		case 1:		SetNumDevice(buf[2]);		break;
-		case 2:		SetTrmBoudRate(buf[2]-1);	break;
+		case 2:		manTrmBaud = buf[2]-1;		break;
 	};
 
 	return true;
@@ -326,6 +329,8 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
 		case 0x90:	res = ReqMan90(buf, len, mtb); break;
 		case 0xF0:	res = ReqManF0(buf, len, mtb); break;
 	};
+
+	if (res) { mtb->baud = manTrmBaud; };
 
 	return res;
 }
@@ -876,12 +881,14 @@ static void Update()
 int main()
 {
 	static TM32 rtm;
-	//static MTB mtb;
-	//static u16 manbuf[10];
-	//static DSCTWI dsctwi;
-	//static DSCTWI dsc;
+
+	//static byte buf[0x1800];
 
 	//__breakpoint(0);
+
+	//DMA_CH7.MemCopy(0, buf, 0x1100);
+
+	//while (!DMA_CH7.CheckMemCopyComplete());
 
 	InitHardware();
 
@@ -890,10 +897,6 @@ int main()
 	//InitTraps();
 
 	FLASH_Init();
-
-	//buf[4999] = 0x55;
-
-	//wb.len = 5000;
 
 	while(1)
 	{

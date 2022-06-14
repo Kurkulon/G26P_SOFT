@@ -156,6 +156,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\manch.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\system_XMC4800.cpp"
 				>
 			</File>

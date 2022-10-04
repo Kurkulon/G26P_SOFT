@@ -134,7 +134,7 @@ int main(void)
 	// get the number of sectors for this device
 	if( AFP_Error == NO_ERR )
 	{
-		AFP_NumSectors = 4;//GetNumSectors();
+		AFP_NumSectors = GetNumSectors();
 		AFP_SectorSize = GetSectorSize();
 	}
 

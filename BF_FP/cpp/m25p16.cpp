@@ -19,7 +19,7 @@
 #include "types.h"
 
 
-#define NUM_SECTORS 	64			/* number of sectors in the flash device */
+#define NUM_SECTORS 	8			/* number of sectors in the flash device */
 #define SECTOR_SIZE		4096
 
 static char 	*pFlashDesc =		"Atmel AT25DF021";

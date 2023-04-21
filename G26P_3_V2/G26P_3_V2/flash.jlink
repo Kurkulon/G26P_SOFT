@@ -1,0 +1,6 @@
+speed 4000
+r
+h
+exec device = LPC824M201
+loadbin obj\G38A_APS.bin,0x00002000
+exit

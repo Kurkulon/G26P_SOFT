@@ -2557,7 +2557,7 @@ static void InitSessionsNew()
 
 	while (count--)
 	{
-		rdspr.Start(&spare, &firstSessionAdr);	while (rdspr.Update());
+		rdspr.Start(&spare, &firstSessionAdr);	while (rdspr.Update()) HW::WDT->Update();
 
 		if (spare.crc == 0)
 		{ 
@@ -2595,7 +2595,7 @@ static void InitSessionsNew()
 
 			while (count--)
 			{
-				rdspr.Start(&spare, &adr);	while (rdspr.Update());
+				rdspr.Start(&spare, &adr);	while (rdspr.Update()) HW::WDT->Update();
 
 				if (spare.crc == 0 ) break;
 

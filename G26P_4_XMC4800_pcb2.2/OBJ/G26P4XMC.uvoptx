@@ -120,7 +120,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name>d</Name>
+          <Name></Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -140,7 +140,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=3381,445,3821,988,0)(1007=2771,224,2948,485,0)(1008=-1,-1,-1,-1,0)(1009=3103,397,3361,981,0)(1012=2055,165,2522,466,0)</Name>
+          <Name>(1010=3381,445,3821,988,0)(1007=2771,224,2948,485,0)(1008=-1,-1,-1,-1,0)(1009=2702,264,2960,848,0)(1012=2055,165,2522,466,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -152,9 +152,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>3024</LineNumber>
+          <LineNumber>2562</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134293504</Address>
+          <Address>134290970</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -163,7 +163,23 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800_pcb2.2\cpp\flash.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26P4XMC\cpp/flash.cpp\3024</Expression>
+          <Expression>\\G26P4XMC\cpp/flash.cpp\2562</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>1796</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134290648</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26P_SOFT\G26P_4_XMC4800_pcb2.2\cpp\flash.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26P4XMC\cpp/flash.cpp\1796</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>

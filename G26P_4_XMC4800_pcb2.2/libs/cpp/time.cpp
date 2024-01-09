@@ -320,7 +320,7 @@ static __irq void Timer_Handler (void)
 						}
 						else
 						{
-							timeBDC.mon = 0;
+							timeBDC.mon = 1;
 
 							timeBDC.year += 1;
 						};
